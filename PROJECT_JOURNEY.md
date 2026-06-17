@@ -130,7 +130,56 @@ This file is an append-only development diary for LaundryLink. New work must be 
 - How the issue was resolved: Added `"/error"` to the permitted requestMatchers in `SecurityConfig.java` so that 403 Forbidden errors (and other HTTP errors) are correctly bubbled up to the client.
 - Important design decisions: Ensure proper error path handling in stateless JWT architectures.
 - What I learned from this step: In Spring Security 6, always permit the `/error` path if you want to avoid masking 403 Forbidden/400 Bad Request errors behind basic auth 401s during internal servlet forwards.
-- Next planned step: Start Phase 4 (Persistence Integration).
+- Next planned step: Start Phase 4 (Laundry Partner Management).
+
+### 2026-06-18 - Phase 4 Laundry Partner Management Planning
+- Date and phase: 2026-06-18, Phase 4.
+- Goal of the task: Plan the Laundry Partner Management slice covering partner profiles, service areas, availability, documents, and pricing rate cards using an in-memory database-free model.
+- What was implemented: Outlined DTOs, controllers, services, and in-memory structures to model partner configuration details, including access control rules.
+- Files created: None.
+- Files modified: None.
+- Problems encountered: None during the planning phase.
+- Errors faced: None.
+- Root cause of the issue: None.
+- How the issue was resolved: None.
+- Important design decisions: Key all in-memory structures by the partner's unique authenticated email address; seed default profiles to enable instant out-of-the-box testing.
+- What I learned from this step: Defining API views and DTOs before implementation keeps security mapping clear.
+- Next planned step: Implement DTOs, in-memory domain models, laundry partner service, and REST controllers.
+
+### 2026-06-18 - Phase 4 Laundry Partner Management Implementation
+- Date and phase: 2026-06-18, Phase 4.
+- Goal of the task: Implement the Laundry Partner Management slice covering partner profiles, service areas, availability, documents, and pricing rate cards using an in-memory model.
+- What was implemented:
+  - Request DTOs: `PartnerProfileRequest`, `ServiceAreaRequest`, `AvailabilityRequest`, `PartnerDocumentRequest`, `DocumentVerifyRequest`, `PricingRequest`, `RateCardItem`, `AvailabilitySlot`.
+  - View DTOs: `PartnerProfileView`, `ServiceAreaView`, `AvailabilityView`, `PartnerDocumentView`, `PricingView`.
+  - Service: `LaundryPartnerService` utilizing thread-safe in-memory maps keyed by partner email address.
+  - Controller: `LaundryPartnerController` exposing REST endpoints for fetching/updating all partner metadata with strict role validation (e.g. only Laundry Partners can modify their details; only Admin can verify documents).
+  - Seeded initial active partner config for `partner@freshfold.example` for immediate test coverage.
+- Files created:
+  - [src/main/java/com/laundrylink/laundrylink/api/PartnerProfileRequest.java](src/main/java/com/laundrylink/laundrylink/api/PartnerProfileRequest.java)
+  - [src/main/java/com/laundrylink/laundrylink/api/PartnerProfileView.java](src/main/java/com/laundrylink/laundrylink/api/PartnerProfileView.java)
+  - [src/main/java/com/laundrylink/laundrylink/api/ServiceAreaRequest.java](src/main/java/com/laundrylink/laundrylink/api/ServiceAreaRequest.java)
+  - [src/main/java/com/laundrylink/laundrylink/api/ServiceAreaView.java](src/main/java/com/laundrylink/laundrylink/api/ServiceAreaView.java)
+  - [src/main/java/com/laundrylink/laundrylink/api/AvailabilitySlot.java](src/main/java/com/laundrylink/laundrylink/api/AvailabilitySlot.java)
+  - [src/main/java/com/laundrylink/laundrylink/api/AvailabilityRequest.java](src/main/java/com/laundrylink/laundrylink/api/AvailabilityRequest.java)
+  - [src/main/java/com/laundrylink/laundrylink/api/AvailabilityView.java](src/main/java/com/laundrylink/laundrylink/api/AvailabilityView.java)
+  - [src/main/java/com/laundrylink/laundrylink/api/PartnerDocumentRequest.java](src/main/java/com/laundrylink/laundrylink/api/PartnerDocumentRequest.java)
+  - [src/main/java/com/laundrylink/laundrylink/api/PartnerDocumentView.java](src/main/java/com/laundrylink/laundrylink/api/PartnerDocumentView.java)
+  - [src/main/java/com/laundrylink/laundrylink/api/DocumentVerifyRequest.java](src/main/java/com/laundrylink/laundrylink/api/DocumentVerifyRequest.java)
+  - [src/main/java/com/laundrylink/laundrylink/api/RateCardItem.java](src/main/java/com/laundrylink/laundrylink/api/RateCardItem.java)
+  - [src/main/java/com/laundrylink/laundrylink/api/PricingRequest.java](src/main/java/com/laundrylink/laundrylink/api/PricingRequest.java)
+  - [src/main/java/com/laundrylink/laundrylink/api/PricingView.java](src/main/java/com/laundrylink/laundrylink/api/PricingView.java)
+  - [src/main/java/com/laundrylink/laundrylink/api/LaundryPartnerController.java](src/main/java/com/laundrylink/laundrylink/api/LaundryPartnerController.java)
+  - [src/main/java/com/laundrylink/laundrylink/service/PartnerProfile.java](src/main/java/com/laundrylink/laundrylink/service/PartnerProfile.java)
+  - [src/main/java/com/laundrylink/laundrylink/service/LaundryPartnerService.java](src/main/java/com/laundrylink/laundrylink/service/LaundryPartnerService.java)
+- Files modified: None.
+- Problems encountered: None. The implementation built cleanly without any errors.
+- Errors faced: None.
+- Root cause of the issue: None.
+- How the issue was resolved: None.
+- Important design decisions: Delegated profile lookups to path-based emails and authentication context, ensuring customers can read partner details but only partners can modify them.
+- What I learned from this step: CopyOnWriteArrayList and ConcurrentHashMap are excellent in-memory replacements for quick API prototyping before database design.
+- Next planned step: Stop and present verification report.
 
 ## Lessons Learned
 - Keep the first working slice small and verifiable before adding persistence or security.

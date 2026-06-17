@@ -277,3 +277,68 @@ This file is append-only. Add a new section after each completed phase and do no
 - `roles` and `permissions` should support future security integration.
 - `auth_accounts` or a similar credential table may be needed if login remains separate from profile data.
 - The current `UserRoleType` enum is a useful temporary contract, but it may be replaced or mapped to persisted role records later.
+
+## Phase 4 Snapshot - Laundry Partner Management
+
+### Current Controllers
+- HealthController
+- BlueprintController
+- StakeholderController
+- UserManagementController
+- AuthController
+- LaundryPartnerController
+
+### Current Services
+- BlueprintCatalogService
+- StakeholderCatalogService
+- UserManagementService
+- AuthService
+- JwtService
+- LaundryPartnerService
+
+### Current Endpoints
+- `GET /api/v1/health`
+- `GET /api/v1/blueprint`
+- `GET /api/v1/stakeholders`
+- `GET /api/v1/users/roles`
+- `GET /api/v1/users/profiles`
+- `GET /api/v1/users/{role}/profile`
+- `GET /api/v1/users/{role}/addresses`
+- `POST /api/v1/auth/register`
+- `POST /api/v1/auth/login`
+- `GET /api/v1/partners/profile`
+- `PUT /api/v1/partners/profile`
+- `GET /api/v1/partners/{email}/profile`
+- `GET /api/v1/partners/service-areas`
+- `PUT /api/v1/partners/service-areas`
+- `GET /api/v1/partners/{email}/service-areas`
+- `GET /api/v1/partners/availability`
+- `PUT /api/v1/partners/availability`
+- `GET /api/v1/partners/{email}/availability`
+- `GET /api/v1/partners/documents`
+- `POST /api/v1/partners/documents`
+- `PUT /api/v1/partners/{email}/documents/{documentId}/verify`
+- `GET /api/v1/partners/pricing`
+- `PUT /api/v1/partners/pricing`
+- `GET /api/v1/partners/{email}/pricing`
+
+### Current Data Flow
+- Public or role-authenticated requests enter `LaundryPartnerController`.
+- The controller retrieves the caller's JWT security principal.
+- The controller checks role privileges (e.g. ensuring only own partner can write data, or only admins can verify documents).
+- The controller calls `LaundryPartnerService` which maps requests to the in-memory `PartnerProfile` state.
+- Response payloads are serialized back as JSON DTOs.
+
+### Current Package Structure
+- `com.laundrylink.laundrylink.api`
+- `com.laundrylink.laundrylink.service`
+- `com.laundrylink.laundrylink.security`
+
+### Current Limitations
+- Still no database persistence; all data resets on application restart.
+- Documents are represented as base64 strings in memory.
+
+### Future Database Replacement Plan
+- Map `PartnerProfile` to a persisted entity with one-to-many relationships for service areas, availability slots, documents, and rate card items.
+- Replace in-memory lookup maps with repository-backed queries.
+
