@@ -199,12 +199,14 @@ This file is an append-only development diary for LaundryLink. New work must be 
 - Date and phase: 2026-06-18, Phase 5.
 - Goal of the task: Implement the Order Management Core slice covering placing orders, status transitions, history tracking, and pricing calculations.
 - What was implemented:
-  - Enums: Created a dedicated `OrderStatus` enum containing: `PLACED`, `ACCEPTED`, `PROCESSING`, `READY_FOR_DELIVERY`, `PICKUP_ASSIGNED`, `PICKED_UP`, `DELIVERY_ASSIGNED`, `DELIVERED`, `CANCELLED`.
-  - Request DTOs: `PlaceOrderRequest`, `OrderStatusUpdateRequest`, `AssignDeliveryRequest`, `OrderItemDto`.
-  - View DTOs: `OrderView`, `StatusTransition`.
-  - Domain Class: `Order` with `createdAt` and `updatedAt` timestamps and a thread-safe status history tracking list.
-  - Service: `OrderService` which stores orders in memory, integrates with `LaundryPartnerService` to dynamically calculate costs from the partner's pricing rate card, manages status transitions, and assigns delivery partners.
-  - Controller: `OrderController` exposing order endpoints with role-based checks and owner validation.
+  - New Controllers: `OrderController` exposing endpoints under `/api/v1/orders`.
+  - New Services: `OrderService` managing in-memory order maps and business logic.
+  - New Endpoints: `POST /api/v1/orders` (place order), `GET /api/v1/orders/{orderId}` (view details), `GET /api/v1/orders/history` (view user history), `PUT /api/v1/orders/{orderId}/status` (update status), and `PUT /api/v1/orders/{orderId}/assign-delivery` (assign delivery).
+  - Order Lifecycle Design: Modelled order states via a dedicated `OrderStatus` enum: `PLACED`, `ACCEPTED`, `PROCESSING`, `READY_FOR_DELIVERY`, `PICKUP_ASSIGNED`, `PICKED_UP`, `DELIVERY_ASSIGNED`, `DELIVERED`, `CANCELLED`. Integrated automatic state transitions (e.g. assigning a delivery partner automatically transitions `ACCEPTED` orders to `PICKUP_ASSIGNED`).
+  - Security Validations Performed: Enforced ownership and role check validations:
+    - Order detail lookup: Checked that the caller is either the Customer owner, the assigned Partner, the assigned/unassigned Delivery Partner, or an Admin. Other users receive `403 Forbidden`.
+    - Status transitions: Validated that Customers can only cancel before acceptance, Partners can only update to Accepted/Processing/Ready-for-delivery, and Delivery Partners can only update to delivery-related states.
+  - Timestamps: Added `createdAt` and `updatedAt` to `Order` and `OrderView`.
 - Files created:
   - [src/main/java/com/laundrylink/laundrylink/api/OrderStatus.java](src/main/java/com/laundrylink/laundrylink/api/OrderStatus.java)
   - [src/main/java/com/laundrylink/laundrylink/api/OrderItemDto.java](src/main/java/com/laundrylink/laundrylink/api/OrderItemDto.java)
@@ -223,6 +225,63 @@ This file is an append-only development diary for LaundryLink. New work must be 
 - How the issue was resolved: None.
 - Important design decisions: Auto-transition order status to `PICKUP_ASSIGNED` or `DELIVERY_ASSIGNED` when a delivery partner is assigned, reducing API calls for client apps.
 - What I learned from this step: Timestamps (`createdAt`, `updatedAt`) are best represented as seconds-since-epoch (`long`) for cross-platform API compatibility.
+- Next planned step: Start Phase 6 (Delivery Partner Management).
+
+### 2026-06-18 - Phase 6 Delivery Management Implementation
+- Date and phase: 2026-06-18, Phase 6.
+- Goal of the task: Implement the Delivery Management slice covering pickup/delivery assignment, tracking, and dashboard.
+- What was implemented:
+  - New DTOs: `DeliveryDashboardView.java` and `DeliveryTrackingView.java` records.
+  - Extended Service: `OrderService.java` to support `getDeliveryDashboard` and `getDeliveryTracking`.
+  - New Controllers: `DeliveryController` exposing `/api/v1/deliveries/dashboard` (restricted to `DELIVERY_PARTNER` or `ADMIN`) and `/api/v1/deliveries/{orderId}/tracking` (restricted to order owner/assignees).
+  - Security checks: Verified role permissions dynamically in controller and service layers.
+- Files created:
+  - [src/main/java/com/laundrylink/laundrylink/api/DeliveryDashboardView.java](src/main/java/com/laundrylink/laundrylink/api/DeliveryDashboardView.java)
+  - [src/main/java/com/laundrylink/laundrylink/api/DeliveryTrackingView.java](src/main/java/com/laundrylink/laundrylink/api/DeliveryTrackingView.java)
+  - [src/main/java/com/laundrylink/laundrylink/api/DeliveryController.java](src/main/java/com/laundrylink/laundrylink/api/DeliveryController.java)
+- Files modified:
+  - [src/main/java/com/laundrylink/laundrylink/service/OrderService.java](src/main/java/com/laundrylink/laundrylink/service/OrderService.java)
+- Problems encountered: None. The implementation and automated scripts ran successfully.
+- Errors faced: None.
+- Root cause of the issue: None.
+- How the issue was resolved: None.
+- Important design decisions: Ensure strict role-based access control for delivery dashboards and tracking endpoints.
+- What I learned from this step: Using in-memory maps makes it very fast to test and prototype order tracking timelines.
+- Next planned step: Stop and present verification report.
+
+### 2026-06-18 - Phase 7 Payment Module Implementation
+- Date and phase: 2026-06-18, Phase 7.
+- Goal of the task: Implement the Payment Module slice supporting simulated payment processing (UPI, COD, RAZORPAY), payment status tracking, invoice status tracking, bi-directional order linking, and role-based security validation.
+- What was implemented:
+  - New Enums: `PaymentMethod.java`, `PaymentStatus.java`, `InvoiceStatus.java`.
+  - New Request & View DTOs: `InitiatePaymentRequest.java`, `PaymentView.java`, `InvoiceView.java`.
+  - Pluggable Abstraction: `PaymentProcessor.java` interface and `SimulatedPaymentProcessor.java` component.
+  - New Domain Models: `Payment.java` and `Invoice.java`.
+  - Extended Service: `PaymentService.java` managing payments, invoices, security checks, and COD callback; modified `Order.java`, `OrderView.java`, and `OrderService.java` to link payment ID.
+  - New Controller: `PaymentController.java` exposing endpoints under `/api/v1/payments` with role validation.
+- Files created:
+  - [src/main/java/com/laundrylink/laundrylink/api/PaymentMethod.java](src/main/java/com/laundrylink/laundrylink/api/PaymentMethod.java)
+  - [src/main/java/com/laundrylink/laundrylink/api/PaymentStatus.java](src/main/java/com/laundrylink/laundrylink/api/PaymentStatus.java)
+  - [src/main/java/com/laundrylink/laundrylink/api/InvoiceStatus.java](src/main/java/com/laundrylink/laundrylink/api/InvoiceStatus.java)
+  - [src/main/java/com/laundrylink/laundrylink/api/InitiatePaymentRequest.java](src/main/java/com/laundrylink/laundrylink/api/InitiatePaymentRequest.java)
+  - [src/main/java/com/laundrylink/laundrylink/api/PaymentView.java](src/main/java/com/laundrylink/laundrylink/api/PaymentView.java)
+  - [src/main/java/com/laundrylink/laundrylink/api/InvoiceView.java](src/main/java/com/laundrylink/laundrylink/api/InvoiceView.java)
+  - [src/main/java/com/laundrylink/laundrylink/api/PaymentController.java](src/main/java/com/laundrylink/laundrylink/api/PaymentController.java)
+  - [src/main/java/com/laundrylink/laundrylink/service/PaymentProcessor.java](src/main/java/com/laundrylink/laundrylink/service/PaymentProcessor.java)
+  - [src/main/java/com/laundrylink/laundrylink/service/SimulatedPaymentProcessor.java](src/main/java/com/laundrylink/laundrylink/service/SimulatedPaymentProcessor.java)
+  - [src/main/java/com/laundrylink/laundrylink/service/Payment.java](src/main/java/com/laundrylink/laundrylink/service/Payment.java)
+  - [src/main/java/com/laundrylink/laundrylink/service/Invoice.java](src/main/java/com/laundrylink/laundrylink/service/Invoice.java)
+  - [src/main/java/com/laundrylink/laundrylink/service/PaymentService.java](src/main/java/com/laundrylink/laundrylink/service/PaymentService.java)
+- Files modified:
+  - [src/main/java/com/laundrylink/laundrylink/service/Order.java](src/main/java/com/laundrylink/laundrylink/service/Order.java)
+  - [src/main/java/com/laundrylink/laundrylink/api/OrderView.java](src/main/java/com/laundrylink/laundrylink/api/OrderView.java)
+  - [src/main/java/com/laundrylink/laundrylink/service/OrderService.java](src/main/java/com/laundrylink/laundrylink/service/OrderService.java)
+- Problems encountered: None. The implementation built cleanly and all script-based verification runs passed successfully.
+- Errors faced: None.
+- Root cause of the issue: None.
+- How the issue was resolved: None.
+- Important design decisions: Lazy-inject `PaymentService` and `OrderService` into each other to prevent bean creation circular dependencies; encapsulate payment gateway interactions into a pluggable `PaymentProcessor` interface.
+- What I learned from this step: Integrating state-machine callbacks (like completing COD payment on order delivery) makes user workflows highly coherent.
 - Next planned step: Stop and present verification report.
 
 ## Lessons Learned
@@ -238,6 +297,7 @@ This file is an append-only development diary for LaundryLink. New work must be 
 - BCrypt is the right default for password hashing in Spring Security when the app manages credentials itself.
 - Stateless JWT security works well for REST APIs because the server can authenticate each request without sessions.
 - In Spring Security 6, always permit the `/error` path to allow custom `ResponseStatusException` errors (like 403 Forbidden) to propagate to the client instead of being masked by authentication entry points.
+- Enums and strict access validation rules are critical when building state-machine based workflows like order lifecycles to prevent unauthorized state transitions.
 
 ## Mistakes and Fixes
 - Mistake: The first terminal-based Maven validation was skipped by the environment.
@@ -246,5 +306,7 @@ This file is an append-only development diary for LaundryLink. New work must be 
   - Fix: Kept the implementation limited to in-memory services and read-only API responses.
 - Mistake: Authentication requirements arrived before a database-backed identity model existed.
   - Fix: Used in-memory seeded accounts with JWT and BCrypt so Phase 3 could be completed without introducing repositories yet.
-- Mistake: Accessing a forbidden endpoint using a valid CUSTOMER token returned HTTP 401 with a basic auth prompt instead of HTTP 403 Forbidden.
+- Accessing a forbidden endpoint using a valid CUSTOMER token returned HTTP 401 with a basic auth prompt instead of HTTP 403 Forbidden.
   - Fix: Added `"/error"` to the permitted requestMatchers in `SecurityConfig.java` so that 403 responses are not intercepted and masked on error dispatch.
+- Mistake: Initial design allowed raw strings for order status, which could lead to case mismatch bugs during transition checks.
+  - Fix: Refactored the architecture to use a dedicated `OrderStatus` enum across all layers.

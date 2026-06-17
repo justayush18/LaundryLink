@@ -7,6 +7,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -19,15 +20,19 @@ import com.laundrylink.laundrylink.api.PricingView;
 import com.laundrylink.laundrylink.api.RateCardItem;
 import com.laundrylink.laundrylink.api.UserRoleType;
 import com.laundrylink.laundrylink.api.OrderStatusUpdateRequest;
+import com.laundrylink.laundrylink.api.DeliveryDashboardView;
+import com.laundrylink.laundrylink.api.DeliveryTrackingView;
 
 @Service
 public class OrderService {
 
     private final Map<String, Order> orders = new ConcurrentHashMap<>();
     private final LaundryPartnerService laundryPartnerService;
+    private final PaymentService paymentService;
 
-    public OrderService(LaundryPartnerService laundryPartnerService) {
+    public OrderService(LaundryPartnerService laundryPartnerService, @Lazy PaymentService paymentService) {
         this.laundryPartnerService = laundryPartnerService;
+        this.paymentService = paymentService;
     }
 
     public OrderView placeOrder(String customerEmail, PlaceOrderRequest request) {
@@ -161,6 +166,9 @@ public class OrderService {
         }
 
         order.transitionStatus(newStatus, notes);
+        if (newStatus == OrderStatus.DELIVERED) {
+            paymentService.completeCodPayment(orderId);
+        }
         return toView(order);
     }
 
@@ -190,12 +198,80 @@ public class OrderService {
         return toView(order);
     }
 
+    public DeliveryDashboardView getDeliveryDashboard(String deliveryPartnerEmail) {
+        List<OrderView> pendingPickups = orders.values().stream()
+                .filter(order -> order.getStatus() == OrderStatus.ACCEPTED)
+                .map(this::toView)
+                .collect(Collectors.toList());
+
+        List<OrderView> pendingDeliveries = orders.values().stream()
+                .filter(order -> order.getStatus() == OrderStatus.READY_FOR_DELIVERY)
+                .map(this::toView)
+                .collect(Collectors.toList());
+
+        List<OrderView> assignedTasks = orders.values().stream()
+                .filter(order -> order.getDeliveryPartnerEmail() != null
+                        && order.getDeliveryPartnerEmail().equalsIgnoreCase(deliveryPartnerEmail)
+                        && (order.getStatus() == OrderStatus.PICKUP_ASSIGNED
+                                || order.getStatus() == OrderStatus.PICKED_UP
+                                || order.getStatus() == OrderStatus.DELIVERY_ASSIGNED))
+                .map(this::toView)
+                .collect(Collectors.toList());
+
+        return new DeliveryDashboardView(pendingPickups, pendingDeliveries, assignedTasks);
+    }
+
+    public DeliveryTrackingView getDeliveryTracking(String orderId, String email, UserRoleType role) {
+        Order order = orders.get(orderId);
+        if (order == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
+        }
+
+        boolean authorized = false;
+        if (role == UserRoleType.ADMIN) {
+            authorized = true;
+        } else if (role == UserRoleType.CUSTOMER && order.getCustomerEmail().equalsIgnoreCase(email)) {
+            authorized = true;
+        } else if (role == UserRoleType.LAUNDRY_PARTNER && order.getPartnerEmail().equalsIgnoreCase(email)) {
+            authorized = true;
+        } else if (role == UserRoleType.DELIVERY_PARTNER && order.getDeliveryPartnerEmail() != null 
+                && order.getDeliveryPartnerEmail().equalsIgnoreCase(email)) {
+            authorized = true;
+        }
+
+        if (!authorized) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied: You are not authorized to track this order");
+        }
+
+        return new DeliveryTrackingView(
+                order.getOrderId(),
+                order.getStatus(),
+                order.getCustomerEmail(),
+                order.getPickupAddress(),
+                order.getPickupSlot(),
+                order.getDeliveryAddress(),
+                order.getDeliverySlot(),
+                order.getStatusNotes(),
+                order.getUpdatedAt(),
+                order.getHistory()
+        );
+    }
+
+    public void linkPaymentToOrder(String orderId, String paymentId) {
+        Order order = orders.get(orderId);
+        if (order == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
+        }
+        order.setPaymentId(paymentId);
+    }
+
     private OrderView toView(Order order) {
         return new OrderView(
                 order.getOrderId(),
                 order.getCustomerEmail(),
                 order.getPartnerEmail(),
                 order.getDeliveryPartnerEmail(),
+                order.getPaymentId(),
                 order.getStatus(),
                 order.getItems(),
                 order.getTotalCost(),

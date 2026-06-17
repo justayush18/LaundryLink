@@ -385,3 +385,81 @@ This file is append-only. Add a new section after each completed phase and do no
 - Map the history transitions to a one-to-many log table.
 - Replace in-memory ConcurrentHashMap with database repository methods (`findByCustomerEmail`, `findByPartnerEmail`, etc.).
 
+## Phase 6 Snapshot - Delivery Management
+
+### Current Controllers
+- HealthController
+- BlueprintController
+- StakeholderController
+- UserManagementController
+- AuthController
+- LaundryPartnerController
+- OrderController
+- DeliveryController
+
+### Current Services
+- BlueprintCatalogService
+- StakeholderCatalogService
+- UserManagementService
+- AuthService
+- JwtService
+- LaundryPartnerService
+- OrderService
+
+### Current Endpoints
+- All endpoints from previous phases.
+- `GET /api/v1/deliveries/dashboard` (DELIVERY_PARTNER/ADMIN) - gets delivery dashboard lists.
+- `GET /api/v1/deliveries/{orderId}/tracking` (Authorized participants) - tracks order status timeline.
+
+### Current Data Flow
+- Delivery partners request dashboard and tracking data.
+- `DeliveryController` verifies authentication.
+- `OrderService` filters orders from memory based on status:
+  - `pendingPickups`: status is `ACCEPTED`
+  - `pendingDeliveries`: status is `READY_FOR_DELIVERY`
+  - `assignedTasks`: delivery email matches caller and status is `PICKUP_ASSIGNED`, `PICKED_UP`, or `DELIVERY_ASSIGNED`
+
+### Current Limitations
+- Still no database persistence; all data resets on application restart.
+
+### Future Database Replacement Plan
+- Store delivery partner mappings and assignments in database tables.
+- Use query-level filters for dashboard retrieval.
+
+## Phase 7 Snapshot - Payment Module
+
+### Current Controllers
+- All controllers from previous phases.
+- PaymentController
+
+### Current Services
+- All services from previous phases.
+- PaymentService
+- SimulatedPaymentProcessor (implements PaymentProcessor)
+
+### Current Endpoints
+- All endpoints from previous phases.
+- `POST /api/v1/payments/initiate` (CUSTOMER) - initiates a payment.
+- `POST /api/v1/payments/{paymentId}/process` (CUSTOMER) - simulates payment processing.
+- `POST /api/v1/payments/{paymentId}/refund` (ADMIN) - refunds payment and cancels invoice.
+- `GET /api/v1/payments/{paymentId}` (Authorized participants) - gets payment details.
+- `GET /api/v1/payments/orders/{orderId}/invoice` (Authorized participants) - gets order invoice.
+
+### Current Data Flow
+- Customer initiates payment for an order.
+- `PaymentService` verifies order ownership and total cost via `OrderService`.
+- `PaymentProcessor` generates simulated gateway order transactions.
+- Payment is created in `PENDING` status.
+- Once processed with success, status updates to `SUCCESS` and an `Invoice` with status `GENERATED` is created.
+- For COD orders, status remains `PENDING` until delivery completion, where `completeCodPayment` updates status to `SUCCESS` and generates the invoice.
+- Admin refund transitions payment to `REFUNDED` and linked invoice to `CANCELLED`.
+
+### Pluggable Payment Integration Strategy
+- The interface `PaymentProcessor` abstracts gateway-specific order and checkout generation.
+- To swap simulation with real Razorpay, implement `RazorpayPaymentProcessor` using Razorpay's Java SDK and inject it without changing the controller or service logic.
+
+### Future Database Replacement Plan
+- Map `Payment` and `Invoice` to database tables.
+- Use database transactions to guarantee atomic updates between order delivery state changes and payment completions.
+
+

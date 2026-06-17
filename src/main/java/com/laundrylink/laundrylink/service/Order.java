@@ -25,6 +25,7 @@ public class Order {
     private volatile String statusNotes;
     private final long createdAt;
     private volatile long updatedAt;
+    private volatile String paymentId;
     
     private final List<StatusTransition> history = new CopyOnWriteArrayList<>();
 
@@ -119,6 +120,15 @@ public class Order {
 
     public List<StatusTransition> getHistory() {
         return Collections.unmodifiableList(history);
+    }
+
+    public String getPaymentId() {
+        return paymentId;
+    }
+
+    public void setPaymentId(String paymentId) {
+        this.paymentId = paymentId;
+        touch();
     }
 
     private void touch() {
