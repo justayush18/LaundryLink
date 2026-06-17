@@ -88,6 +88,34 @@ This file is an append-only development diary for LaundryLink. New work must be 
 - What I learned from this step: A stable API inventory makes later persistence mapping and presentation prep much easier.
 - Next planned step: Use this inventory as the baseline for Phase 3 planning.
 
+### 2026-06-18 - Phase 3 Authentication and Security
+- Date and phase: 2026-06-18, Phase 3.
+- Goal of the task: Add registration, login, JWT-based authentication, password encryption, and role-based access control.
+- What was implemented: Added an auth controller, auth service, custom JWT generation and validation, BCrypt password hashing, Spring Security configuration, and method-level role checks on user-management endpoints.
+- Files created:
+  - [src/main/java/com/laundrylink/laundrylink/api/AuthLoginRequest.java](src/main/java/com/laundrylink/laundrylink/api/AuthLoginRequest.java)
+  - [src/main/java/com/laundrylink/laundrylink/api/AuthRegisterRequest.java](src/main/java/com/laundrylink/laundrylink/api/AuthRegisterRequest.java)
+  - [src/main/java/com/laundrylink/laundrylink/api/AuthResponse.java](src/main/java/com/laundrylink/laundrylink/api/AuthResponse.java)
+  - [src/main/java/com/laundrylink/laundrylink/api/AuthenticatedUserView.java](src/main/java/com/laundrylink/laundrylink/api/AuthenticatedUserView.java)
+  - [src/main/java/com/laundrylink/laundrylink/api/AuthController.java](src/main/java/com/laundrylink/laundrylink/api/AuthController.java)
+  - [src/main/java/com/laundrylink/laundrylink/service/AuthService.java](src/main/java/com/laundrylink/laundrylink/service/AuthService.java)
+  - [src/main/java/com/laundrylink/laundrylink/service/RegisteredAccount.java](src/main/java/com/laundrylink/laundrylink/service/RegisteredAccount.java)
+  - [src/main/java/com/laundrylink/laundrylink/security/AuthenticatedPrincipal.java](src/main/java/com/laundrylink/laundrylink/security/AuthenticatedPrincipal.java)
+  - [src/main/java/com/laundrylink/laundrylink/security/JwtService.java](src/main/java/com/laundrylink/laundrylink/security/JwtService.java)
+  - [src/main/java/com/laundrylink/laundrylink/security/JwtAuthenticationFilter.java](src/main/java/com/laundrylink/laundrylink/security/JwtAuthenticationFilter.java)
+  - [src/main/java/com/laundrylink/laundrylink/security/SecurityConfig.java](src/main/java/com/laundrylink/laundrylink/security/SecurityConfig.java)
+- Files modified:
+  - [pom.xml](pom.xml)
+  - [src/main/java/com/laundrylink/laundrylink/api/UserManagementController.java](src/main/java/com/laundrylink/laundrylink/api/UserManagementController.java)
+  - [PROJECT_JOURNEY.md](PROJECT_JOURNEY.md)
+- Problems encountered: Security was not available in the original build, so the project needed a security starter and a custom JWT implementation.
+- Errors faced: None in the final code path after the phase-three implementation.
+- Root cause of the issue: The project initially had no authentication layer, no password hashing, and no request authorization rules.
+- How the issue was resolved: Added Spring Security, BCrypt password encoding, in-memory accounts, JWT issuance/validation, and method security for role checks.
+- Important design decisions: Keep auth data in memory for now, seed known users for testing, use stateless bearer tokens, and gate user-management endpoints by role.
+- What I learned from this step: Security is easiest to introduce cleanly when the login flow, token format, and authorization rules are separated into small focused classes.
+- Next planned step: Verify the app starts, test registration/login, and confirm authorized access to protected endpoints.
+
 ## Lessons Learned
 - Keep the first working slice small and verifiable before adding persistence or security.
 - Thin controllers are easier to test and explain than mixed controller/service logic.
@@ -98,9 +126,13 @@ This file is an append-only development diary for LaundryLink. New work must be 
 - Fixed role-based lookups are easier to maintain when they are modeled with enums rather than raw strings.
 - Read-only profile and address endpoints are a safe way to shape user-management APIs before persistence exists.
 - A clear API inventory is useful before introducing repositories because it shows exactly what needs to be replaced later.
+- BCrypt is the right default for password hashing in Spring Security when the app manages credentials itself.
+- Stateless JWT security works well for REST APIs because the server can authenticate each request without sessions.
 
 ## Mistakes and Fixes
 - Mistake: The first terminal-based Maven validation was skipped by the environment.
   - Fix: Re-ran startup verification through the terminal and confirmed the app booted successfully.
 - Mistake: The project could have drifted into premature persistence work.
   - Fix: Kept the implementation limited to in-memory services and read-only API responses.
+- Mistake: Authentication requirements arrived before a database-backed identity model existed.
+  - Fix: Used in-memory seeded accounts with JWT and BCrypt so Phase 3 could be completed without introducing repositories yet.
