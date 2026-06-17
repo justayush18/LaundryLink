@@ -28,7 +28,7 @@ public class SecurityConfig {
                 .httpBasic(Customizer.withDefaults()).formLogin(form -> form.disable())
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/api/v1/health", "/api/v1/blueprint", "/api/v1/stakeholders",
-                                "/api/v1/auth/**")
+                                "/api/v1/auth/**", "/error")
                         .permitAll()
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

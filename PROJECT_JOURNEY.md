@@ -116,6 +116,22 @@ This file is an append-only development diary for LaundryLink. New work must be 
 - What I learned from this step: Security is easiest to introduce cleanly when the login flow, token format, and authorization rules are separated into small focused classes.
 - Next planned step: Verify the app starts, test registration/login, and confirm authorized access to protected endpoints.
 
+### 2026-06-18 - Phase 3 Verification
+- Date and phase: 2026-06-18, Phase 3 Verification.
+- Goal of the task: Verify Phase 3 implementation, including build success, startup, and full test of public and protected endpoints.
+- What was implemented: Ran Maven build and tests successfully. Tested registration and login endpoints, showing JSON responses with JWTs. Tested protected endpoints without a token, with an admin token, and with a customer token, confirming expected auth/access control behavior. Tweaked `SecurityConfig.java` to permit `/error` requests, resolving the issue where HTTP 403 Forbidden was masked as 401.
+- Files created: None.
+- Files modified:
+  - [src/main/java/com/laundrylink/laundrylink/security/SecurityConfig.java](src/main/java/com/laundrylink/laundrylink/security/SecurityConfig.java)
+  - [PROJECT_JOURNEY.md](PROJECT_JOURNEY.md)
+- Problems encountered: Accessing a forbidden endpoint using a valid CUSTOMER token was returning HTTP 401 with a Basic Auth prompt instead of HTTP 403 Forbidden.
+- Errors faced: No compilation or system errors.
+- Root cause of the issue: Spring Security intercepted the forward to the `/error` path since `/error` was not in the permit list of request matchers, which caused the request to be rejected as unauthenticated on error dispatch.
+- How the issue was resolved: Added `"/error"` to the permitted requestMatchers in `SecurityConfig.java` so that 403 Forbidden errors (and other HTTP errors) are correctly bubbled up to the client.
+- Important design decisions: Ensure proper error path handling in stateless JWT architectures.
+- What I learned from this step: In Spring Security 6, always permit the `/error` path if you want to avoid masking 403 Forbidden/400 Bad Request errors behind basic auth 401s during internal servlet forwards.
+- Next planned step: Start Phase 4 (Persistence Integration).
+
 ## Lessons Learned
 - Keep the first working slice small and verifiable before adding persistence or security.
 - Thin controllers are easier to test and explain than mixed controller/service logic.
@@ -128,6 +144,7 @@ This file is an append-only development diary for LaundryLink. New work must be 
 - A clear API inventory is useful before introducing repositories because it shows exactly what needs to be replaced later.
 - BCrypt is the right default for password hashing in Spring Security when the app manages credentials itself.
 - Stateless JWT security works well for REST APIs because the server can authenticate each request without sessions.
+- In Spring Security 6, always permit the `/error` path to allow custom `ResponseStatusException` errors (like 403 Forbidden) to propagate to the client instead of being masked by authentication entry points.
 
 ## Mistakes and Fixes
 - Mistake: The first terminal-based Maven validation was skipped by the environment.
@@ -136,3 +153,5 @@ This file is an append-only development diary for LaundryLink. New work must be 
   - Fix: Kept the implementation limited to in-memory services and read-only API responses.
 - Mistake: Authentication requirements arrived before a database-backed identity model existed.
   - Fix: Used in-memory seeded accounts with JWT and BCrypt so Phase 3 could be completed without introducing repositories yet.
+- Mistake: Accessing a forbidden endpoint using a valid CUSTOMER token returned HTTP 401 with a basic auth prompt instead of HTTP 403 Forbidden.
+  - Fix: Added `"/error"` to the permitted requestMatchers in `SecurityConfig.java` so that 403 responses are not intercepted and masked on error dispatch.
