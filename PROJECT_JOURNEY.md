@@ -181,6 +181,50 @@ This file is an append-only development diary for LaundryLink. New work must be 
 - What I learned from this step: CopyOnWriteArrayList and ConcurrentHashMap are excellent in-memory replacements for quick API prototyping before database design.
 - Next planned step: Stop and present verification report.
 
+### 2026-06-18 - Phase 5 Order Management Core Planning
+- Date and phase: 2026-06-18, Phase 5.
+- Goal of the task: Plan the Order Management Core slice covering placing orders, status transitions, history tracking, and pricing calculations.
+- What was implemented: Outlined DTOs, controllers, services, and in-memory structures to model orders and lifecycle transitions, incorporating the User's feedback on design improvements (dedicated `OrderStatus` enum and `createdAt`/`updatedAt` timestamps).
+- Files created: None.
+- Files modified: None.
+- Problems encountered: None.
+- Errors faced: None.
+- Root cause of the issue: None.
+- How the issue was resolved: None.
+- Important design decisions: Model the Order lifecycle via a dedicated `OrderStatus` enum; implement `createdAt` and `updatedAt` timestamps in the order domain model and views.
+- What I learned from this step: Designing detailed domain enums early avoids string-matching bugs across different service packages.
+- Next planned step: Implement `OrderStatus` enum, order DTOs, domain models, services, and controllers.
+
+### 2026-06-18 - Phase 5 Order Management Core Implementation
+- Date and phase: 2026-06-18, Phase 5.
+- Goal of the task: Implement the Order Management Core slice covering placing orders, status transitions, history tracking, and pricing calculations.
+- What was implemented:
+  - Enums: Created a dedicated `OrderStatus` enum containing: `PLACED`, `ACCEPTED`, `PROCESSING`, `READY_FOR_DELIVERY`, `PICKUP_ASSIGNED`, `PICKED_UP`, `DELIVERY_ASSIGNED`, `DELIVERED`, `CANCELLED`.
+  - Request DTOs: `PlaceOrderRequest`, `OrderStatusUpdateRequest`, `AssignDeliveryRequest`, `OrderItemDto`.
+  - View DTOs: `OrderView`, `StatusTransition`.
+  - Domain Class: `Order` with `createdAt` and `updatedAt` timestamps and a thread-safe status history tracking list.
+  - Service: `OrderService` which stores orders in memory, integrates with `LaundryPartnerService` to dynamically calculate costs from the partner's pricing rate card, manages status transitions, and assigns delivery partners.
+  - Controller: `OrderController` exposing order endpoints with role-based checks and owner validation.
+- Files created:
+  - [src/main/java/com/laundrylink/laundrylink/api/OrderStatus.java](src/main/java/com/laundrylink/laundrylink/api/OrderStatus.java)
+  - [src/main/java/com/laundrylink/laundrylink/api/OrderItemDto.java](src/main/java/com/laundrylink/laundrylink/api/OrderItemDto.java)
+  - [src/main/java/com/laundrylink/laundrylink/api/PlaceOrderRequest.java](src/main/java/com/laundrylink/laundrylink/api/PlaceOrderRequest.java)
+  - [src/main/java/com/laundrylink/laundrylink/api/StatusTransition.java](src/main/java/com/laundrylink/laundrylink/api/StatusTransition.java)
+  - [src/main/java/com/laundrylink/laundrylink/api/OrderView.java](src/main/java/com/laundrylink/laundrylink/api/OrderView.java)
+  - [src/main/java/com/laundrylink/laundrylink/api/OrderStatusUpdateRequest.java](src/main/java/com/laundrylink/laundrylink/api/OrderStatusUpdateRequest.java)
+  - [src/main/java/com/laundrylink/laundrylink/api/AssignDeliveryRequest.java](src/main/java/com/laundrylink/laundrylink/api/AssignDeliveryRequest.java)
+  - [src/main/java/com/laundrylink/laundrylink/api/OrderController.java](src/main/java/com/laundrylink/laundrylink/api/OrderController.java)
+  - [src/main/java/com/laundrylink/laundrylink/service/Order.java](src/main/java/com/laundrylink/laundrylink/service/Order.java)
+  - [src/main/java/com/laundrylink/laundrylink/service/OrderService.java](src/main/java/com/laundrylink/laundrylink/service/OrderService.java)
+- Files modified: None.
+- Problems encountered: None. The implementation built cleanly without any errors.
+- Errors faced: None.
+- Root cause of the issue: None.
+- How the issue was resolved: None.
+- Important design decisions: Auto-transition order status to `PICKUP_ASSIGNED` or `DELIVERY_ASSIGNED` when a delivery partner is assigned, reducing API calls for client apps.
+- What I learned from this step: Timestamps (`createdAt`, `updatedAt`) are best represented as seconds-since-epoch (`long`) for cross-platform API compatibility.
+- Next planned step: Stop and present verification report.
+
 ## Lessons Learned
 - Keep the first working slice small and verifiable before adding persistence or security.
 - Thin controllers are easier to test and explain than mixed controller/service logic.
