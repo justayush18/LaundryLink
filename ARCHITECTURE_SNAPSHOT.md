@@ -546,6 +546,174 @@ graph TD
 - Map `Notification` and `NotificationPreferences` to database entities (`notifications` and `notification_preferences` tables).
 - Introduce a messaging/event broker (such as Spring Events or RabbitMQ) to decouple business service transitions from notification dispatching, preventing synchronous execution blockages.
 
+## Phase 10 Snapshot - Database Integration (MySQL + JPA)
 
+### Current Controllers
+- HealthController
+- BlueprintController
+- StakeholderController
+- UserManagementController
+- AuthController
+- LaundryPartnerController
+- OrderController
+- DeliveryController
+- PaymentController
+- ReviewController
+- NotificationController
 
+### Current Services
+- BlueprintCatalogService
+- StakeholderCatalogService
+- UserManagementService
+- AuthService
+- JwtService
+- LaundryPartnerService
+- OrderService
+- PaymentService (with SimulatedPaymentProcessor)
+- ReviewService
+- NotificationService
+
+### Current Package Structure
+- `com.laundrylink.laundrylink.api` - DTOs, controllers, enums, request/response records
+- `com.laundrylink.laundrylink.service` - Business logic services
+- `com.laundrylink.laundrylink.security` - JWT, authentication filter, security config
+- `com.laundrylink.laundrylink.persistence` - JPA entities, repositories, audited base class
+
+### Persistence Layer Architecture
+
+#### Entities (23 classes)
+| Entity | Table | Primary Key | Audit | Relationships |
+|---|---|---|---|---|
+| `AuditedEntity` | (abstract) | - | `createdAt`, `updatedAt` via `@PrePersist`/`@PreUpdate` | Base class |
+| `UserEntity` | `users` | Auto `Long` | Yes | - |
+| `PartnerEntity` | `partners` | Auto `Long` | Yes | `@ElementCollection` zipcodes, `@OneToMany` slots/documents/rate cards |
+| `AvailabilitySlotEntity` | `partner_availability_slots` | Auto `Long` | No | Child of `PartnerEntity` |
+| `PartnerDocumentEntity` | `partner_documents` | Auto `Long` | No | Child of `PartnerEntity` |
+| `RateCardItemEntity` | `partner_rate_card_items` | Auto `Long` | No | Child of `PartnerEntity` |
+| `OrderEntity` | `orders` | UUID `String` | Yes | `@OneToMany` items, `@OneToMany` status transitions |
+| `OrderItemEntity` | `order_items` | Auto `Long` | No | Child of `OrderEntity` |
+| `StatusTransitionEntity` | `order_status_transitions` | Auto `Long` | No | Child of `OrderEntity` |
+| `PaymentEntity` | `payments` | UUID `String` | Yes | - |
+| `InvoiceEntity` | `invoices` | Auto `Long` | Yes | `@OneToMany` invoice items |
+| `InvoiceItemEntity` | `invoice_items` | Auto `Long` | No | Child of `InvoiceEntity` |
+| `ReviewEntity` | `reviews` | Auto `Long` | Yes | - |
+| `NotificationEntity` | `notifications` | Auto `Long` | Yes | - |
+| `NotificationPreferencesEntity` | `notification_preferences` | `String` (email) | No | - |
+
+#### Repositories (8 interfaces)
+| Repository | Entity | Key Methods |
+|---|---|---|
+| `UserRepository` | `UserEntity` | `findByEmail(String)` |
+| `PartnerRepository` | `PartnerEntity` | `findByEmail(String)` |
+| `OrderRepository` | `OrderEntity` | `findByCustomerEmail`, `findByPartnerEmail`, `findByDeliveryPartnerEmail` |
+| `PaymentRepository` | `PaymentEntity` | `findByOrderId(String)` |
+| `InvoiceRepository` | `InvoiceEntity` | `findByOrderId(String)` |
+| `ReviewRepository` | `ReviewEntity` | `findByOrderId`, `findByPartnerEmail` |
+| `NotificationRepository` | `NotificationEntity` | `findByRecipientEmailOrderByCreatedAtDesc` |
+| `NotificationPreferencesRepository` | `NotificationPreferencesEntity` | `findByRecipientEmail` |
+
+### Database Configuration
+```properties
+spring.datasource.url=jdbc:mysql://localhost:3306/laundrylink?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+spring.datasource.username=laundrylink_user
+spring.datasource.password=LaundryLink@123
+spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.MySQLDialect
+spring.jpa.show-sql=true
+```
+
+### Database Schema (15 tables)
+```
+users
+partners
+partner_zipcodes
+partner_availability_slots
+partner_documents
+partner_rate_card_items
+orders
+order_items
+order_status_transitions
+payments
+invoices
+invoice_items
+reviews
+notifications
+notification_preferences
+```
+
+### Current Data Flow
+```mermaid
+graph TD
+    A[Client HTTP Request] --> B[Controller]
+    B --> C[JWT Auth Filter]
+    C --> D[Service Layer]
+    D --> E[Spring Data JPA Repository]
+    E --> F[MySQL Database]
+    F --> E
+    E --> D
+    D --> B
+    B --> G[JSON Response]
+```
+
+### Current Endpoints (Complete API Surface)
+| Endpoint | Method | Auth | Purpose |
+|---|---|---|---|
+| `/api/v1/health` | GET | Public | Health check |
+| `/api/v1/blueprint` | GET | Public | Service catalog |
+| `/api/v1/stakeholders` | GET | Public | Stakeholder roles |
+| `/api/v1/auth/register` | POST | Public | Register account |
+| `/api/v1/auth/login` | POST | Public | Login and get JWT |
+| `/api/v1/users/roles` | GET | ADMIN | Role summaries |
+| `/api/v1/users/profiles` | GET | ADMIN | All user profiles |
+| `/api/v1/users/{role}/profile` | GET | Authenticated | Role profile |
+| `/api/v1/users/{role}/addresses` | GET | Authenticated | Addresses |
+| `/api/v1/partners/profile` | GET/PUT | PARTNER | Own profile |
+| `/api/v1/partners/{email}/profile` | GET | Authenticated | Partner lookup |
+| `/api/v1/partners/service-areas` | GET/PUT | PARTNER | Service areas |
+| `/api/v1/partners/availability` | GET/PUT | PARTNER | Availability |
+| `/api/v1/partners/documents` | GET/POST | PARTNER | Documents |
+| `/api/v1/partners/{email}/documents/{id}/verify` | PUT | ADMIN | Verify docs |
+| `/api/v1/partners/pricing` | GET/PUT | PARTNER | Rate card |
+| `/api/v1/orders` | POST | CUSTOMER | Place order |
+| `/api/v1/orders/{orderId}` | GET | Owner | View order |
+| `/api/v1/orders/my` | GET | Authenticated | My orders |
+| `/api/v1/orders/history` | GET | Authenticated | Order history |
+| `/api/v1/orders/{orderId}/status` | PUT | Role-checked | Update status |
+| `/api/v1/orders/{orderId}/assign-delivery` | PUT | ADMIN/DELIVERY | Assign delivery |
+| `/api/v1/deliveries/dashboard` | GET | DELIVERY/ADMIN | Dashboard |
+| `/api/v1/deliveries/{orderId}/tracking` | GET | Participants | Tracking |
+| `/api/v1/payments/initiate` | POST | CUSTOMER | Initiate payment |
+| `/api/v1/payments/{paymentId}/process` | POST | CUSTOMER | Process payment |
+| `/api/v1/payments/{paymentId}/refund` | POST | ADMIN | Refund |
+| `/api/v1/payments/{paymentId}` | GET | Participants | Payment details |
+| `/api/v1/payments/orders/{orderId}/invoice` | GET | Participants | Invoice |
+| `/api/v1/reviews` | POST | CUSTOMER | Submit review |
+| `/api/v1/reviews/history` | GET | CUSTOMER | Review history |
+| `/api/v1/reviews/partners/{email}` | GET | Authenticated | Partner reviews |
+| `/api/v1/reviews/{reviewId}` | GET | Participants | Review detail |
+| `/api/v1/notifications/history` | GET | Authenticated | Notifications |
+| `/api/v1/notifications/history/{id}/read` | PUT | Owner | Mark read |
+| `/api/v1/notifications/preferences` | GET/PUT | Authenticated | Preferences |
+
+### Key Architecture Decisions
+- **MySQL-only**: No H2 or PostgreSQL support. Single database target for simplicity.
+- **No migration framework**: Using `spring.jpa.hibernate.ddl-auto=update` for schema management.
+- **Mixed ID strategy**: UUID strings for Orders/Payments (client-facing IDs), auto-generated Long for internal entities.
+- **Audit fields via MappedSuperclass**: All major entities extend `AuditedEntity` for consistent `createdAt`/`updatedAt`.
+- **Seed data on startup**: Default users and partner profile are seeded if the database is empty (checked via `userRepository.count() == 0`).
+- **Zero ConcurrentHashMaps**: All in-memory maps have been fully replaced with JPA repository operations.
+
+### Current Limitations
+- No database migration framework (schema changes must be backward-compatible with `ddl-auto=update`).
+- No connection pooling tuning (using HikariCP defaults).
+- No database-level indexes beyond primary keys and unique constraints defined by JPA annotations.
+- JWT secret is still a development-only constant.
+
+### High-Level Architecture
+- Spring Boot 4.1 + Hibernate 7.4 + MySQL 8.0
+- Stateless REST API with JWT authentication
+- Spring Data JPA repositories for all persistence
+- 11 controllers → 11 services → 8 repositories → MySQL
+- 95 Java source files compiling successfully
 
