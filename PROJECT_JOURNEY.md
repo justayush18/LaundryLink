@@ -345,6 +345,69 @@ This file is an append-only development diary for LaundryLink. New work must be 
 - What I learned from this step: Integrating event-driven style alerts with user preferences is highly clean when managed by a centralized, decoupled Notification Service.
 - Next planned step: Prepare for Phase 10 or await next user request.
 
+### 2026-06-18 - Phase 10 Database Integration (MySQL + JPA)
+- Date and phase: 2026-06-18, Phase 10.
+- Goal of the task: Migrate the entire application from in-memory ConcurrentHashMap-based storage to persistent MySQL database using Spring Data JPA, while maintaining all existing API contracts and security behaviors.
+- What was implemented:
+  - **Sub-phase 10A**: Added `spring-boot-starter-data-jpa` and `mysql-connector-j` dependencies to `pom.xml`. Configured `application.properties` with MySQL connection details (`laundrylink_user`/`LaundryLink@123`), `ddl-auto=update`, and MySQL dialect.
+  - **Sub-phase 10B**: Defined `UserEntity` and `PartnerEntity` (with child entities for zip codes, availability slots, documents, and rate card items). Created `UserRepository` and `PartnerRepository`. Refactored `AuthService`, `LaundryPartnerService`, and `UserManagementService` to read/write from JPA repositories.
+  - **Sub-phase 10C**: Defined `OrderEntity` (with `OrderItemEntity` and `StatusTransitionEntity` child entities) and `PaymentEntity`. Created `OrderRepository` and `PaymentRepository`. Refactored `OrderService` and `PaymentService` to persist and query orders/payments via JPA.
+  - **Sub-phase 10D**: Defined `InvoiceEntity`, `InvoiceItemEntity`, `ReviewEntity`, `NotificationEntity`, and `NotificationPreferencesEntity`. Created `InvoiceRepository`, `ReviewRepository`, `NotificationRepository`, and `NotificationPreferencesRepository`. Refactored `ReviewService` and `NotificationService` to use JPA persistence.
+  - **Sub-phase 10E**: Removed all remaining `ConcurrentHashMap` usage across the codebase. Fixed audit timestamp propagation by using `saveAndFlush()` in order creation and status update methods. Verified all 15 MySQL tables created automatically by Hibernate. Confirmed data persistence across application restarts.
+  - **Persistence Architecture**: Created `AuditedEntity` mapped superclass with `@PrePersist` and `@PreUpdate` lifecycle callbacks for automatic `createdAt`/`updatedAt` population. Used mixed ID strategy: UUID strings for Orders and Payments, auto-generated Long IDs for all other entities.
+  - **Database Schema**: 15 tables generated: `users`, `partners`, `partner_zipcodes`, `partner_availability_slots`, `partner_documents`, `partner_rate_card_items`, `orders`, `order_items`, `order_status_transitions`, `payments`, `invoices`, `invoice_items`, `reviews`, `notifications`, `notification_preferences`.
+  - **8 JPA Repositories**: `UserRepository`, `PartnerRepository`, `OrderRepository`, `PaymentRepository`, `InvoiceRepository`, `ReviewRepository`, `NotificationRepository`, `NotificationPreferencesRepository`.
+- Files created:
+  - [src/main/java/com/laundrylink/laundrylink/persistence/AuditedEntity.java](src/main/java/com/laundrylink/laundrylink/persistence/AuditedEntity.java)
+  - [src/main/java/com/laundrylink/laundrylink/persistence/UserEntity.java](src/main/java/com/laundrylink/laundrylink/persistence/UserEntity.java)
+  - [src/main/java/com/laundrylink/laundrylink/persistence/UserRepository.java](src/main/java/com/laundrylink/laundrylink/persistence/UserRepository.java)
+  - [src/main/java/com/laundrylink/laundrylink/persistence/PartnerEntity.java](src/main/java/com/laundrylink/laundrylink/persistence/PartnerEntity.java)
+  - [src/main/java/com/laundrylink/laundrylink/persistence/PartnerRepository.java](src/main/java/com/laundrylink/laundrylink/persistence/PartnerRepository.java)
+  - [src/main/java/com/laundrylink/laundrylink/persistence/AvailabilitySlotEntity.java](src/main/java/com/laundrylink/laundrylink/persistence/AvailabilitySlotEntity.java)
+  - [src/main/java/com/laundrylink/laundrylink/persistence/PartnerDocumentEntity.java](src/main/java/com/laundrylink/laundrylink/persistence/PartnerDocumentEntity.java)
+  - [src/main/java/com/laundrylink/laundrylink/persistence/RateCardItemEntity.java](src/main/java/com/laundrylink/laundrylink/persistence/RateCardItemEntity.java)
+  - [src/main/java/com/laundrylink/laundrylink/persistence/OrderEntity.java](src/main/java/com/laundrylink/laundrylink/persistence/OrderEntity.java)
+  - [src/main/java/com/laundrylink/laundrylink/persistence/OrderItemEntity.java](src/main/java/com/laundrylink/laundrylink/persistence/OrderItemEntity.java)
+  - [src/main/java/com/laundrylink/laundrylink/persistence/OrderRepository.java](src/main/java/com/laundrylink/laundrylink/persistence/OrderRepository.java)
+  - [src/main/java/com/laundrylink/laundrylink/persistence/StatusTransitionEntity.java](src/main/java/com/laundrylink/laundrylink/persistence/StatusTransitionEntity.java)
+  - [src/main/java/com/laundrylink/laundrylink/persistence/PaymentEntity.java](src/main/java/com/laundrylink/laundrylink/persistence/PaymentEntity.java)
+  - [src/main/java/com/laundrylink/laundrylink/persistence/PaymentRepository.java](src/main/java/com/laundrylink/laundrylink/persistence/PaymentRepository.java)
+  - [src/main/java/com/laundrylink/laundrylink/persistence/InvoiceEntity.java](src/main/java/com/laundrylink/laundrylink/persistence/InvoiceEntity.java)
+  - [src/main/java/com/laundrylink/laundrylink/persistence/InvoiceItemEntity.java](src/main/java/com/laundrylink/laundrylink/persistence/InvoiceItemEntity.java)
+  - [src/main/java/com/laundrylink/laundrylink/persistence/InvoiceRepository.java](src/main/java/com/laundrylink/laundrylink/persistence/InvoiceRepository.java)
+  - [src/main/java/com/laundrylink/laundrylink/persistence/ReviewEntity.java](src/main/java/com/laundrylink/laundrylink/persistence/ReviewEntity.java)
+  - [src/main/java/com/laundrylink/laundrylink/persistence/ReviewRepository.java](src/main/java/com/laundrylink/laundrylink/persistence/ReviewRepository.java)
+  - [src/main/java/com/laundrylink/laundrylink/persistence/NotificationEntity.java](src/main/java/com/laundrylink/laundrylink/persistence/NotificationEntity.java)
+  - [src/main/java/com/laundrylink/laundrylink/persistence/NotificationRepository.java](src/main/java/com/laundrylink/laundrylink/persistence/NotificationRepository.java)
+  - [src/main/java/com/laundrylink/laundrylink/persistence/NotificationPreferencesEntity.java](src/main/java/com/laundrylink/laundrylink/persistence/NotificationPreferencesEntity.java)
+  - [src/main/java/com/laundrylink/laundrylink/persistence/NotificationPreferencesRepository.java](src/main/java/com/laundrylink/laundrylink/persistence/NotificationPreferencesRepository.java)
+- Files modified:
+  - [pom.xml](pom.xml)
+  - [src/main/resources/application.properties](src/main/resources/application.properties)
+  - [src/main/java/com/laundrylink/laundrylink/service/AuthService.java](src/main/java/com/laundrylink/laundrylink/service/AuthService.java)
+  - [src/main/java/com/laundrylink/laundrylink/service/LaundryPartnerService.java](src/main/java/com/laundrylink/laundrylink/service/LaundryPartnerService.java)
+  - [src/main/java/com/laundrylink/laundrylink/service/UserManagementService.java](src/main/java/com/laundrylink/laundrylink/service/UserManagementService.java)
+  - [src/main/java/com/laundrylink/laundrylink/service/OrderService.java](src/main/java/com/laundrylink/laundrylink/service/OrderService.java)
+  - [src/main/java/com/laundrylink/laundrylink/service/PaymentService.java](src/main/java/com/laundrylink/laundrylink/service/PaymentService.java)
+  - [src/main/java/com/laundrylink/laundrylink/service/ReviewService.java](src/main/java/com/laundrylink/laundrylink/service/ReviewService.java)
+  - [src/main/java/com/laundrylink/laundrylink/service/NotificationService.java](src/main/java/com/laundrylink/laundrylink/service/NotificationService.java)
+- Files deleted:
+  - [src/main/java/com/laundrylink/laundrylink/service/RegisteredAccount.java](src/main/java/com/laundrylink/laundrylink/service/RegisteredAccount.java) (replaced by UserEntity)
+  - [src/main/java/com/laundrylink/laundrylink/service/PartnerProfile.java](src/main/java/com/laundrylink/laundrylink/service/PartnerProfile.java) (replaced by PartnerEntity)
+  - [src/main/java/com/laundrylink/laundrylink/service/Order.java](src/main/java/com/laundrylink/laundrylink/service/Order.java) (replaced by OrderEntity)
+  - [src/main/java/com/laundrylink/laundrylink/service/Payment.java](src/main/java/com/laundrylink/laundrylink/service/Payment.java) (replaced by PaymentEntity)
+  - [src/main/java/com/laundrylink/laundrylink/service/Invoice.java](src/main/java/com/laundrylink/laundrylink/service/Invoice.java) (replaced by InvoiceEntity)
+  - [src/main/java/com/laundrylink/laundrylink/service/Review.java](src/main/java/com/laundrylink/laundrylink/service/Review.java) (replaced by ReviewEntity)
+  - [src/main/java/com/laundrylink/laundrylink/service/Notification.java](src/main/java/com/laundrylink/laundrylink/service/Notification.java) (replaced by NotificationEntity)
+  - [src/main/java/com/laundrylink/laundrylink/service/NotificationPreferences.java](src/main/java/com/laundrylink/laundrylink/service/NotificationPreferences.java) (replaced by NotificationPreferencesEntity)
+- Problems encountered: Port 8080 conflicts during restarts; MySQL password discovery required examining Workbench config files; audit timestamps returning 0 in API responses.
+- Errors faced: `PropertyValueException: not-null property references a null or transient value` when registration request JSON used `name` instead of `displayName`. `createdAt` showing 0 in order placement response.
+- Root cause of the issue: (1) Request DTO field name mismatch. (2) JPA `@PrePersist` callback fires during flush, but `toView()` was called before the managed entity received the callback-populated values.
+- How the issue was resolved: (1) Corrected the JSON field name to match `AuthRegisterRequest.displayName`. (2) Changed `orderRepository.save()` to `order = orderRepository.saveAndFlush(order)` to ensure the entity is fully persisted and callbacks have fired before building the response DTO.
+- Important design decisions: MySQL-only (no H2/PostgreSQL), no migration framework (using `ddl-auto=update`), mixed ID strategy (UUIDs for orders/payments, auto-increment Long for everything else), `AuditedEntity` base class for consistent timestamp management.
+- What I learned from this step: JPA lifecycle callbacks (`@PrePersist`, `@PreUpdate`) fire during the database flush, not during `save()`. When building API responses from the same entity, always use `saveAndFlush()` and capture the returned entity to ensure callback-populated fields are visible.
+- Next planned step: Phase 10 is complete. Application is fully persistent with MySQL.
+
 ## Lessons Learned
 - Keep the first working slice small and verifiable before adding persistence or security.
 - Thin controllers are easier to test and explain than mixed controller/service logic.
@@ -362,6 +425,10 @@ This file is an append-only development diary for LaundryLink. New work must be 
 - Decoupling event triggers from the actual communication channels (e.g., via simulated logs first) makes it easy to add real SMTP or SMS handlers later.
 - Centralizing preference management in the notification dispatching service reduces logic duplication inside individual business services (like payments or orders).
 - Strict resource ownership validations in in-memory scenarios should mimic database-level tenancy filters to ensure security carries over when refactoring to SQL.
+- Incremental database migration (sub-phases 10A through 10E) is far safer than a monolithic "big bang" persistence migration because each sub-phase can be compiled and tested independently.
+- `saveAndFlush()` is essential when JPA lifecycle callbacks need to populate fields that the API response will read from the same entity instance.
+- `@MappedSuperclass` is an elegant way to enforce consistent audit fields across all entities without repeating boilerplate in every class.
+- Creating a dedicated MySQL user with limited privileges (instead of using root) is a best practice that prevents accidental schema damage during development.
 
 ## Mistakes and Fixes
 - Mistake: The first terminal-based Maven validation was skipped by the environment.
@@ -376,3 +443,7 @@ This file is an append-only development diary for LaundryLink. New work must be 
   - Fix: Refactored the architecture to use a dedicated `OrderStatus` enum across all layers.
 - Mistake: Cross-dependency injection circular loop between OrderService, PaymentService, and NotificationService.
   - Fix: Applied `@Lazy` annotation to the constructor parameters of the injected service beans to resolve the circular dependencies at startup.
+- Mistake: Audit timestamps (`createdAt`, `updatedAt`) returned 0 in API responses after entity creation.
+  - Fix: JPA `@PrePersist` fires during flush, not during `save()`. Changed `save()` to `saveAndFlush()` and captured the returned entity to ensure callback-populated fields are visible before building the DTO.
+- Mistake: Registration test used `"name"` field instead of `"displayName"`, causing a `PropertyValueException`.
+  - Fix: Aligned the test request JSON with the `AuthRegisterRequest` record field name `displayName`.
