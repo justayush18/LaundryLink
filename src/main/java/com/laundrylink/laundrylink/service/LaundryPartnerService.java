@@ -34,7 +34,9 @@ public class LaundryPartnerService {
                 profile.getBusinessName(),
                 profile.getDescription(),
                 profile.getServiceHubAddress(),
-                profile.getOnboardingStatus()
+                profile.getOnboardingStatus(),
+                profile.getReputationScore(),
+                profile.getTotalReviews()
         );
     }
 
@@ -48,8 +50,18 @@ public class LaundryPartnerService {
                 profile.getBusinessName(),
                 profile.getDescription(),
                 profile.getServiceHubAddress(),
-                profile.getOnboardingStatus()
+                profile.getOnboardingStatus(),
+                profile.getReputationScore(),
+                profile.getTotalReviews()
         );
+    }
+
+    public void updateReputation(String partnerEmail, double reputationScore, int totalReviews) {
+        PartnerProfile profile = profilesByEmail.get(partnerEmail.trim().toLowerCase());
+        if (profile != null) {
+            profile.setReputationScore(reputationScore);
+            profile.setTotalReviews(totalReviews);
+        }
     }
 
     public ServiceAreaView getServiceAreas(String email) {

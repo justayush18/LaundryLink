@@ -284,6 +284,35 @@ This file is an append-only development diary for LaundryLink. New work must be 
 - What I learned from this step: Integrating state-machine callbacks (like completing COD payment on order delivery) makes user workflows highly coherent.
 - Next planned step: Stop and present verification report.
 
+### 2026-06-18 - Phase 8 Review & Rating Module Implementation
+- Date and phase: 2026-06-18, Phase 8.
+- Goal of the task: Implement the Review & Rating Module covering order ratings, partner ratings, reviews, rating aggregation, and validation checks.
+- What was implemented:
+  - Extended Domain Models: Updated `PartnerProfile.java` and `PartnerProfileView.java` to support `reputationScore` and `totalReviews`.
+  - Service Integration: Added `updateReputation` helper in `LaundryPartnerService.java` to dynamically aggregate reviews.
+  - New DTOs: `ReviewRequest.java`, `ReviewView.java`, and `PartnerRatingSummary.java` (including counts for each star level from 1 to 5).
+  - New Domain Model: `Review.java`.
+  - New Service: `ReviewService.java` managing in-memory reviews, computing rating distributions and partner reputation average ratings, and verifying review eligibility constraints.
+  - New Controller: `ReviewController.java` exposing endpoints under `/api/v1/reviews` with role validations.
+- Files created:
+  - [src/main/java/com/laundrylink/laundrylink/api/ReviewRequest.java](src/main/java/com/laundrylink/laundrylink/api/ReviewRequest.java)
+  - [src/main/java/com/laundrylink/laundrylink/api/ReviewView.java](src/main/java/com/laundrylink/laundrylink/api/ReviewView.java)
+  - [src/main/java/com/laundrylink/laundrylink/api/PartnerRatingSummary.java](src/main/java/com/laundrylink/laundrylink/api/PartnerRatingSummary.java)
+  - [src/main/java/com/laundrylink/laundrylink/api/ReviewController.java](src/main/java/com/laundrylink/laundrylink/api/ReviewController.java)
+  - [src/main/java/com/laundrylink/laundrylink/service/Review.java](src/main/java/com/laundrylink/laundrylink/service/Review.java)
+  - [src/main/java/com/laundrylink/laundrylink/service/ReviewService.java](src/main/java/com/laundrylink/laundrylink/service/ReviewService.java)
+- Files modified:
+  - [src/main/java/com/laundrylink/laundrylink/service/PartnerProfile.java](src/main/java/com/laundrylink/laundrylink/service/PartnerProfile.java)
+  - [src/main/java/com/laundrylink/laundrylink/api/PartnerProfileView.java](src/main/java/com/laundrylink/laundrylink/api/PartnerProfileView.java)
+  - [src/main/java/com/laundrylink/laundrylink/service/LaundryPartnerService.java](src/main/java/com/laundrylink/laundrylink/service/LaundryPartnerService.java)
+- Problems encountered: None. The implementation built cleanly and all script-based verification runs passed successfully.
+- Errors faced: None.
+- Root cause of the issue: None.
+- How the issue was resolved: None.
+- Important design decisions: Aggregate star distributions directly in the service mapping when retrieving reviews; decouple partner profiles from review records by exposing a delegate callback method to trigger reputation score updates.
+- What I learned from this step: Programmatic validations inside thin controllers/services make it easy to enforce strict cross-resource ownership logic.
+- Next planned step: Stop and present verification report.
+
 ## Lessons Learned
 - Keep the first working slice small and verifiable before adding persistence or security.
 - Thin controllers are easier to test and explain than mixed controller/service logic.

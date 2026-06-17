@@ -5,6 +5,8 @@ public record PartnerProfileView(
         String businessName,
         String description,
         String serviceHubAddress,
-        String onboardingStatus
+        String onboardingStatus,
+        double reputationScore,
+        int totalReviews
 ) {
 }

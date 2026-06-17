@@ -462,4 +462,33 @@ This file is append-only. Add a new section after each completed phase and do no
 - Map `Payment` and `Invoice` to database tables.
 - Use database transactions to guarantee atomic updates between order delivery state changes and payment completions.
 
+## Phase 8 Snapshot - Review & Rating Module
+
+### Current Controllers
+- All controllers from previous phases.
+- ReviewController
+
+### Current Services
+- All services from previous phases.
+- ReviewService
+
+### Current Endpoints
+- All endpoints from previous phases.
+- `POST /api/v1/reviews` (CUSTOMER only) - submits a review for a delivered order.
+- `GET /api/v1/reviews/history` (CUSTOMER only) - views customer review history.
+- `GET /api/v1/reviews/partners/{partnerEmail}` (All Authenticated) - views partner reviews and summary.
+- `GET /api/v1/reviews/{reviewId}` (Authorized participants) - views specific review details.
+
+### Current Data Flow
+- Customer submits a review for an order.
+- `ReviewService` verifies the order is delivered, belongs to the caller, has not been reviewed yet, and has a rating between 1 and 5 stars.
+- Review is stored in memory.
+- `ReviewService` automatically aggregates all ratings for the partner, updates the individual star counts (1★ to 5★), calculates the average rating, and updates the `reputationScore` and `totalReviews` on the partner profile in `LaundryPartnerService`.
+- If another user (like Customer B) tries to fetch Customer A's review details, access is rejected with `403 Forbidden`.
+
+### Future Database Replacement Plan
+- Map `Review` to a database entity.
+- Calculate reputation scores asynchronously using database aggregation queries or event listeners (e.g. `@PostPersist` on Review entity) to avoid write contention on partner profile rows.
+
+
 

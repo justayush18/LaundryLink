@@ -15,6 +15,8 @@ public class PartnerProfile {
     private volatile String description;
     private volatile String serviceHubAddress;
     private volatile String onboardingStatus;
+    private volatile double reputationScore = 0.0;
+    private volatile int totalReviews = 0;
     
     private final List<String> serviceAreas = new CopyOnWriteArrayList<>();
     private final List<AvailabilitySlot> availabilitySlots = new CopyOnWriteArrayList<>();
@@ -122,5 +124,21 @@ public class PartnerProfile {
         if (rateCard != null) {
             this.pricingRateCard.addAll(rateCard);
         }
+    }
+
+    public double getReputationScore() {
+        return reputationScore;
+    }
+
+    public void setReputationScore(double score) {
+        this.reputationScore = score;
+    }
+
+    public int getTotalReviews() {
+        return totalReviews;
+    }
+
+    public void setTotalReviews(int total) {
+        this.totalReviews = total;
     }
 }
