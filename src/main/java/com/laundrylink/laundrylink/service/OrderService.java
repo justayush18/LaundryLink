@@ -1,10 +1,7 @@
 package com.laundrylink.laundrylink.service;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 import org.springframework.context.annotation.Lazy;
@@ -22,17 +19,26 @@ import com.laundrylink.laundrylink.api.UserRoleType;
 import com.laundrylink.laundrylink.api.OrderStatusUpdateRequest;
 import com.laundrylink.laundrylink.api.DeliveryDashboardView;
 import com.laundrylink.laundrylink.api.DeliveryTrackingView;
+import com.laundrylink.laundrylink.api.NotificationType;
+import com.laundrylink.laundrylink.api.StatusTransition;
+import com.laundrylink.laundrylink.persistence.OrderEntity;
+import com.laundrylink.laundrylink.persistence.OrderItemEntity;
+import com.laundrylink.laundrylink.persistence.OrderRepository;
+import com.laundrylink.laundrylink.persistence.StatusTransitionEntity;
 
 @Service
 public class OrderService {
 
-    private final Map<String, Order> orders = new ConcurrentHashMap<>();
+    private final OrderRepository orderRepository;
     private final LaundryPartnerService laundryPartnerService;
     private final PaymentService paymentService;
+    private final NotificationService notificationService;
 
-    public OrderService(LaundryPartnerService laundryPartnerService, @Lazy PaymentService paymentService) {
+    public OrderService(OrderRepository orderRepository, LaundryPartnerService laundryPartnerService, @Lazy PaymentService paymentService, @Lazy NotificationService notificationService) {
+        this.orderRepository = orderRepository;
         this.laundryPartnerService = laundryPartnerService;
         this.paymentService = paymentService;
+        this.notificationService = notificationService;
     }
 
     public OrderView placeOrder(String customerEmail, PlaceOrderRequest request) {
@@ -60,11 +66,10 @@ public class OrderService {
         }
 
         String orderId = UUID.randomUUID().toString();
-        Order order = new Order(
+        OrderEntity order = new OrderEntity(
                 orderId,
                 customerEmail,
                 request.partnerEmail(),
-                request.items(),
                 totalCost,
                 request.pickupAddress(),
                 request.pickupSlot(),
@@ -72,15 +77,28 @@ public class OrderService {
                 request.deliverySlot()
         );
 
-        orders.put(orderId, order);
+        List<OrderItemEntity> itemEntities = request.items().stream()
+                .map(i -> new OrderItemEntity(i.itemCategory(), i.serviceType(), i.quantity()))
+                .collect(Collectors.toList());
+        order.setItems(itemEntities);
+
+        long now = System.currentTimeMillis() / 1000L;
+        StatusTransitionEntity placementTransition = new StatusTransitionEntity(OrderStatus.PLACED, now, "Order placed successfully.");
+        order.getHistory().add(placementTransition);
+
+        order = orderRepository.saveAndFlush(order);
+        
+        notificationService.sendNotification(customerEmail, NotificationType.ORDER_STATUS, 
+                "Your order has been placed successfully. Order ID: " + orderId);
+        notificationService.sendNotification(request.partnerEmail(), NotificationType.ORDER_STATUS, 
+                "New order received! Order ID: " + orderId);
+                
         return toView(order);
     }
 
     public OrderView getOrder(String orderId, String email, UserRoleType role) {
-        Order order = orders.get(orderId);
-        if (order == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
-        }
+        OrderEntity order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
 
         // Verify ownership/authorization
         if (role == UserRoleType.CUSTOMER && !order.getCustomerEmail().equalsIgnoreCase(email)) {
@@ -98,28 +116,21 @@ public class OrderService {
     }
 
     public List<OrderView> getOrderHistory(String email, UserRoleType role) {
-        return orders.values().stream()
-                .filter(order -> {
-                    if (role == UserRoleType.CUSTOMER) {
-                        return order.getCustomerEmail().equalsIgnoreCase(email);
-                    } else if (role == UserRoleType.LAUNDRY_PARTNER) {
-                        return order.getPartnerEmail().equalsIgnoreCase(email);
-                    } else if (role == UserRoleType.DELIVERY_PARTNER) {
-                        return order.getDeliveryPartnerEmail() != null && order.getDeliveryPartnerEmail().equalsIgnoreCase(email);
-                    } else if (role == UserRoleType.ADMIN) {
-                        return true;
-                    }
-                    return false;
-                })
+        List<OrderEntity> list = switch (role) {
+            case CUSTOMER -> orderRepository.findByCustomerEmail(email);
+            case LAUNDRY_PARTNER -> orderRepository.findByPartnerEmail(email);
+            case DELIVERY_PARTNER -> orderRepository.findByDeliveryPartnerEmail(email);
+            case ADMIN -> orderRepository.findAll();
+        };
+
+        return list.stream()
                 .map(this::toView)
                 .collect(Collectors.toList());
     }
 
     public OrderView updateOrderStatus(String orderId, String email, UserRoleType role, OrderStatusUpdateRequest request) {
-        Order order = orders.get(orderId);
-        if (order == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
-        }
+        OrderEntity order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
 
         OrderStatus newStatus = request.status();
         String notes = request.statusNotes();
@@ -158,25 +169,53 @@ public class OrderService {
                 break;
 
             case ADMIN:
-                // Admins have full access
                 break;
 
             default:
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Unauthorized role");
         }
 
-        order.transitionStatus(newStatus, notes);
+        long now = System.currentTimeMillis() / 1000L;
+        order.setStatus(newStatus);
+        order.setStatusNotes(notes);
+        order.getHistory().add(new StatusTransitionEntity(newStatus, now, notes));
+        
+        orderRepository.saveAndFlush(order);
+
         if (newStatus == OrderStatus.DELIVERED) {
             paymentService.completeCodPayment(orderId);
+            notificationService.sendNotification(order.getCustomerEmail(), NotificationType.ORDER_STATUS, 
+                    "Your order " + orderId + " has been successfully delivered!");
+            notificationService.sendNotification(order.getCustomerEmail(), NotificationType.REVIEW_REMINDER, 
+                    "Please take a moment to rate your experience for order " + orderId);
+            notificationService.sendNotification(order.getPartnerEmail(), NotificationType.ORDER_STATUS, 
+                    "Order " + orderId + " has been delivered.");
+        } else if (newStatus == OrderStatus.ACCEPTED) {
+            notificationService.sendNotification(order.getCustomerEmail(), NotificationType.ORDER_STATUS, 
+                    "Your order " + orderId + " has been accepted by the laundry partner.");
+        } else if (newStatus == OrderStatus.PICKED_UP) {
+            notificationService.sendNotification(order.getCustomerEmail(), NotificationType.DELIVERY, 
+                    "Your clothes have been picked up for order " + orderId);
+            notificationService.sendNotification(order.getPartnerEmail(), NotificationType.DELIVERY, 
+                    "Clothes for order " + orderId + " are in transit to your hub.");
+        } else if (newStatus == OrderStatus.PROCESSING) {
+            notificationService.sendNotification(order.getCustomerEmail(), NotificationType.ORDER_STATUS, 
+                    "Your clothes are being processed for order " + orderId);
+        } else if (newStatus == OrderStatus.READY_FOR_DELIVERY) {
+            notificationService.sendNotification(order.getCustomerEmail(), NotificationType.ORDER_STATUS, 
+                    "Your clothes are ready for delivery for order " + orderId);
+        } else if (newStatus == OrderStatus.CANCELLED) {
+            notificationService.sendNotification(order.getCustomerEmail(), NotificationType.ORDER_STATUS, 
+                    "Order " + orderId + " has been cancelled.");
+            notificationService.sendNotification(order.getPartnerEmail(), NotificationType.ORDER_STATUS, 
+                    "Order " + orderId + " has been cancelled.");
         }
         return toView(order);
     }
 
     public OrderView assignDeliveryPartner(String orderId, String email, UserRoleType role, String deliveryPartnerEmail) {
-        Order order = orders.get(orderId);
-        if (order == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
-        }
+        OrderEntity order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
 
         if (role == UserRoleType.DELIVERY_PARTNER) {
             if (!email.equalsIgnoreCase(deliveryPartnerEmail)) {
@@ -188,28 +227,42 @@ public class OrderService {
 
         order.setDeliveryPartnerEmail(deliveryPartnerEmail);
 
+        long now = System.currentTimeMillis() / 1000L;
         // Auto state transition on assignment
         if (order.getStatus() == OrderStatus.ACCEPTED) {
-            order.transitionStatus(OrderStatus.PICKUP_ASSIGNED, "Delivery partner assigned for pickup: " + deliveryPartnerEmail);
+            order.setStatus(OrderStatus.PICKUP_ASSIGNED);
+            order.setStatusNotes("Delivery partner assigned for pickup: " + deliveryPartnerEmail);
+            order.getHistory().add(new StatusTransitionEntity(OrderStatus.PICKUP_ASSIGNED, now, "Delivery partner assigned for pickup: " + deliveryPartnerEmail));
         } else if (order.getStatus() == OrderStatus.READY_FOR_DELIVERY) {
-            order.transitionStatus(OrderStatus.DELIVERY_ASSIGNED, "Delivery partner assigned for delivery: " + deliveryPartnerEmail);
+            order.setStatus(OrderStatus.DELIVERY_ASSIGNED);
+            order.setStatusNotes("Delivery partner assigned for delivery: " + deliveryPartnerEmail);
+            order.getHistory().add(new StatusTransitionEntity(OrderStatus.DELIVERY_ASSIGNED, now, "Delivery partner assigned for delivery: " + deliveryPartnerEmail));
         }
+
+        orderRepository.saveAndFlush(order);
+
+        notificationService.sendNotification(order.getCustomerEmail(), NotificationType.DELIVERY, 
+                "Delivery partner " + deliveryPartnerEmail + " has been assigned to order " + orderId);
+        notificationService.sendNotification(deliveryPartnerEmail, NotificationType.DELIVERY, 
+                "You have been assigned to order " + orderId);
+        notificationService.sendNotification(order.getPartnerEmail(), NotificationType.DELIVERY, 
+                "Delivery partner " + deliveryPartnerEmail + " assigned for order " + orderId);
 
         return toView(order);
     }
 
     public DeliveryDashboardView getDeliveryDashboard(String deliveryPartnerEmail) {
-        List<OrderView> pendingPickups = orders.values().stream()
+        List<OrderView> pendingPickups = orderRepository.findAll().stream()
                 .filter(order -> order.getStatus() == OrderStatus.ACCEPTED)
                 .map(this::toView)
                 .collect(Collectors.toList());
 
-        List<OrderView> pendingDeliveries = orders.values().stream()
+        List<OrderView> pendingDeliveries = orderRepository.findAll().stream()
                 .filter(order -> order.getStatus() == OrderStatus.READY_FOR_DELIVERY)
                 .map(this::toView)
                 .collect(Collectors.toList());
 
-        List<OrderView> assignedTasks = orders.values().stream()
+        List<OrderView> assignedTasks = orderRepository.findAll().stream()
                 .filter(order -> order.getDeliveryPartnerEmail() != null
                         && order.getDeliveryPartnerEmail().equalsIgnoreCase(deliveryPartnerEmail)
                         && (order.getStatus() == OrderStatus.PICKUP_ASSIGNED
@@ -222,10 +275,8 @@ public class OrderService {
     }
 
     public DeliveryTrackingView getDeliveryTracking(String orderId, String email, UserRoleType role) {
-        Order order = orders.get(orderId);
-        if (order == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
-        }
+        OrderEntity order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
 
         boolean authorized = false;
         if (role == UserRoleType.ADMIN) {
@@ -243,6 +294,10 @@ public class OrderService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied: You are not authorized to track this order");
         }
 
+        List<StatusTransition> historyDto = order.getHistory().stream()
+                .map(h -> new StatusTransition(h.getStatus(), h.getTimestamp(), h.getNotes()))
+                .collect(Collectors.toList());
+
         return new DeliveryTrackingView(
                 order.getOrderId(),
                 order.getStatus(),
@@ -253,19 +308,24 @@ public class OrderService {
                 order.getDeliverySlot(),
                 order.getStatusNotes(),
                 order.getUpdatedAt(),
-                order.getHistory()
+                historyDto
         );
     }
 
     public void linkPaymentToOrder(String orderId, String paymentId) {
-        Order order = orders.get(orderId);
-        if (order == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
-        }
+        OrderEntity order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
         order.setPaymentId(paymentId);
+        orderRepository.save(order);
     }
 
-    private OrderView toView(Order order) {
+    private OrderView toView(OrderEntity order) {
+        List<OrderItemDto> itemsDto = order.getItems().stream()
+                .map(i -> new OrderItemDto(i.getItemCategory(), i.getServiceType(), i.getQuantity()))
+                .collect(Collectors.toList());
+        List<StatusTransition> historyDto = order.getHistory().stream()
+                .map(h -> new StatusTransition(h.getStatus(), h.getTimestamp(), h.getNotes()))
+                .collect(Collectors.toList());
         return new OrderView(
                 order.getOrderId(),
                 order.getCustomerEmail(),
@@ -273,7 +333,7 @@ public class OrderService {
                 order.getDeliveryPartnerEmail(),
                 order.getPaymentId(),
                 order.getStatus(),
-                order.getItems(),
+                itemsDto,
                 order.getTotalCost(),
                 order.getPickupAddress(),
                 order.getPickupSlot(),
@@ -282,7 +342,7 @@ public class OrderService {
                 order.getStatusNotes(),
                 order.getCreatedAt(),
                 order.getUpdatedAt(),
-                order.getHistory()
+                historyDto
         );
     }
 }

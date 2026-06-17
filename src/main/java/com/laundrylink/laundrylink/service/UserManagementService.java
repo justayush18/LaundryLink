@@ -1,8 +1,7 @@
 package com.laundrylink.laundrylink.service;
 
-import java.util.EnumMap;
 import java.util.List;
-import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 
@@ -10,70 +9,16 @@ import com.laundrylink.laundrylink.api.AddressView;
 import com.laundrylink.laundrylink.api.UserProfileView;
 import com.laundrylink.laundrylink.api.UserRoleSummary;
 import com.laundrylink.laundrylink.api.UserRoleType;
+import com.laundrylink.laundrylink.persistence.UserRepository;
+import com.laundrylink.laundrylink.persistence.UserEntity;
 
 @Service
 public class UserManagementService {
 
-    private static final Map<UserRoleType, UserProfileView> PROFILES = new EnumMap<>(UserRoleType.class);
-    private static final Map<UserRoleType, List<AddressView>> ADDRESSES = new EnumMap<>(UserRoleType.class);
+    private final UserRepository userRepository;
 
-    static {
-        PROFILES.put(UserRoleType.CUSTOMER, new UserProfileView(
-                "Customer",
-                "Aarav Mehta",
-                "aarav@example.com",
-                "+91-90000-10001",
-                "ACTIVE",
-                List.of(
-                        "Register and login",
-                        "Place and track orders",
-                        "Manage profile and addresses",
-                        "Pay online",
-                        "Receive OTP-based order verification")));
-
-        PROFILES.put(UserRoleType.LAUNDRY_PARTNER, new UserProfileView(
-                "Laundry Partner",
-                "FreshFold Laundry",
-                "partner@freshfold.example",
-                "+91-90000-20002",
-                "ACTIVE",
-                List.of(
-                        "Accept or reject orders",
-                        "Update order status",
-                        "Manage service availability",
-                        "View earnings")));
-
-        PROFILES.put(UserRoleType.DELIVERY_PARTNER, new UserProfileView(
-                "Delivery Partner",
-                "Ravi Singh",
-                "ravi.delivery@example.com",
-                "+91-90000-30003",
-                "ACTIVE",
-                List.of(
-                        "Accept pickup assignments",
-                        "Pickup and deliver orders",
-                        "Update delivery status",
-                        "Track assigned jobs")));
-
-        PROFILES.put(UserRoleType.ADMIN, new UserProfileView(
-                "Admin",
-                "LaundryLink Admin",
-                "admin@laundrylink.example",
-                "+91-90000-40004",
-                "ACTIVE",
-                List.of(
-                        "Manage users",
-                        "Manage partners",
-                        "Review reports",
-                        "Handle disputes")));
-
-        ADDRESSES.put(UserRoleType.CUSTOMER, List.of(
-                new AddressView("Home", "12 Green Park Road", "Bengaluru", "Karnataka", "560001", true),
-                new AddressView("Office", "87 Tech Street", "Bengaluru", "Karnataka", "560103", false)));
-
-        ADDRESSES.put(UserRoleType.LAUNDRY_PARTNER, List.of());
-        ADDRESSES.put(UserRoleType.DELIVERY_PARTNER, List.of());
-        ADDRESSES.put(UserRoleType.ADMIN, List.of());
+    public UserManagementService(UserRepository userRepository) {
+        this.userRepository = userRepository;
     }
 
     public List<UserRoleSummary> roleSummaries() {
@@ -85,14 +30,62 @@ public class UserManagementService {
     }
 
     public List<UserProfileView> profiles() {
-        return List.copyOf(PROFILES.values());
+        return userRepository.findAll().stream()
+                .map(this::toProfileView)
+                .collect(Collectors.toList());
     }
 
     public UserProfileView profile(UserRoleType role) {
-        return PROFILES.get(role);
+        return userRepository.findAll().stream()
+                .filter(u -> u.getRole() == role)
+                .findFirst()
+                .map(this::toProfileView)
+                .orElse(null);
     }
 
     public List<AddressView> addresses(UserRoleType role) {
-        return ADDRESSES.getOrDefault(role, List.of());
+        if (role == UserRoleType.CUSTOMER) {
+            return List.of(
+                    new AddressView("Home", "12 Green Park Road", "Bengaluru", "Karnataka", "560001", true),
+                    new AddressView("Office", "87 Tech Street", "Bengaluru", "Karnataka", "560103", false));
+        }
+        return List.of();
+    }
+
+    private UserProfileView toProfileView(UserEntity u) {
+        return new UserProfileView(
+                u.getRole().name(),
+                u.getDisplayName(),
+                u.getEmail(),
+                u.getPhoneNumber(),
+                "ACTIVE",
+                getCapabilities(u.getRole())
+        );
+    }
+
+    private List<String> getCapabilities(UserRoleType role) {
+        return switch (role) {
+            case CUSTOMER -> List.of(
+                    "Register and login",
+                    "Place and track orders",
+                    "Manage profile and addresses",
+                    "Pay online",
+                    "Receive OTP-based order verification");
+            case LAUNDRY_PARTNER -> List.of(
+                    "Accept or reject orders",
+                    "Update order status",
+                    "Manage service availability",
+                    "View earnings");
+            case DELIVERY_PARTNER -> List.of(
+                    "Accept pickup assignments",
+                    "Pickup and deliver orders",
+                    "Update delivery status",
+                    "Track assigned jobs");
+            case ADMIN -> List.of(
+                    "Manage users",
+                    "Manage partners",
+                    "Review reports",
+                    "Handle disputes");
+        };
     }
 }

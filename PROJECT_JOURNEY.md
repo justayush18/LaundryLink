@@ -313,6 +313,38 @@ This file is an append-only development diary for LaundryLink. New work must be 
 - What I learned from this step: Programmatic validations inside thin controllers/services make it easy to enforce strict cross-resource ownership logic.
 - Next planned step: Stop and present verification report.
 
+### 2026-06-18 - Phase 9 Notification Module Implementation
+- Date and phase: 2026-06-18, Phase 9.
+- Goal of the task: Implement the Notification Module with status analytics, event-driven alerts, preference toggling, security validation, and console-based email simulations.
+- What was implemented:
+  - New Enums & DTOs: `NotificationType.java`, `NotificationPreferencesDto.java`, `NotificationView.java` (including `read` and `emailSent`), and `NotificationHistoryResponse.java` (exposing `totalNotifications`, `unreadNotifications`, and `readNotifications` summaries).
+  - New Domain Models: `Notification.java` and `NotificationPreferences.java`.
+  - Services: `NotificationService.java` managing user preferences, histories, sending simulated email logs, and verifying ownership in `markAsRead`.
+  - Service Integration: Injected `NotificationService` lazily in `OrderService` and `PaymentService` to trigger alerts on order placement, status transitions, delivery assignments, payment initiation, processing success/failure, COD completion, and admin refunds.
+  - Controllers: `NotificationController.java` exposing endpoints under `/api/v1/notifications` for history lookup, marking read, and preference management.
+  - Security Verification: Added checks ensuring only the owner of a notification can mark it as read, returning `403 Forbidden` for unauthorized reads by other customers, partners, or admins.
+  - Simulated Toggling: Verified that toggling off a preference disables alert generation for that category, while re-enabling correctly resumes notifications.
+- Files created:
+  - [src/main/java/com/laundrylink/laundrylink/api/NotificationType.java](src/main/java/com/laundrylink/laundrylink/api/NotificationType.java)
+  - [src/main/java/com/laundrylink/laundrylink/api/NotificationPreferencesDto.java](src/main/java/com/laundrylink/laundrylink/api/NotificationPreferencesDto.java)
+  - [src/main/java/com/laundrylink/laundrylink/api/NotificationView.java](src/main/java/com/laundrylink/laundrylink/api/NotificationView.java)
+  - [src/main/java/com/laundrylink/laundrylink/api/NotificationHistoryResponse.java](src/main/java/com/laundrylink/laundrylink/api/NotificationHistoryResponse.java)
+  - [src/main/java/com/laundrylink/laundrylink/service/Notification.java](src/main/java/com/laundrylink/laundrylink/service/Notification.java)
+  - [src/main/java/com/laundrylink/laundrylink/service/NotificationPreferences.java](src/main/java/com/laundrylink/laundrylink/service/NotificationPreferences.java)
+  - [src/main/java/com/laundrylink/laundrylink/service/NotificationService.java](src/main/java/com/laundrylink/laundrylink/service/NotificationService.java)
+  - [src/main/java/com/laundrylink/laundrylink/api/NotificationController.java](src/main/java/com/laundrylink/laundrylink/api/NotificationController.java)
+- Files modified:
+  - [src/main/java/com/laundrylink/laundrylink/service/PaymentService.java](src/main/java/com/laundrylink/laundrylink/service/PaymentService.java)
+- Problems encountered: Preventing circular dependencies when cross-injecting services (`OrderService`, `PaymentService`, and `NotificationService` call each other).
+- Errors faced: Spring context bean initialization failures.
+- Root cause of the issue: Tight injection circles between services.
+- How the issue was resolved: Used `@Lazy` on constructors for injected service dependencies across all three services.
+- Important design decisions:
+  - Consistently lowercase and trim email addresses before storing or retrieving preferences and notification history.
+  - Implement ownership check where a lookup for a notification ID belonging to another user results in a `403 Forbidden` response instead of a plain `404 Not Found`, to let users verify security restrictions cleanly.
+- What I learned from this step: Integrating event-driven style alerts with user preferences is highly clean when managed by a centralized, decoupled Notification Service.
+- Next planned step: Prepare for Phase 10 or await next user request.
+
 ## Lessons Learned
 - Keep the first working slice small and verifiable before adding persistence or security.
 - Thin controllers are easier to test and explain than mixed controller/service logic.
@@ -327,6 +359,9 @@ This file is an append-only development diary for LaundryLink. New work must be 
 - Stateless JWT security works well for REST APIs because the server can authenticate each request without sessions.
 - In Spring Security 6, always permit the `/error` path to allow custom `ResponseStatusException` errors (like 403 Forbidden) to propagate to the client instead of being masked by authentication entry points.
 - Enums and strict access validation rules are critical when building state-machine based workflows like order lifecycles to prevent unauthorized state transitions.
+- Decoupling event triggers from the actual communication channels (e.g., via simulated logs first) makes it easy to add real SMTP or SMS handlers later.
+- Centralizing preference management in the notification dispatching service reduces logic duplication inside individual business services (like payments or orders).
+- Strict resource ownership validations in in-memory scenarios should mimic database-level tenancy filters to ensure security carries over when refactoring to SQL.
 
 ## Mistakes and Fixes
 - Mistake: The first terminal-based Maven validation was skipped by the environment.
@@ -339,3 +374,5 @@ This file is an append-only development diary for LaundryLink. New work must be 
   - Fix: Added `"/error"` to the permitted requestMatchers in `SecurityConfig.java` so that 403 responses are not intercepted and masked on error dispatch.
 - Mistake: Initial design allowed raw strings for order status, which could lead to case mismatch bugs during transition checks.
   - Fix: Refactored the architecture to use a dedicated `OrderStatus` enum across all layers.
+- Mistake: Cross-dependency injection circular loop between OrderService, PaymentService, and NotificationService.
+  - Fix: Applied `@Lazy` annotation to the constructor parameters of the injected service beans to resolve the circular dependencies at startup.

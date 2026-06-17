@@ -491,4 +491,61 @@ This file is append-only. Add a new section after each completed phase and do no
 - Calculate reputation scores asynchronously using database aggregation queries or event listeners (e.g. `@PostPersist` on Review entity) to avoid write contention on partner profile rows.
 
 
+## Phase 9 Snapshot - Notification Module
+
+### Current Controllers
+- All controllers from previous phases.
+- NotificationController
+
+### Current Services
+- All services from previous phases.
+- NotificationService
+
+### Current Endpoints
+- All endpoints from previous phases.
+- `GET /api/v1/notifications/history` (All Authenticated) - retrieves caller's notification history and summary analytics.
+- `PUT /api/v1/notifications/history/{notificationId}/read` (All Authenticated) - marks a specific notification as read.
+- `GET /api/v1/notifications/preferences` (All Authenticated) - retrieves caller's notification toggles.
+- `PUT /api/v1/notifications/preferences` (All Authenticated) - updates caller's notification toggles.
+
+### Notification Architecture & Data Flow
+- Centralized `NotificationService` handles creating and storing `Notification` records and checking user configuration preferences.
+- Services like `OrderService` and `PaymentService` act as the event source, invoking `NotificationService.sendNotification` during key transitions.
+- Client queries are sent to `NotificationController` which validates caller identity and delegates history retrieval or preference adjustment to `NotificationService`.
+
+### Event Trigger Flow
+```mermaid
+graph TD
+    A[Order/Payment Events] -->|Trigger sendNotification| B[NotificationService]
+    B -->|Check user preferences| C{Preferences enabled?}
+    C -->|Yes| D[Log notification history]
+    C -->|Yes| E[Simulate email console print]
+    C -->|No| F[Skip and log simulation skip]
+```
+
+### Preference Management Logic
+- Preferences are represented by the `NotificationPreferences` domain object mapping boolean alerts for:
+  - `orderStatusAlerts` (default: true)
+  - `paymentAlerts` (default: true)
+  - `deliveryAlerts` (default: true)
+  - `reviewReminders` (default: true)
+- During notification sending, the service resolves the corresponding preference field. If it is `false`, dispatching is bypassed and a simulation skip log is generated.
+
+### Notification Ownership Security Validations
+- Secure endpoints ensure privacy:
+  - Notification history lookup (`GET /api/v1/notifications/history`) uses the caller's email extracted directly from their secure authentication token context.
+  - Marking a notification as read (`PUT /api/v1/notifications/history/{notificationId}/read`) validates ownership. If the notification exists but belongs to a different email, a `403 Forbidden` status is returned.
+  - Unauthorized tokenless requests are rejected by Spring Security.
+
+### Email Simulation Strategy
+- In-place SMTP integration is simulated by generating log statements to the console output:
+  - Successful dispatch: `[SIMULATION] Email sent to <email> | Subject: <type> Alert | Message: <message>`
+  - Disabled preference: `[SIMULATION] Notification skipped for <email> (Preference disabled) | Type: <type>`
+
+### Future Database Replacement Plan
+- Map `Notification` and `NotificationPreferences` to database entities (`notifications` and `notification_preferences` tables).
+- Introduce a messaging/event broker (such as Spring Events or RabbitMQ) to decouple business service transitions from notification dispatching, preventing synchronous execution blockages.
+
+
+
 

@@ -1,9 +1,7 @@
 package com.laundrylink.laundrylink.service;
 
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 import org.springframework.context.annotation.Lazy;
@@ -19,18 +17,29 @@ import com.laundrylink.laundrylink.api.PaymentStatus;
 import com.laundrylink.laundrylink.api.PaymentView;
 import com.laundrylink.laundrylink.api.UserRoleType;
 import com.laundrylink.laundrylink.api.OrderView;
+import com.laundrylink.laundrylink.api.OrderItemDto;
+import com.laundrylink.laundrylink.api.NotificationType;
+import com.laundrylink.laundrylink.persistence.PaymentEntity;
+import com.laundrylink.laundrylink.persistence.PaymentRepository;
+import com.laundrylink.laundrylink.persistence.InvoiceEntity;
+import com.laundrylink.laundrylink.persistence.InvoiceItemEntity;
+import com.laundrylink.laundrylink.persistence.InvoiceRepository;
 
 @Service
 public class PaymentService {
 
-    private final Map<String, Payment> payments = new ConcurrentHashMap<>();
-    private final Map<String, Invoice> invoices = new ConcurrentHashMap<>();
+    private final PaymentRepository paymentRepository;
+    private final InvoiceRepository invoiceRepository;
     private final OrderService orderService;
     private final PaymentProcessor paymentProcessor;
+    private final NotificationService notificationService;
 
-    public PaymentService(@Lazy OrderService orderService, PaymentProcessor paymentProcessor) {
+    public PaymentService(PaymentRepository paymentRepository, InvoiceRepository invoiceRepository, @Lazy OrderService orderService, PaymentProcessor paymentProcessor, @Lazy NotificationService notificationService) {
+        this.paymentRepository = paymentRepository;
+        this.invoiceRepository = invoiceRepository;
         this.orderService = orderService;
         this.paymentProcessor = paymentProcessor;
+        this.notificationService = notificationService;
     }
 
     public PaymentView initiatePayment(String customerEmail, InitiatePaymentRequest request) {
@@ -38,7 +47,7 @@ public class PaymentService {
         OrderView order = orderService.getOrder(request.orderId(), customerEmail, UserRoleType.CUSTOMER);
 
         // Check if there is already a successful payment for this order
-        boolean hasSuccessPayment = payments.values().stream()
+        boolean hasSuccessPayment = paymentRepository.findAll().stream()
                 .anyMatch(p -> p.getOrderId().equals(request.orderId()) && p.getStatus() == PaymentStatus.SUCCESS);
         if (hasSuccessPayment) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Order is already paid");
@@ -47,7 +56,7 @@ public class PaymentService {
         String paymentId = UUID.randomUUID().toString();
         String transactionId = paymentProcessor.createTransaction(request.orderId(), order.totalCost(), request.paymentMethod());
 
-        Payment payment = new Payment(
+        PaymentEntity payment = new PaymentEntity(
                 paymentId,
                 request.orderId(),
                 order.totalCost(),
@@ -55,17 +64,18 @@ public class PaymentService {
                 transactionId
         );
 
-        payments.put(paymentId, payment);
+        paymentRepository.save(payment);
         orderService.linkPaymentToOrder(request.orderId(), paymentId);
+
+        notificationService.sendNotification(customerEmail, NotificationType.PAYMENT,
+                "Payment of " + payment.getAmount() + " initiated for order " + payment.getOrderId() + ". Payment ID: " + payment.getPaymentId());
 
         return toPaymentView(payment);
     }
 
     public PaymentView processPayment(String customerEmail, String paymentId, boolean simulateSuccess) {
-        Payment payment = payments.get(paymentId);
-        if (payment == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Payment not found");
-        }
+        PaymentEntity payment = paymentRepository.findById(paymentId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Payment not found"));
 
         // Verify customer owns the corresponding order
         OrderView order = orderService.getOrder(payment.getOrderId(), customerEmail, UserRoleType.CUSTOMER);
@@ -77,8 +87,20 @@ public class PaymentService {
         if (simulateSuccess) {
             payment.setStatus(PaymentStatus.SUCCESS);
             generateInvoice(payment, order);
+            paymentRepository.save(payment);
+            
+            notificationService.sendNotification(customerEmail, NotificationType.PAYMENT,
+                    "Payment of " + payment.getAmount() + " succeeded for order " + payment.getOrderId() + ".");
+            notificationService.sendNotification(order.partnerEmail(), NotificationType.PAYMENT,
+                    "Payment of " + payment.getAmount() + " succeeded for order " + payment.getOrderId() + ".");
         } else {
             payment.setStatus(PaymentStatus.FAILED);
+            paymentRepository.save(payment);
+            
+            notificationService.sendNotification(customerEmail, NotificationType.PAYMENT,
+                    "Payment of " + payment.getAmount() + " failed for order " + payment.getOrderId() + ".");
+            notificationService.sendNotification(order.partnerEmail(), NotificationType.PAYMENT,
+                    "Payment of " + payment.getAmount() + " failed for order " + payment.getOrderId() + ".");
         }
 
         return toPaymentView(payment);
@@ -86,7 +108,7 @@ public class PaymentService {
 
     public void completeCodPayment(String orderId) {
         // Find the PENDING COD payment linked to this order
-        Payment codPayment = payments.values().stream()
+        PaymentEntity codPayment = paymentRepository.findAll().stream()
                 .filter(p -> p.getOrderId().equals(orderId) 
                         && p.getPaymentMethod() == PaymentMethod.COD 
                         && p.getStatus() == PaymentStatus.PENDING)
@@ -104,34 +126,49 @@ public class PaymentService {
             
             if (order != null) {
                 generateInvoice(codPayment, order);
+                paymentRepository.save(codPayment);
+                
+                notificationService.sendNotification(order.customerEmail(), NotificationType.PAYMENT,
+                        "COD Payment of " + codPayment.getAmount() + " was successful for order " + orderId + ".");
+                notificationService.sendNotification(order.partnerEmail(), NotificationType.PAYMENT,
+                        "COD Payment of " + codPayment.getAmount() + " was successful for order " + orderId + ".");
             }
         }
     }
 
     public PaymentView refundPayment(String adminEmail, String paymentId) {
-        Payment payment = payments.get(paymentId);
-        if (payment == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Payment not found");
-        }
+        PaymentEntity payment = paymentRepository.findById(paymentId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Payment not found"));
 
         if (payment.getStatus() != PaymentStatus.SUCCESS) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only successful payments can be refunded");
         }
 
         payment.setStatus(PaymentStatus.REFUNDED);
+        paymentRepository.save(payment);
 
         // Cancel the corresponding invoice if it exists
-        invoices.values().stream()
-                .filter(i -> i.getPaymentId().equals(paymentId))
-                .forEach(i -> i.setInvoiceStatus(InvoiceStatus.CANCELLED));
+        invoiceRepository.findByOrderId(payment.getOrderId()).ifPresent(i -> {
+            i.setInvoiceStatus(InvoiceStatus.CANCELLED);
+            invoiceRepository.save(i);
+        });
+
+        OrderView order = orderService.getOrderHistory(payment.getOrderId(), UserRoleType.ADMIN).stream()
+                .filter(o -> o.orderId().equals(payment.getOrderId()))
+                .findFirst()
+                .orElse(null);
+        if (order != null) {
+            notificationService.sendNotification(order.customerEmail(), NotificationType.PAYMENT,
+                    "Payment of " + payment.getAmount() + " has been refunded for order " + payment.getOrderId() + ".");
+            notificationService.sendNotification(order.partnerEmail(), NotificationType.PAYMENT,
+                    "Payment of " + payment.getAmount() + " has been refunded for order " + payment.getOrderId() + ".");
+        }
 
         return toPaymentView(payment);
     }
 
     public InvoiceView getInvoiceByOrderId(String email, UserRoleType role, String orderId) {
-        Invoice invoice = invoices.values().stream()
-                .filter(i -> i.getOrderId().equals(orderId))
-                .findFirst()
+        InvoiceEntity invoice = invoiceRepository.findByOrderId(orderId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Invoice not found for this order"));
 
         // Enforce role-based security:
@@ -155,10 +192,8 @@ public class PaymentService {
     }
 
     public PaymentView getPayment(String paymentId, String email, UserRoleType role) {
-        Payment payment = payments.get(paymentId);
-        if (payment == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Payment not found");
-        }
+        PaymentEntity payment = paymentRepository.findById(paymentId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Payment not found"));
 
         // Delegate security check: verify that the user can access the corresponding order details.
         orderService.getOrder(payment.getOrderId(), email, role);
@@ -166,21 +201,22 @@ public class PaymentService {
         return toPaymentView(payment);
     }
 
-    private void generateInvoice(Payment payment, OrderView order) {
-        String invoiceId = UUID.randomUUID().toString();
-        Invoice invoice = new Invoice(
-                invoiceId,
+    private void generateInvoice(PaymentEntity payment, OrderView order) {
+        InvoiceEntity invoice = new InvoiceEntity(
                 order.orderId(),
                 payment.getPaymentId(),
                 order.customerEmail(),
                 order.partnerEmail(),
-                payment.getAmount(),
-                order.items()
+                payment.getAmount()
         );
-        invoices.put(invoiceId, invoice);
+        List<InvoiceItemEntity> items = order.items().stream()
+                .map(i -> new InvoiceItemEntity(i.itemCategory(), i.serviceType(), i.quantity()))
+                .collect(Collectors.toList());
+        invoice.setItems(items);
+        invoiceRepository.save(invoice);
     }
 
-    private PaymentView toPaymentView(Payment payment) {
+    private PaymentView toPaymentView(PaymentEntity payment) {
         return new PaymentView(
                 payment.getPaymentId(),
                 payment.getOrderId(),
@@ -193,15 +229,18 @@ public class PaymentService {
         );
     }
 
-    private InvoiceView toInvoiceView(Invoice invoice) {
+    private InvoiceView toInvoiceView(InvoiceEntity invoice) {
+        List<OrderItemDto> itemsDto = invoice.getItems().stream()
+                .map(i -> new OrderItemDto(i.getItemCategory(), i.getServiceType(), i.getQuantity()))
+                .collect(Collectors.toList());
         return new InvoiceView(
-                invoice.getInvoiceId(),
+                String.valueOf(invoice.getId()),
                 invoice.getOrderId(),
                 invoice.getPaymentId(),
                 invoice.getCustomerEmail(),
                 invoice.getPartnerEmail(),
                 invoice.getAmount(),
-                invoice.getItems(),
+                itemsDto,
                 invoice.getInvoiceStatus(),
                 invoice.getGeneratedAt()
         );

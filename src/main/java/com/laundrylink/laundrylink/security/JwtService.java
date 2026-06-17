@@ -7,7 +7,7 @@ import java.time.Instant;
 import java.util.Base64;
 
 import com.laundrylink.laundrylink.api.UserRoleType;
-import com.laundrylink.laundrylink.service.RegisteredAccount;
+import com.laundrylink.laundrylink.persistence.UserEntity;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -23,7 +23,7 @@ public class JwtService {
     private static final String SECRET = "LaundryLink-Phase3-JWT-Secret-Key-Replace-In-Prod";
     private static final String HEADER_JSON = "{\"alg\":\"HS256\",\"typ\":\"JWT\"}";
 
-    public String generateToken(RegisteredAccount account) {
+    public String generateToken(UserEntity account) {
         try {
             String payload = encodePayload(account);
             String headerPart = base64Url(HEADER_JSON.getBytes(StandardCharsets.UTF_8));
@@ -69,14 +69,14 @@ public class JwtService {
         }
     }
 
-    private String encodePayload(RegisteredAccount account) {
+    private String encodePayload(UserEntity account) {
         long issuedAt = Instant.now().getEpochSecond();
         long expiresAt = Instant.now().plus(TOKEN_TTL).getEpochSecond();
         return String.join("|",
-                escape(account.email()),
-                escape(account.displayName()),
-                escape(account.phoneNumber()),
-                escape(account.role().name()),
+                escape(account.getEmail()),
+                escape(account.getDisplayName()),
+                escape(account.getPhoneNumber()),
+                escape(account.getRole().name()),
                 Long.toString(issuedAt),
                 Long.toString(expiresAt));
     }
