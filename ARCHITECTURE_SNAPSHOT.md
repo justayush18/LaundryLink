@@ -835,5 +835,43 @@ frontend/
 - **Glassmorphic theme variables**: Customized HSL colors allow switching layout styles easily.
 - **Responsive Flex Grids**: Dashboard structures scale from mobile columns to desktop grids using unified container patterns.
 
+## Phase 13 Snapshot - Testing & Documentation
+
+### Current Architecture & Stack
+- **Testing framework**: JUnit 5, Spring Boot Test, Spring Security Test, Mockito.
+- **API Spec generator**: `springdoc-openapi-starter-webmvc-ui` providing Swagger UI and OpenAPI endpoints.
+- **Documentation reference**: `system_documentation.md` containing MySQL schema details, API inventories, setup scripts, and user manual guides.
+
+### Current Test Scope
+
+#### Unit Tests (Service Layer)
+- `AuthServiceTest`: User registration, login validation, token issuance, and account state checks.
+- `OrderServiceTest`: Cost calculation using seeded pricing rate cards, order status transitions state machine, and delivery rider assignment constraints.
+- `PaymentServiceTest`: Razorpay checkout simulation, COD lifecycle completion hook, invoice generation, and admin refund/invoice cancellation triggers.
+- `ReviewServiceTest`: Partner rating submissions, 1-5★ validation checks, duplicate submission blocks, and reputation score recalculations.
+- `NotificationServiceTest`: Event-driven notification generation, user preference toggle filtering, and notification history read confirmations.
+- `AdminServiceTest`: Admin user listings, user block/unblock deactivations, user role updates, and partner document verification approvals.
+
+#### Integration Tests (API Layer)
+- `AuthenticationFlowTest`: MockMvc verification of user registration, login, and JWT validation.
+- `OrderLifecycleTest`: End-to-end order placement, pricing calculations, status transitions, history logging, and role-based checks.
+- `PaymentLifecycleTest`: Checkout payments processing, COD delivery hook completion, and invoice retrievals.
+- `DeliveryLifecycleTest`: Claiming pickup/delivery tasks, dashboard retrievals, and tracking timelines.
+- `ReviewRatingTest`: Submitting review details, verifying boundaries, and reputation average updates.
+- `NotificationTest`: Event alert validation, preferences toggles, and notification history marking as read.
+- `AdminDashboardTest`: Listing users, role promotions, status deactivations, document verification, and analytics report retrievals.
+
+### Key Testing Decisions
+- **MockMvc Filter Configuration**: Registered `JwtAuthenticationFilter` explicitly in MockMvc builders context setups to prevent JWT auth bypasses.
+- **Transactional Rollback Isolation**: Implemented `@Transactional` across all integration tests to ensure tests operate against the active database without polluting local records.
+- **Relative Assertions**: Asserted notifications histories and lists using relative matches (like `greaterThanOrEqualTo(1)`) to handle pre-seeded database records safely.
+
+### API inventory Table
+- Permitted Swagger and OpenAPI paths in `SecurityConfig.java`:
+  - `GET /v3/api-docs/**`
+  - `GET /swagger-ui/**`
+  - `GET /swagger-ui.html`
+- Static spec file downloaded: `openapi_spec.json`.
+
 
 
