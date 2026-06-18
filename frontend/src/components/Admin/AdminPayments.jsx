@@ -46,30 +46,30 @@ export default function AdminPayments() {
     switch (status) {
       case 'SUCCESS':
         return (
-          <span className="badge badge-success" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+          <span className="velora-badge velora-badge-success" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
             <CheckCircle2 size={12} /> Success
           </span>
         );
       case 'PENDING':
         return (
-          <span className="badge badge-warning" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+          <span className="velora-badge velora-badge-warning" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
             <RefreshCw size={12} style={{ animation: 'spin 2s linear infinite' }} /> Pending
           </span>
         );
       case 'REFUNDED':
         return (
-          <span className="badge badge-error" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+          <span className="velora-badge velora-badge-error" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
             <RotateCcw size={12} /> Refunded
           </span>
         );
       case 'FAILED':
         return (
-          <span className="badge badge-error" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+          <span className="velora-badge velora-badge-error" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
             <AlertCircle size={12} /> Failed
           </span>
         );
       default:
-        return <span className="badge">{status}</span>;
+        return <span className="velora-badge">{status}</span>;
     }
   };
 
@@ -77,30 +77,40 @@ export default function AdminPayments() {
     <div className="main-content">
       <div style={styles.header}>
         <div>
-          <h1 style={{ fontSize: '28px', marginBottom: '4px' }}>Payment Ledger</h1>
-          <p style={{ color: 'var(--text-secondary)' }}>Audit payment statuses, checkout methods, and process transaction refunds.</p>
+          <h1 style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--primary-navy)', fontFamily: 'Outfit, sans-serif', margin: '0 0 4px 0' }}>
+            Payment Ledger
+          </h1>
+          <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: '0.95rem' }}>
+            Audit payment statuses, checkout methods, and process transaction refunds.
+          </p>
         </div>
-        <button onClick={fetchPayments} className="btn btn-outline" disabled={loading}>
-          <RefreshCw size={14} style={{ marginRight: '4px' }} /> Refresh Ledger
+        <button 
+          onClick={fetchPayments} 
+          className="velora-btn velora-btn-secondary" 
+          disabled={loading}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+        >
+          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> 
+          Refresh Ledger
         </button>
       </div>
 
-      {success && <div className="alert alert-success">{success}</div>}
-      {error && <div className="alert alert-error">{error}</div>}
+      {success && <div className="alert alert-success animate-fadeInUp">{success}</div>}
+      {error && <div className="alert alert-error animate-fadeInUp">{error}</div>}
 
-      <div className="glass-card">
-        <h3 style={{ fontSize: '18px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <CreditCard size={20} color="var(--accent-secondary)" />
+      <div className="velora-card animate-fadeInUp" style={{ padding: '2rem', background: '#FFFFFF', border: '1px solid var(--sky-blue-light)' }}>
+        <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--primary-navy)', fontFamily: 'Outfit, sans-serif', borderBottom: '2px solid var(--bg-secondary)', paddingBottom: '12px', margin: '0 0 1.5rem 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <CreditCard size={20} color="var(--primary-teal)" />
           System Transactions
         </h3>
 
         {loading ? (
-          <p style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '24px 0' }}>Loading logs...</p>
+          <p style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '3rem 0' }}>Loading logs...</p>
         ) : payments.length === 0 ? (
-          <p style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '24px 0' }}>No transactions recorded in the system.</p>
+          <p style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '3rem 0' }}>No transactions recorded in the system.</p>
         ) : (
-          <div className="table-container">
-            <table>
+          <div className="table-container" style={{ overflowX: 'auto' }}>
+            <table className="velora-table">
               <thead>
                 <tr>
                   <th>Payment ID</th>
@@ -115,11 +125,15 @@ export default function AdminPayments() {
               <tbody>
                 {payments.map((p) => (
                   <tr key={p.paymentId}>
-                    <td style={{ fontFamily: 'monospace', fontSize: '11px' }}>#{p.paymentId.substring(0, 8)}</td>
-                    <td style={{ fontFamily: 'monospace', fontSize: '11px' }}>#{p.orderId.substring(0, 8)}</td>
-                    <td><strong>₹{p.amount}</strong></td>
-                    <td style={{ fontSize: '13px' }}>{p.paymentMethod}</td>
-                    <td style={{ fontFamily: 'monospace', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                    <td style={{ fontFamily: 'monospace', fontSize: '0.8rem', color: 'var(--primary-navy)', fontWeight: 600 }}>
+                      #{p.paymentId.substring(0, 8)}
+                    </td>
+                    <td style={{ fontFamily: 'monospace', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                      #{p.orderId.substring(0, 8)}
+                    </td>
+                    <td><strong style={{ color: 'var(--primary-navy)' }}>₹{p.amount}</strong></td>
+                    <td style={{ fontSize: '0.85rem', color: 'var(--text-primary)' }}>{p.paymentMethod}</td>
+                    <td style={{ fontFamily: 'monospace', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
                       {p.transactionId || 'N/A'}
                     </td>
                     <td>{getStatusBadge(p.status)}</td>
@@ -127,17 +141,17 @@ export default function AdminPayments() {
                       {p.status === 'SUCCESS' && (
                         <button
                           onClick={() => handleRefund(p.paymentId, p.amount)}
-                          className="btn btn-danger"
+                          className="velora-btn velora-btn-secondary"
                           style={{
-                            padding: '4px 10px',
-                            fontSize: '11px',
+                            padding: '6px 12px',
+                            fontSize: '0.8rem',
                             display: 'inline-flex',
                             alignItems: 'center',
                             gap: '4px',
-                            background: 'rgba(239, 68, 68, 0.1)',
-                            borderColor: 'rgba(239, 68, 68, 0.3)',
-                            color: 'var(--color-error)',
-                            border: '1px solid',
+                            height: 'auto',
+                            borderColor: '#EF4444',
+                            color: '#EF4444',
+                            background: '#FEF2F2',
                           }}
                           disabled={submitting}
                         >
@@ -161,7 +175,9 @@ const styles = {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: '24px',
+    marginBottom: '2.5rem',
+    flexWrap: 'wrap',
+    gap: '16px',
   },
 };
 
@@ -175,3 +191,4 @@ try {
     }
   `, styleSheet.cssRules.length);
 } catch (e) {}
+

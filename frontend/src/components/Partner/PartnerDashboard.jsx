@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
-import { ShoppingBag, Star, CheckCircle, Shield, Award, Clock } from 'lucide-react';
+import { ShoppingBag, Star, CheckCircle, Award } from 'lucide-react';
+import StatCard from '../Common/StatCard';
+import EmptyState from '../Common/EmptyState';
 
 export default function PartnerDashboard() {
   const { user } = useAuth();
@@ -14,14 +16,10 @@ export default function PartnerDashboard() {
   const fetchPartnerDashboard = async () => {
     setLoading(true);
     try {
-      // Fetch own profile
       const prof = await api.partners.getProfile();
       setProfile(prof);
       
-      // Fetch all orders from backend and filter by own email
       const allOrders = await api.orders.getMyOrders(); 
-      // Wait, in backend, /api/v1/orders/my handles filters by role automatically!
-      // If caller is partner, getMyOrders returns partner-specific orders.
       setOrders(allOrders || []);
     } catch (err) {
       setError('Failed to fetch partner data');
@@ -60,102 +58,115 @@ export default function PartnerDashboard() {
     }
   };
 
+  const getStatusLabel = (status) => {
+    switch (status) {
+      case 'PLACED': return 'Placed';
+      case 'ACCEPTED': return 'Accepted';
+      case 'PICKUP_ASSIGNED': return 'Pickup Assigned';
+      case 'PICKED_UP': return 'Picked Up';
+      case 'PROCESSING': return 'Processing';
+      case 'READY_FOR_DELIVERY': return 'Ready';
+      case 'DELIVERY_ASSIGNED': return 'Out for Delivery';
+      case 'DELIVERED': return 'Delivered';
+      case 'CANCELLED': return 'Cancelled';
+      default: return status;
+    }
+  };
+
   return (
     <div className="main-content">
+      {/* Header */}
       <div style={styles.header}>
         <div>
-          <h1 style={{ fontSize: '28px', marginBottom: '4px' }}>
+          <h1 style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--primary-navy)', fontFamily: 'Outfit, sans-serif', margin: '0 0 4px 0' }}>
             {profile ? profile.businessName : 'Laundry Partner Panel'}
           </h1>
-          <p style={{ color: 'var(--text-secondary)' }}>Manage rate cards, verify documents, and fulfill laundry tasks.</p>
+          <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: '0.95rem' }}>
+            Manage rate cards, verify documents, and fulfill customer laundry tasks.
+          </p>
         </div>
         {profile && getOnboardingBadge(profile.onboardingStatus)}
       </div>
 
-      {success && <div className="alert alert-success">{success}</div>}
-      {error && <div className="alert alert-error">{error}</div>}
+      {success && <div className="alert alert-success animate-fadeInUp">{success}</div>}
+      {error && <div className="alert alert-error animate-fadeInUp">{error}</div>}
 
-      {/* KPIs */}
-      <div className="grid-cols-4" style={{ marginBottom: '32px' }}>
-        <div className="glass-card" style={styles.kpi}>
-          <div style={{ ...styles.kpiIcon, background: 'rgba(99, 102, 241, 0.15)', color: 'var(--accent-primary)' }}>
-            <ShoppingBag size={20} />
-          </div>
-          <div>
-            <h3 style={styles.kpiVal}>{getActiveOrders().length}</h3>
-            <p style={styles.kpiLabel}>Active Workload</p>
-          </div>
-        </div>
-
-        <div className="glass-card" style={styles.kpi}>
-          <div style={{ ...styles.kpiIcon, background: 'rgba(245, 158, 11, 0.15)', color: 'var(--color-warning)' }}>
-            <Star size={20} />
-          </div>
-          <div>
-            <h3 style={styles.kpiVal}>{profile ? (profile.reputationScore ? profile.reputationScore.toFixed(1) : '5.0') : '5.0'}</h3>
-            <p style={styles.kpiLabel}>Reputation Rating</p>
-          </div>
-        </div>
-
-        <div className="glass-card" style={styles.kpi}>
-          <div style={{ ...styles.kpiIcon, background: 'rgba(34, 197, 94, 0.15)', color: 'var(--color-success)' }}>
-            <CheckCircle size={20} />
-          </div>
-          <div>
-            <h3 style={styles.kpiVal}>{orders.filter(o => o.status === 'DELIVERED').length}</h3>
-            <p style={styles.kpiLabel}>Completed Orders</p>
-          </div>
-        </div>
-
-        <div className="glass-card" style={styles.kpi}>
-          <div style={{ ...styles.kpiIcon, background: 'rgba(6, 182, 212, 0.15)', color: 'var(--accent-secondary)' }}>
-            <Award size={20} />
-          </div>
-          <div>
-            <h3 style={styles.kpiVal}>{profile ? profile.totalReviews : 0}</h3>
-            <p style={styles.kpiLabel}>Total Customer Reviews</p>
-          </div>
-        </div>
+      {/* KPIs Grid */}
+      <div className="grid-cols-4" style={{ marginBottom: '2.5rem', gap: '1.25rem' }}>
+        <StatCard
+          title="Active Workload"
+          value={getActiveOrders().length}
+          icon={ShoppingBag}
+          description="Awaiting washing/ironing"
+        />
+        <StatCard
+          title="Reputation Rating"
+          value={profile ? (profile.reputationScore ? profile.reputationScore.toFixed(1) : '5.0') : '5.0'}
+          icon={Star}
+          description="Average customer rating"
+        />
+        <StatCard
+          title="Completed Orders"
+          value={orders.filter(o => o.status === 'DELIVERED').length}
+          icon={CheckCircle}
+          description="Lifetime fulfillments"
+        />
+        <StatCard
+          title="Customer Reviews"
+          value={profile ? profile.totalReviews : 0}
+          icon={Award}
+          description="Total reviews received"
+        />
       </div>
 
       {/* Fulfillments Board */}
-      <div className="glass-card">
-        <h3 style={{ fontSize: '18px', marginBottom: '20px' }}>Active Laundry Fulfillment Board</h3>
+      <div className="velora-card animate-fadeInUp" style={{ padding: '2rem' }}>
+        <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary-navy)', fontFamily: 'Outfit, sans-serif', margin: '0 0 1.5rem 0' }}>
+          Active Laundry Fulfillment Board
+        </h3>
 
         {loading ? (
-          <p style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>Loading operations...</p>
+          <p style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '2rem' }}>Loading operations...</p>
         ) : getActiveOrders().length === 0 ? (
-          <p style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '24px 0' }}>No active orders under your business right now.</p>
+          <EmptyState
+            title="No active orders"
+            description="Your operations board is clear. New customer laundry schedules will appear here."
+            mascotState="sleeping"
+          />
         ) : (
           <div style={styles.orderGrid}>
             {getActiveOrders().map((order) => (
-              <div key={order.orderId} className="glass-panel" style={styles.orderCard}>
+              <div key={order.orderId} className="velora-card card-hover" style={styles.orderCard}>
                 <div style={styles.cardHeader}>
-                  <span style={{ fontSize: '12px', fontWeight: 'bold', fontFamily: 'monospace' }}>
-                    ID: #{order.orderId.substring(0, 8)}
+                  <span style={{ fontSize: '12px', fontWeight: 700, fontFamily: 'monospace', color: 'var(--primary-navy)' }}>
+                    #{order.orderId.substring(0, 8).toUpperCase()}
                   </span>
-                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                    {new Date(order.createdAt * 1000).toLocaleTimeString()}
+                  <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                    {new Date(order.createdAt * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </span>
                 </div>
 
-                <div style={{ margin: '12px 0' }}>
-                  <p style={{ fontSize: '11px', color: 'var(--text-muted)' }}>ORDER ITEMS</p>
-                  {order.items?.map((item, idx) => (
-                    <p key={idx} style={{ fontSize: '13px', margin: '2px 0' }}>
-                      {item.quantity}x {item.itemCategory} ({item.serviceType.replace('_', ' ')})
-                    </p>
-                  ))}
-                  <p style={{ fontSize: '14px', fontWeight: 'bold', marginTop: '8px', color: 'var(--accent-secondary)' }}>
+                <div style={{ margin: '1rem 0' }}>
+                  <p style={{ fontSize: '10px', fontWeight: 800, color: 'var(--text-secondary)', margin: '0 0 6px 0', textTransform: 'uppercase' }}>
+                    Order Items
+                  </p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    {order.items?.map((item, idx) => (
+                      <p key={idx} style={{ fontSize: '13px', margin: 0, fontWeight: 500, color: 'var(--primary-navy)' }}>
+                        {item.quantity}x {item.itemCategory} ({item.serviceType.replace('_', ' ')})
+                      </p>
+                    ))}
+                  </div>
+                  <p style={{ fontSize: '14px', fontWeight: 800, marginTop: '10px', marginBottom: 0, color: 'var(--primary-teal)' }}>
                     Payout: ₹{order.totalCost}
                   </p>
                 </div>
 
                 <div style={styles.addressSection}>
-                  <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                    📍 <strong>Pickup:</strong> {order.pickupAddress}
+                  <p style={{ fontSize: '12px', color: 'var(--primary-navy)', margin: 0, fontWeight: 500 }}>
+                    📍 <strong>Address:</strong> {order.pickupAddress}
                   </p>
-                  <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                  <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px', marginBottom: 0, fontWeight: 600 }}>
                     🕒 {order.pickupSlot}
                   </p>
                 </div>
@@ -163,15 +174,15 @@ export default function PartnerDashboard() {
                 <div style={styles.divider}></div>
 
                 <div style={styles.cardActions}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
-                    <p style={{ fontSize: '12px' }}>
-                      Current Status: <strong style={{ color: 'var(--accent-primary)' }}>{order.status}</strong>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '100%' }}>
+                    <p style={{ fontSize: '12px', margin: 0, color: 'var(--primary-navy)', fontWeight: 600 }}>
+                      Current Status: <span className="badge badge-info">{getStatusLabel(order.status)}</span>
                     </p>
                     
                     {order.status === 'PLACED' && (
                       <button
                         onClick={() => handleUpdateStatus(order.orderId, 'ACCEPTED', 'Accepted by Laundry Partner.')}
-                        className="btn btn-primary"
+                        className="velora-btn velora-btn-primary animate-pulse"
                         style={styles.actionBtn}
                       >
                         Accept Order
@@ -181,7 +192,7 @@ export default function PartnerDashboard() {
                     {order.status === 'PICKED_UP' && (
                       <button
                         onClick={() => handleUpdateStatus(order.orderId, 'PROCESSING', 'Laundry is now processing.')}
-                        className="btn btn-secondary"
+                        className="velora-btn velora-btn-secondary"
                         style={styles.actionBtn}
                       >
                         Start Processing
@@ -191,15 +202,15 @@ export default function PartnerDashboard() {
                     {order.status === 'PROCESSING' && (
                       <button
                         onClick={() => handleUpdateStatus(order.orderId, 'READY_FOR_DELIVERY', 'Laundry clean & folded. Ready for delivery.')}
-                        className="btn btn-primary"
+                        className="velora-btn velora-btn-primary animate-pulse"
                         style={styles.actionBtn}
                       >
-                        Mark Ready for Delivery
+                        Mark Ready
                       </button>
                     )}
 
                     {!['PLACED', 'PICKED_UP', 'PROCESSING'].includes(order.status) && (
-                      <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontStyle: 'italic', textAlign: 'center' }}>
+                      <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontStyle: 'italic', textAlign: 'center', fontWeight: 600 }}>
                         Waiting for Delivery Agent
                       </span>
                     )}
@@ -219,40 +230,20 @@ const styles = {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: '32px',
-  },
-  kpi: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '20px',
-    padding: '20px 24px',
-  },
-  kpiIcon: {
-    width: '44px',
-    height: '44px',
-    borderRadius: 'var(--radius-sm)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  kpiVal: {
-    fontSize: '24px',
-    fontWeight: 'bold',
-    marginBottom: '2px',
-  },
-  kpiLabel: {
-    fontSize: '12px',
-    color: 'var(--text-secondary)',
-    fontWeight: 500,
+    marginBottom: '2.5rem',
+    flexWrap: 'wrap',
+    gap: '1rem',
   },
   orderGrid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
     gap: '20px',
-    marginTop: '12px',
+    marginTop: '8px',
   },
   orderCard: {
     padding: '20px',
+    background: '#FFFFFF',
+    border: '1px solid var(--sky-blue-light)',
     display: 'flex',
     flexDirection: 'column',
     justifyContent: 'space-between',
@@ -261,18 +252,18 @@ const styles = {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    borderBottom: '1px solid var(--border-color)',
+    borderBottom: '2px solid var(--bg-secondary)',
     paddingBottom: '8px',
   },
   addressSection: {
-    background: 'rgba(255, 255, 255, 0.02)',
-    padding: '10px',
-    borderRadius: 'var(--radius-sm)',
+    background: 'var(--bg-secondary)',
+    padding: '12px',
+    borderRadius: '16px',
     margin: '10px 0',
   },
   divider: {
-    height: '1px',
-    background: 'var(--border-color)',
+    height: '2px',
+    background: 'var(--bg-secondary)',
     margin: '12px 0',
   },
   cardActions: {
@@ -281,7 +272,8 @@ const styles = {
   },
   actionBtn: {
     width: '100%',
-    padding: '8px',
-    fontSize: '13px',
+    padding: '8px 12px',
+    fontSize: '12px',
+    fontWeight: 700,
   },
 };

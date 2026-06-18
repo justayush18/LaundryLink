@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../services/api';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { Users, ShoppingBag, CreditCard, Star, RefreshCw, AlertCircle, CheckCircle } from 'lucide-react';
+import StatCard from '../Common/StatCard';
 
 export default function AdminDashboard() {
   const [metrics, setMetrics] = useState(null);
@@ -17,7 +18,7 @@ export default function AdminDashboard() {
       const data = await api.admin.getDashboard();
       setMetrics(data);
       setSuccessMsg('Dashboard statistics refreshed successfully!');
-      setTimeout(() => setSuccessMsg(''), 3000);
+      setTimeout(() => setSuccessMsg(''), 4000);
     } catch (err) {
       setError('Failed to load admin summary indicators');
     } finally {
@@ -38,120 +39,130 @@ export default function AdminDashboard() {
     ];
   };
 
-  const getMetricsSummary = () => {
-    if (!metrics) return [];
-    return [
-      { name: 'Total Users', val: metrics.totalUsers, icon: Users, bg: 'rgba(99, 102, 241, 0.15)', col: 'var(--accent-primary)' },
-      { name: 'Total Orders', val: metrics.totalOrders, icon: ShoppingBag, bg: 'rgba(6, 182, 212, 0.15)', col: 'var(--accent-secondary)' },
-      { name: 'Total Revenue', val: `₹${metrics.totalRevenue ? metrics.totalRevenue.toFixed(0) : '0'}`, icon: CreditCard, bg: 'rgba(34, 197, 94, 0.15)', col: 'var(--color-success)' },
-      { name: 'Total Reviews', val: metrics.totalReviews, icon: Star, bg: 'rgba(245, 158, 11, 0.15)', col: 'var(--color-warning)' },
-    ];
-  };
-
   return (
     <div className="main-content">
+      {/* Header */}
       <div style={styles.header}>
         <div>
-          <h1 style={{ fontSize: '28px', marginBottom: '4px' }}>System Operations</h1>
-          <p style={{ color: 'var(--text-secondary)' }}>Consolidated system analytics, verification tasks, and financial metrics.</p>
+          <h1 style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--primary-navy)', fontFamily: 'Outfit, sans-serif', margin: '0 0 4px 0' }}>
+            System Operations
+          </h1>
+          <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: '0.95rem' }}>
+            Consolidated platform analytics, verification backlogs, and financial indicators.
+          </p>
         </div>
-        <button onClick={fetchSummary} className="btn btn-outline" disabled={loading}>
-          <RefreshCw size={14} style={{ marginRight: '4px' }} className={loading ? 'animate-spin' : ''} /> Refresh Stats
+        <button 
+          onClick={fetchSummary} 
+          className="velora-btn velora-btn-secondary" 
+          disabled={loading}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+        >
+          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> 
+          Refresh Stats
         </button>
       </div>
 
-      {successMsg && <div className="alert alert-success">{successMsg}</div>}
-      {error && <div className="alert alert-error">{error}</div>}
+      {successMsg && <div className="alert alert-success animate-fadeInUp">{successMsg}</div>}
+      {error && <div className="alert alert-error animate-fadeInUp">{error}</div>}
 
       {loading && !metrics ? (
-        <p style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '40px 0' }}>Compiling dashboard analytics...</p>
+        <p style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '3rem' }}>Compiling system indicators...</p>
       ) : (
         <>
-          {/* KPI Dashboard */}
-          <div className="grid-cols-4" style={{ marginBottom: '32px' }}>
-            {getMetricsSummary().map((item, idx) => {
-              const Icon = item.icon;
-              return (
-                <div key={idx} className="glass-card" style={styles.kpiCard}>
-                  <div style={{ ...styles.kpiIcon, background: item.bg, color: item.col }}>
-                    <Icon size={20} />
-                  </div>
-                  <div>
-                    <h3 style={styles.kpiVal}>{item.val}</h3>
-                    <p style={styles.kpiLabel}>{item.name}</p>
-                  </div>
-                </div>
-              );
-            })}
+          {/* KPI Cards */}
+          <div className="grid-cols-4" style={{ marginBottom: '2.5rem', gap: '1.25rem' }}>
+            <StatCard
+              title="Total Users"
+              value={metrics?.totalUsers || 0}
+              icon={Users}
+              description="Platform wide accounts"
+            />
+            <StatCard
+              title="Total Orders"
+              value={metrics?.totalOrders || 0}
+              icon={ShoppingBag}
+              description="Lifetime requests logs"
+            />
+            <StatCard
+              title="Total Revenue"
+              value={`₹${metrics?.totalRevenue ? metrics.totalRevenue.toFixed(0) : '0'}`}
+              icon={CreditCard}
+              description="Completed online/COD transactions"
+            />
+            <StatCard
+              title="Total Reviews"
+              value={metrics?.totalReviews || 0}
+              icon={Star}
+              description="Average satisfaction rate"
+            />
           </div>
 
-          {/* Actionable Sub indicators */}
-          <div className="grid-cols-2" style={{ marginBottom: '32px' }}>
-            <div className="glass-card" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <div style={{ ...styles.subIcon, background: 'rgba(239, 68, 68, 0.1)', color: 'var(--color-error)' }}>
+          {/* Verification Indicators */}
+          <div className="grid-cols-2" style={{ marginBottom: '2.5rem', gap: '1.5rem' }}>
+            <div className="velora-card animate-fadeInUp" style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '1.5rem', background: '#FFFFFF', border: '1px solid var(--sky-blue-light)' }}>
+              <div style={{ ...styles.subIcon, background: '#FDE8E8', color: '#9B1C1C' }}>
                 <AlertCircle size={20} />
               </div>
               <div>
-                <h4 style={{ fontSize: '15px' }}>Pending Onboarding Verifications</h4>
-                <p style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--text-primary)' }}>
+                <h4 style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', margin: '0 0 4px 0' }}>Pending Partner Onboardings</h4>
+                <p style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--primary-navy)', margin: 0, fontFamily: 'Outfit, sans-serif' }}>
                   {metrics?.totalPendingPartnerVerifications || 0} applications
                 </p>
               </div>
             </div>
 
-            <div className="glass-card" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <div style={{ ...styles.subIcon, background: 'rgba(34, 197, 94, 0.1)', color: 'var(--color-success)' }}>
+            <div className="velora-card animate-fadeInUp" style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '1.5rem', background: '#FFFFFF', border: '1px solid var(--sky-blue-light)' }}>
+              <div style={{ ...styles.subIcon, background: '#DEF7EC', color: '#03543F' }}>
                 <CheckCircle size={20} />
               </div>
               <div>
-                <h4 style={{ fontSize: '15px' }}>Active Business Partners</h4>
-                <p style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--text-primary)' }}>
+                <h4 style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', margin: '0 0 4px 0' }}>Approved Active Partners</h4>
+                <p style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--primary-navy)', margin: 0, fontFamily: 'Outfit, sans-serif' }}>
                   {metrics?.totalActivePartners || 0} active hubs
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Recharts Displays */}
+          {/* Recharts Analytics */}
           <div style={styles.chartsGrid}>
-            <div className="glass-card" style={styles.chartCard}>
-              <h3 style={{ fontSize: '16px', marginBottom: '20px', borderBottom: '1px solid var(--border-color)', paddingBottom: '8px' }}>
+            <div className="velora-card animate-fadeInUp" style={{ ...styles.chartCard, padding: '2rem' }}>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--primary-navy)', fontFamily: 'Outfit, sans-serif', borderBottom: '2px solid var(--bg-secondary)', paddingBottom: '12px', margin: '0 0 1.5rem 0' }}>
                 Stakeholders Distribution
               </h3>
               <div style={{ width: '100%', height: '260px' }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={getRoleChartData()} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                    <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={11} />
-                    <YAxis stroke="var(--text-muted)" fontSize={11} />
-                    <Tooltip contentStyle={{ background: 'var(--bg-secondary)', borderColor: 'var(--border-color)', borderRadius: '6px' }} />
-                    <Bar dataKey="count" fill="var(--accent-primary)" radius={[4, 4, 0, 0]}>
-                      <Cell fill="var(--accent-primary)" />
-                      <Cell fill="var(--accent-secondary)" />
-                      <Cell fill="var(--color-success)" />
+                    <XAxis dataKey="name" stroke="var(--text-secondary)" fontSize={11} fontWeight={600} />
+                    <YAxis stroke="var(--text-secondary)" fontSize={11} fontWeight={600} />
+                    <Tooltip contentStyle={{ background: '#FFFFFF', borderColor: 'var(--sky-blue-light)', borderRadius: '12px', fontFamily: 'Outfit, sans-serif' }} />
+                    <Bar dataKey="count" fill="var(--primary-teal)" radius={[8, 8, 0, 0]}>
+                      <Cell fill="var(--primary-navy)" />
+                      <Cell fill="var(--primary-teal)" />
+                      <Cell fill="var(--sky-blue)" />
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               </div>
             </div>
 
-            <div className="glass-card" style={styles.chartCard}>
-              <h3 style={{ fontSize: '16px', marginBottom: '20px', borderBottom: '1px solid var(--border-color)', paddingBottom: '8px' }}>
-                Order Fulfillment Health
+            <div className="velora-card animate-fadeInUp" style={{ ...styles.chartCard, padding: '2rem' }}>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--primary-navy)', fontFamily: 'Outfit, sans-serif', borderBottom: '2px solid var(--bg-secondary)', paddingBottom: '12px', margin: '0 0 1.5rem 0' }}>
+                Fulfillment Health Audit
               </h3>
               <div style={styles.centerContainer}>
-                {/* Visual order state indicators */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '100%' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%' }}>
                   <div style={styles.healthRow}>
-                    <span>Total Placed:</span>
-                    <span style={{ fontWeight: 'bold', color: 'var(--accent-secondary)' }}>{metrics?.totalOrders}</span>
+                    <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>Total Placed:</span>
+                    <span style={{ fontWeight: 800, color: 'var(--primary-navy)' }}>{metrics?.totalOrders} runs</span>
                   </div>
                   <div style={styles.healthRow}>
-                    <span>Successful Payments:</span>
-                    <span style={{ fontWeight: 'bold', color: 'var(--color-success)' }}>{metrics?.totalPayments}</span>
+                    <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>Successful Transactions:</span>
+                    <span style={{ fontWeight: 800, color: 'var(--primary-teal)' }}>{metrics?.totalPayments} ledger items</span>
                   </div>
                   <div style={styles.healthRow}>
-                    <span>Notification History:</span>
-                    <span style={{ fontWeight: 'bold' }}>{metrics?.totalNotifications} alerts</span>
+                    <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>Fulfillment Alerts Sent:</span>
+                    <span style={{ fontWeight: 800, color: 'var(--primary-navy)' }}>{metrics?.totalNotifications} SMS/Email</span>
                   </div>
                 </div>
               </div>
@@ -168,31 +179,9 @@ const styles = {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: '32px',
-  },
-  kpiCard: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '20px',
-    padding: '20px 24px',
-  },
-  kpiIcon: {
-    width: '44px',
-    height: '44px',
-    borderRadius: 'var(--radius-sm)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  kpiVal: {
-    fontSize: '24px',
-    fontWeight: 'bold',
-    marginBottom: '2px',
-  },
-  kpiLabel: {
-    fontSize: '12px',
-    color: 'var(--text-secondary)',
-    fontWeight: 500,
+    marginBottom: '2.5rem',
+    flexWrap: 'wrap',
+    gap: '16px',
   },
   subIcon: {
     width: '40px',
@@ -208,20 +197,21 @@ const styles = {
     gap: '24px',
   },
   chartCard: {
-    padding: '24px',
+    background: '#FFFFFF',
+    border: '1px solid var(--sky-blue-light)',
   },
   centerContainer: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    height: '240px',
+    height: '260px',
   },
   healthRow: {
     display: 'flex',
     justifyContent: 'space-between',
-    background: 'rgba(255,255,255,0.02)',
-    padding: '12px 16px',
-    borderRadius: 'var(--radius-sm)',
-    fontSize: '14px',
+    background: 'var(--bg-secondary)',
+    padding: '14px 18px',
+    borderRadius: '16px',
+    fontSize: '13px',
   },
 };

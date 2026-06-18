@@ -24,10 +24,8 @@ export default function NotificationCenter({ unreadCount, setUnreadCount }) {
   };
 
   useEffect(() => {
-    // Initial fetch
     fetchNotifications();
 
-    // Setup periodic polling every 15 seconds to fetch new events
     const interval = setInterval(() => {
       fetchNotifications();
     }, 15000);
@@ -36,7 +34,6 @@ export default function NotificationCenter({ unreadCount, setUnreadCount }) {
   }, []);
 
   useEffect(() => {
-    // Close dropdown on click outside
     function handleClickOutside(event) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsOpen(false);
@@ -57,7 +54,6 @@ export default function NotificationCenter({ unreadCount, setUnreadCount }) {
     e.stopPropagation();
     try {
       await api.notifications.markRead(id);
-      // Update local state
       setNotifications((prev) =>
         prev.map((n) => (n.id === id ? { ...n, read: true } : n))
       );
@@ -70,28 +66,28 @@ export default function NotificationCenter({ unreadCount, setUnreadCount }) {
   const getTypeBadge = (type) => {
     switch (type) {
       case 'ORDER_STATUS':
-        return <span className="badge badge-info" style={styles.badge}>Order</span>;
+        return <span className="velora-badge velora-badge-info" style={styles.badge}>Order</span>;
       case 'PAYMENT':
-        return <span className="badge badge-success" style={styles.badge}>Payment</span>;
+        return <span className="velora-badge velora-badge-success" style={styles.badge}>Payment</span>;
       case 'DELIVERY':
-        return <span className="badge badge-warning" style={styles.badge}>Delivery</span>;
+        return <span className="velora-badge velora-badge-warning" style={styles.badge}>Delivery</span>;
       case 'REVIEW_REMINDER':
-        return <span className="badge badge-error" style={styles.badge}>Review</span>;
+        return <span className="velora-badge velora-badge-error" style={styles.badge}>Review</span>;
       default:
-        return <span className="badge" style={styles.badge}>{type}</span>;
+        return <span className="velora-badge" style={styles.badge}>{type}</span>;
     }
   };
 
   const formatTime = (epochSeconds) => {
     if (!epochSeconds) return '';
     const date = new Date(epochSeconds * 1000);
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' ' + date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' • ' + date.toLocaleDateString([], { month: 'short', day: 'numeric' });
   };
 
   return (
     <div ref={dropdownRef} style={styles.container}>
       <button onClick={handleToggle} style={styles.bellButton} title="Notifications">
-        <Bell size={20} color={unreadCount > 0 ? 'var(--accent-secondary)' : 'var(--text-secondary)'} />
+        <Bell size={20} color={unreadCount > 0 ? 'var(--primary-teal)' : 'var(--primary-navy)'} />
         {unreadCount > 0 && (
           <span style={styles.badgeCount}>
             {unreadCount > 9 ? '9+' : unreadCount}
@@ -100,10 +96,12 @@ export default function NotificationCenter({ unreadCount, setUnreadCount }) {
       </button>
 
       {isOpen && (
-        <div className="glass-card" style={styles.dropdown}>
+        <div className="velora-card animate-fadeInUp" style={styles.dropdown}>
           <div style={styles.header}>
-            <h3 style={{ fontSize: '16px' }}>Notifications</h3>
-            <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+            <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--primary-navy)', fontFamily: 'Outfit, sans-serif', margin: 0 }}>
+              Notifications
+            </h3>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
               {unreadCount} unread
             </span>
           </div>
@@ -119,8 +117,8 @@ export default function NotificationCenter({ unreadCount, setUnreadCount }) {
                   key={n.id}
                   style={{
                     ...styles.item,
-                    borderLeft: n.read ? '3px solid transparent' : '3px solid var(--accent-primary)',
-                    background: n.read ? 'transparent' : 'rgba(99, 102, 241, 0.05)',
+                    borderLeft: n.read ? '3px solid transparent' : '3px solid var(--primary-teal)',
+                    background: n.read ? 'transparent' : '#F7FAFC',
                   }}
                 >
                   <div style={styles.itemHeader}>
@@ -135,7 +133,7 @@ export default function NotificationCenter({ unreadCount, setUnreadCount }) {
                       style={styles.readButton}
                       title="Mark as read"
                     >
-                      <Check size={14} style={{ marginRight: '4px' }} />
+                      <Check size={12} style={{ marginRight: '4px' }} />
                       Mark read
                     </button>
                   )}
@@ -154,11 +152,11 @@ const styles = {
     position: 'relative',
   },
   bellButton: {
-    background: 'none',
-    border: 'none',
+    background: 'var(--bg-secondary)',
+    border: '1px solid var(--sky-blue-light)',
     cursor: 'pointer',
     position: 'relative',
-    padding: '8px',
+    padding: '10px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -167,36 +165,39 @@ const styles = {
   },
   badgeCount: {
     position: 'absolute',
-    top: '2px',
-    right: '2px',
-    background: 'var(--color-error)',
-    color: '#fff',
+    top: '-4px',
+    right: '-4px',
+    background: '#EF4444',
+    color: '#FFFFFF',
     fontSize: '9px',
     fontWeight: 'bold',
     borderRadius: '10px',
     padding: '2px 5px',
     minWidth: '16px',
     textAlign: 'center',
+    boxShadow: '0 2px 4px rgba(239, 68, 68, 0.4)',
   },
   dropdown: {
     position: 'absolute',
-    top: '45px',
+    top: '55px',
     right: 0,
     width: '340px',
     maxHeight: '450px',
-    padding: '16px',
+    padding: '1.25rem',
     zIndex: 1000,
     display: 'flex',
     flexDirection: 'column',
-    borderRadius: 'var(--radius-md)',
-    boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5)',
+    borderRadius: '20px',
+    background: '#FFFFFF',
+    border: '1px solid var(--sky-blue-light)',
+    boxShadow: '0 10px 30px rgba(47, 65, 86, 0.1)',
   },
   header: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingBottom: '12px',
-    borderBottom: '1px solid var(--border-color)',
+    borderBottom: '1px solid var(--sky-blue-light)',
     marginBottom: '8px',
   },
   list: {
@@ -207,14 +208,14 @@ const styles = {
   },
   emptyText: {
     textAlign: 'center',
-    padding: '24px 0',
+    padding: '32px 0',
     color: 'var(--text-secondary)',
-    fontSize: '14px',
+    fontSize: '0.9rem',
   },
   item: {
     padding: '12px',
-    borderRadius: 'var(--radius-sm)',
-    borderBottom: '1px solid var(--border-color)',
+    borderRadius: '12px',
+    borderBottom: '1px solid var(--sky-blue-light)',
     display: 'flex',
     flexDirection: 'column',
     gap: '6px',
@@ -231,25 +232,27 @@ const styles = {
   },
   time: {
     fontSize: '11px',
-    color: 'var(--text-muted)',
+    color: 'var(--text-secondary)',
   },
   message: {
-    fontSize: '13px',
-    color: 'var(--text-primary)',
+    fontSize: '0.85rem',
+    color: 'var(--primary-navy)',
     lineHeight: 1.4,
+    margin: 0,
   },
   readButton: {
     alignSelf: 'flex-end',
     background: 'none',
     border: 'none',
-    color: 'var(--accent-secondary)',
+    color: 'var(--primary-teal)',
     cursor: 'pointer',
     fontSize: '11px',
-    fontWeight: 500,
+    fontWeight: 700,
     display: 'flex',
     alignItems: 'center',
-    padding: '2px 6px',
-    borderRadius: '4px',
+    padding: '4px 8px',
+    borderRadius: '8px',
     transition: 'var(--transition-smooth)',
+    fontFamily: 'Outfit, sans-serif',
   },
 };

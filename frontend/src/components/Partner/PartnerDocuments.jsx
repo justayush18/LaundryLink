@@ -1,17 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { api } from '../../services/api';
-import { FileText, Upload, CheckCircle, AlertTriangle, AlertCircle } from 'lucide-react';
+import { FileText, Upload, CheckCircle, AlertTriangle, AlertCircle, X } from 'lucide-react';
+import VeloraMascot from '../Common/VeloraMascot';
 
 export default function PartnerDocuments() {
   const [documents, setDocuments] = useState([]);
   const [documentType, setDocumentType] = useState('GSTIN');
-  const [fileName, setFileName] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
+  const fileInputRef = useRef(null);
 
   const fetchDocuments = async () => {
     setLoading(true);
@@ -40,7 +41,6 @@ export default function PartnerDocuments() {
     if (!allowedTypes.includes(file.type) && !hasAllowedExtension) {
       setError('Only PDF, JPG, and PNG files are allowed.');
       setSelectedFile(null);
-      setFileName('');
       return;
     }
 
@@ -48,20 +48,23 @@ export default function PartnerDocuments() {
     if (file.size > 5 * 1024 * 1024) {
       setError('File size must be less than 5MB.');
       setSelectedFile(null);
-      setFileName('');
       return;
     }
 
     setSelectedFile(file);
-    setFileName(file.name);
+  };
+
+  const handleClearFile = (e) => {
+    e.stopPropagation();
+    setSelectedFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   const handleUpload = async (e) => {
     e.preventDefault();
-    if (!selectedFile) {
-      setError('Please select a file to upload.');
-      return;
-    }
+    if (!selectedFile) return;
 
     setSubmitting(true);
     setError('');
@@ -69,7 +72,7 @@ export default function PartnerDocuments() {
     setUploadProgress(0);
 
     // Simulate file upload progress
-    const duration = 1500; // 1.5 seconds
+    const duration = 1500;
     const intervalTime = 150;
     const step = 100 / (duration / intervalTime);
 
@@ -77,14 +80,13 @@ export default function PartnerDocuments() {
       setUploadProgress((prev) => {
         if (prev >= 100) {
           clearInterval(timer);
-          // Trigger actual backend metadata API call on 100% upload completion
           (async () => {
             try {
               await api.partners.uploadDocument({ documentType, fileName: selectedFile.name });
               setSuccess(`Document "${selectedFile.name}" uploaded successfully! Waiting for Admin verification.`);
-              setFileName('');
               setSelectedFile(null);
               setUploadProgress(0);
+              if (fileInputRef.current) fileInputRef.current.value = '';
               setTimeout(() => setSuccess(''), 4000);
               fetchDocuments();
             } catch (err) {
@@ -99,13 +101,6 @@ export default function PartnerDocuments() {
         return Math.min(prev + step, 100);
       });
     }, intervalTime);
-  };
-
-  const handleButtonClick = (e) => {
-    if (!selectedFile) {
-      e.preventDefault();
-      document.getElementById('fileInput').click();
-    }
   };
 
   const getStatusBadge = (status) => {
@@ -136,29 +131,44 @@ export default function PartnerDocuments() {
     }
   };
 
+  const getDocTypeLabel = (type) => {
+    switch (type) {
+      case 'GSTIN': return 'GSTIN Tax Certificate';
+      case 'BUSINESS_LICENSE': return 'Business License';
+      case 'IDENTITY_PROOF': return 'Identity Proof (PAN/Aadhaar)';
+      default: return type;
+    }
+  };
+
   return (
     <div className="main-content">
-      <div style={{ marginBottom: '24px' }}>
-        <h1 style={{ fontSize: '28px', marginBottom: '4px' }}>Onboarding Documents</h1>
-        <p style={{ color: 'var(--text-secondary)' }}>Upload regulatory documents and track their approval/verification logs.</p>
+      <div style={{ marginBottom: '2rem' }}>
+        <h1 style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--primary-navy)', fontFamily: 'Outfit, sans-serif', margin: '0 0 4px 0' }}>
+          Onboarding Documents
+        </h1>
+        <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: '0.95rem' }}>
+          Upload verification documents and audit credentials to activate your partner service.
+        </p>
       </div>
 
-      {success && <div className="alert alert-success">{success}</div>}
-      {error && <div className="alert alert-error">{error}</div>}
+      {success && <div className="alert alert-success animate-fadeInUp">{success}</div>}
+      {error && <div className="alert alert-error animate-fadeInUp">{error}</div>}
 
       <div style={styles.container}>
         {/* Upload Form */}
-        <div className="glass-card" style={{ flex: 1, minWidth: '300px' }}>
-          <h3 style={{ fontSize: '18px', marginBottom: '18px' }}>Upload Onboarding Document</h3>
+        <div className="velora-card animate-fadeInUp" style={{ flex: 1, minWidth: '300px', padding: '2rem' }}>
+          <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary-navy)', fontFamily: 'Outfit, sans-serif', margin: '0 0 1.5rem 0' }}>
+            Upload Verification Document
+          </h3>
           
           <form onSubmit={handleUpload}>
             <div className="form-group">
-              <label className="form-label">Document Type</label>
+              <label className="form-label" style={{ color: 'var(--primary-navy)', fontWeight: 600 }}>Document Type</label>
               <select
                 className="form-control"
                 value={documentType}
                 onChange={(e) => setDocumentType(e.target.value)}
-                style={{ background: 'var(--bg-secondary)', cursor: 'pointer' }}
+                style={{ background: '#FFFFFF', borderRadius: '14px', border: '2px solid var(--sky-blue)', padding: '8px 12px', cursor: 'pointer' }}
                 disabled={submitting}
               >
                 <option value="GSTIN">GSTIN Tax Certificate</option>
@@ -168,88 +178,117 @@ export default function PartnerDocuments() {
             </div>
 
             <div className="form-group" style={{ marginBottom: '24px' }}>
-              <label className="form-label">Select Document File</label>
+              <label className="form-label" style={{ color: 'var(--primary-navy)', fontWeight: 600 }}>Select File</label>
+              
+              {/* Drag-and-drop style zone */}
               <div 
-                onClick={() => !submitting && document.getElementById('fileInput').click()}
+                onClick={() => !submitting && fileInputRef.current.click()}
                 style={{
-                  border: '2px dashed var(--border-color)',
-                  borderRadius: 'var(--radius-sm)',
-                  padding: '20px',
+                  border: '2px dashed var(--sky-blue)',
+                  borderRadius: '20px',
+                  padding: '24px 16px',
                   textAlign: 'center',
                   cursor: submitting ? 'not-allowed' : 'pointer',
-                  background: 'rgba(255, 255, 255, 0.02)',
-                  transition: 'var(--transition-smooth)'
+                  background: 'var(--bg-secondary)',
+                  transition: 'all 0.2s ease',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '8px'
                 }}
               >
-                <Upload size={24} color="var(--text-secondary)" style={{ margin: '0 auto 8px auto' }} />
-                <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-                  {selectedFile ? `Selected: ${selectedFile.name}` : 'Click to browse files (PDF, PNG, JPG under 5MB)'}
+                <Upload size={24} color="var(--primary-teal)" />
+                <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: 0, fontWeight: 600 }}>
+                  Click to browse files (PDF, PNG, JPG under 5MB)
                 </p>
               </div>
+
               <input
                 type="file"
-                id="fileInput"
+                ref={fileInputRef}
                 onChange={handleFileChange}
                 style={{ display: 'none' }}
                 disabled={submitting}
                 accept=".pdf,.png,.jpg,.jpeg"
               />
+
+              {/* Selected File Card */}
+              {selectedFile && (
+                <div style={styles.selectedFileCard}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <FileText size={18} color="var(--primary-teal)" />
+                    <span style={{ fontSize: '12px', color: 'var(--primary-navy)', fontWeight: 700, textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: '180px' }}>
+                      {selectedFile.name}
+                    </span>
+                    <span style={{ fontSize: '10px', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                      ({(selectedFile.size / 1024 / 1024).toFixed(2)} MB)
+                    </span>
+                  </div>
+                  <button type="button" onClick={handleClearFile} style={styles.clearFileBtn} disabled={submitting}>
+                    <X size={14} />
+                  </button>
+                </div>
+              )}
             </div>
 
             {submitting && (
               <div style={{ marginBottom: '20px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '6px', color: 'var(--text-secondary)' }}>
-                  <span>Uploading certificate...</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginBottom: '6px', color: 'var(--text-secondary)', fontWeight: 700 }}>
+                  <span>Uploading file...</span>
                   <span>{Math.round(uploadProgress)}%</span>
                 </div>
-                <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '3px', overflow: 'hidden' }}>
-                  <div style={{ width: `${uploadProgress}%`, height: '100%', background: 'var(--accent-primary)', transition: 'width 0.15s ease-out' }}></div>
+                <div style={{ width: '100%', height: '6px', background: 'var(--sky-blue-light)', borderRadius: '3px', overflow: 'hidden' }}>
+                  <div style={{ width: `${uploadProgress}%`, height: '100%', background: 'var(--primary-teal)', transition: 'width 0.15s ease-out' }}></div>
                 </div>
               </div>
             )}
 
             <button
               type="submit"
-              className="btn btn-primary"
-              disabled={submitting}
-              onClick={handleButtonClick}
-              style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+              className="velora-btn velora-btn-primary animate-pulse"
+              disabled={submitting || !selectedFile}
+              style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px', fontSize: '14px' }}
             >
               <Upload size={16} />
-              {submitting ? 'Uploading certificate...' : selectedFile ? `Upload Selected File (${selectedFile.name})` : 'Upload Reference File'}
+              {submitting ? 'Uploading...' : 'Submit File for Review'}
             </button>
           </form>
         </div>
 
         {/* Uploaded Documents List */}
-        <div className="glass-card" style={{ flex: 1.5, minWidth: '320px' }}>
-          <h3 style={{ fontSize: '18px', marginBottom: '20px' }}>Submitted Files</h3>
+        <div className="velora-card animate-fadeInUp" style={{ flex: 1.5, minWidth: '320px', padding: '2rem' }}>
+          <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary-navy)', fontFamily: 'Outfit, sans-serif', margin: '0 0 1.5rem 0' }}>
+            Submitted Files Log
+          </h3>
 
           {loading ? (
             <p style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>Loading submissions...</p>
           ) : documents.length === 0 ? (
-            <div style={styles.empty}>
-              <FileText size={44} color="var(--text-muted)" style={{ marginBottom: '12px' }} />
-              <p style={{ color: 'var(--text-secondary)' }}>No documents uploaded yet.</p>
-            </div>
+            <EmptyState
+              title="No files submitted"
+              description="Upload your registration certificate or business license to start verifying your account."
+              mascotState="thinking"
+            />
           ) : (
             <div style={styles.docList}>
               {documents.map((doc, idx) => (
-                <div key={idx} className="glass-panel" style={styles.docItem}>
+                <div key={idx} style={styles.docItem}>
                   <div style={styles.docHeader}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <FileText size={18} color="var(--accent-secondary)" />
+                      <FileText size={20} color="var(--primary-teal)" />
                       <div>
-                        <h4 style={{ fontSize: '14px', fontWeight: 'bold' }}>{doc.documentType}</h4>
-                        <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{doc.fileName}</span>
+                        <h4 style={{ fontSize: '13px', fontWeight: 800, color: 'var(--primary-navy)', margin: '0 0 2px 0' }}>
+                          {getDocTypeLabel(doc.documentType)}
+                        </h4>
+                        <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600 }}>{doc.fileName}</span>
                       </div>
                     </div>
                     {getStatusBadge(doc.verificationStatus)}
                   </div>
                   {doc.rejectionReason && (
                     <div style={styles.rejectionCard}>
-                      <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#fca5a5' }}>REJECTION REASON:</span>
-                      <p style={{ fontSize: '12px', color: '#fecaca', marginTop: '2px' }}>{doc.rejectionReason}</p>
+                      <span style={{ fontSize: '10px', fontWeight: 800, color: '#9B1C1C', textTransform: 'uppercase' }}>Rejection Reason:</span>
+                      <p style={{ fontSize: '12px', color: '#9B1C1C', marginTop: '2px', marginBottom: 0, fontWeight: 500 }}>{doc.rejectionReason}</p>
                     </div>
                   )}
                 </div>
@@ -274,22 +313,40 @@ const styles = {
     gap: '12px',
   },
   docItem: {
-    padding: '16px',
+    padding: '16px 18px',
+    background: 'var(--bg-secondary)',
+    borderRadius: '20px',
   },
   docHeader: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  selectedFileCard: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    background: 'var(--bg-secondary)',
+    border: '2px solid var(--sky-blue-light)',
+    padding: '8px 12px',
+    borderRadius: '16px',
+    marginTop: '10px',
+  },
+  clearFileBtn: {
+    background: 'none',
+    border: 'none',
+    color: 'var(--text-secondary)',
+    cursor: 'pointer',
+    padding: '4px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   rejectionCard: {
-    background: 'rgba(239, 68, 68, 0.1)',
-    border: '1px solid rgba(239, 68, 68, 0.2)',
-    borderRadius: 'var(--radius-sm)',
+    background: '#FDE8E8',
+    border: '1px solid #F8B4B4',
+    borderRadius: '12px',
     padding: '8px 12px',
     marginTop: '12px',
-  },
-  empty: {
-    textAlign: 'center',
-    padding: '40px 0',
   },
 };

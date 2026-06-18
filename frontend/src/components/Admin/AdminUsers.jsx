@@ -34,7 +34,6 @@ export default function AdminUsers() {
     }
     setLoading(true);
     try {
-      // Search email or name
       const results = await api.admin.searchUsers({ email: searchTerm, displayName: searchTerm });
       setUsers(results || []);
     } catch (err) {
@@ -80,43 +79,53 @@ export default function AdminUsers() {
     <div className="main-content">
       <div style={styles.header}>
         <div>
-          <h1 style={{ fontSize: '28px', marginBottom: '4px' }}>User Directory</h1>
-          <p style={{ color: 'var(--text-secondary)' }}>Review profiles, adjust role assignments, and toggle active logins.</p>
+          <h1 style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--primary-navy)', fontFamily: 'Outfit, sans-serif', margin: '0 0 4px 0' }}>
+            User Directory
+          </h1>
+          <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: '0.95rem' }}>
+            Review profiles, adjust role assignments, and toggle active logins.
+          </p>
         </div>
-        <button onClick={fetchUsers} className="btn btn-outline" disabled={loading}>
-          <RefreshCw size={14} style={{ marginRight: '4px' }} /> Refresh Users
+        <button 
+          onClick={fetchUsers} 
+          className="velora-btn velora-btn-secondary" 
+          disabled={loading}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+        >
+          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> 
+          Refresh Users
         </button>
       </div>
 
-      {success && <div className="alert alert-success">{success}</div>}
-      {error && <div className="alert alert-error">{error}</div>}
+      {success && <div className="alert alert-success animate-fadeInUp">{success}</div>}
+      {error && <div className="alert alert-error animate-fadeInUp">{error}</div>}
 
-      <div className="glass-card">
+      <div className="velora-card animate-fadeInUp" style={{ padding: '2rem', background: '#FFFFFF', border: '1px solid var(--sky-blue-light)' }}>
         {/* Search Bar */}
         <form onSubmit={handleSearch} style={styles.searchBar}>
           <div style={styles.inputContainer}>
-            <Search size={18} color="var(--text-muted)" style={{ marginLeft: '12px' }} />
+            <Search size={18} color="var(--text-secondary)" style={{ marginLeft: '16px' }} />
             <input
               type="text"
-              className="form-control"
+              className="velora-input"
               placeholder="Search by email or display name..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              style={{ border: 'none', background: 'transparent', width: '100%', padding: '10px' }}
+              style={{ border: 'none', background: 'transparent', width: '100%', padding: '12px 16px', boxShadow: 'none' }}
             />
           </div>
-          <button type="submit" className="btn btn-primary" style={{ padding: '0 24px' }} disabled={loading}>
+          <button type="submit" className="velora-btn velora-btn-primary" style={{ padding: '0 28px', height: '48px' }} disabled={loading}>
             Search
           </button>
         </form>
 
         {loading ? (
-          <p style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '24px 0' }}>Loading user base...</p>
+          <p style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '3rem 0' }}>Loading user base...</p>
         ) : users.length === 0 ? (
-          <p style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '24px 0' }}>No users matched the criteria.</p>
+          <p style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '3rem 0' }}>No users matched the criteria.</p>
         ) : (
-          <div className="table-container">
-            <table>
+          <div className="table-container" style={{ marginTop: '1.5rem', overflowX: 'auto' }}>
+            <table className="velora-table">
               <thead>
                 <tr>
                   <th>Display Name</th>
@@ -129,15 +138,29 @@ export default function AdminUsers() {
               <tbody>
                 {users.map((u) => (
                   <tr key={u.email}>
-                    <td><strong>{u.displayName || 'Unnamed'}</strong></td>
-                    <td style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{u.email}</td>
+                    <td>
+                      <strong style={{ color: 'var(--primary-navy)', fontSize: '0.95rem' }}>
+                        {u.displayName || 'Unnamed User'}
+                      </strong>
+                    </td>
+                    <td style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{u.email}</td>
                     <td>
                       <select
-                        className="form-control"
+                        className="velora-input"
                         value={u.role}
                         onChange={(e) => handleChangeRole(u.email, e.target.value)}
                         disabled={submitting || u.role === 'ADMIN'}
-                        style={{ padding: '4px 8px', fontSize: '12px', background: 'var(--bg-secondary)', cursor: 'pointer' }}
+                        style={{ 
+                          padding: '6px 12px', 
+                          fontSize: '0.85rem', 
+                          background: '#FFFFFF', 
+                          border: '1px solid var(--sky-blue-light)',
+                          cursor: 'pointer',
+                          borderRadius: '12px',
+                          width: 'auto',
+                          display: 'inline-block',
+                          height: 'auto'
+                        }}
                       >
                         <option value="CUSTOMER">Customer</option>
                         <option value="LAUNDRY_PARTNER">Laundry Partner</option>
@@ -147,35 +170,40 @@ export default function AdminUsers() {
                     </td>
                     <td>
                       {u.active ? (
-                        <span className="badge badge-success">Active</span>
+                        <span className="velora-badge velora-badge-success" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                          <Check size={12} /> Active
+                        </span>
                       ) : (
-                        <span className="badge badge-error">Deactivated</span>
+                        <span className="velora-badge velora-badge-error" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                          <UserMinus size={12} /> Deactivated
+                        </span>
                       )}
                     </td>
                     <td>
                       {u.role !== 'ADMIN' && (
                         <button
                           onClick={() => handleToggleStatus(u.email, u.active)}
-                          className={u.active ? 'btn btn-outline' : 'btn btn-primary'}
+                          className={`velora-btn ${u.active ? 'velora-btn-secondary' : 'velora-btn-primary'}`}
                           disabled={submitting}
                           style={{
-                            padding: '6px 12px',
-                            fontSize: '11px',
+                            padding: '6px 14px',
+                            fontSize: '0.8rem',
                             display: 'inline-flex',
                             alignItems: 'center',
-                            gap: '4px',
-                            background: u.active ? 'rgba(239, 68, 68, 0.1)' : undefined,
-                            borderColor: u.active ? 'rgba(239, 68, 68, 0.3)' : undefined,
-                            color: u.active ? 'var(--color-error)' : undefined,
+                            gap: '6px',
+                            height: 'auto',
+                            borderColor: u.active ? '#F87171' : undefined,
+                            color: u.active ? '#EF4444' : undefined,
+                            background: u.active ? '#FEF2F2' : undefined,
                           }}
                         >
                           {u.active ? (
                             <>
-                              <UserMinus size={12} /> Block
+                              <UserMinus size={14} /> Block
                             </>
                           ) : (
                             <>
-                              <UserCheck size={12} /> Activate
+                              <UserCheck size={14} /> Activate
                             </>
                           )}
                         </button>
@@ -197,19 +225,24 @@ const styles = {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: '24px',
+    marginBottom: '2.5rem',
+    flexWrap: 'wrap',
+    gap: '16px',
   },
   searchBar: {
     display: 'flex',
-    gap: '16px',
-    marginBottom: '24px',
+    gap: '12px',
+    marginBottom: '1.5rem',
+    flexWrap: 'wrap',
   },
   inputContainer: {
     display: 'flex',
     alignItems: 'center',
     flex: 1,
-    background: 'rgba(15, 23, 42, 0.4)',
-    border: '1px solid var(--border-color)',
-    borderRadius: 'var(--radius-sm)',
+    background: '#FFFFFF',
+    border: '1px solid var(--sky-blue-light)',
+    borderRadius: '16px',
+    minWidth: '280px',
   },
 };
+

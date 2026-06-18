@@ -2,8 +2,8 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import ProtectedRoute from './components/Common/ProtectedRoute';
-import Sidebar from './components/Common/Sidebar';
-import Navbar from './components/Common/Navbar';
+import FloatingNav from './components/Common/FloatingNav';
+import Homepage from './components/Home/Homepage';
 
 // Auth Pages
 import Login from './components/Auth/Login';
@@ -39,10 +39,9 @@ function MainLayout() {
   const { user } = useAuth();
 
   return (
-    <div className="app-container">
-      <Sidebar />
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-        <Navbar />
+    <div className="app-layout">
+      <FloatingNav />
+      <main className="page-container">
         <Routes>
           {/* Customer Routes */}
           <Route
@@ -202,7 +201,7 @@ function MainLayout() {
             }
           />
         </Routes>
-      </div>
+      </main>
     </div>
   );
 }
@@ -212,6 +211,7 @@ function RootNavigator() {
 
   return (
     <Routes>
+      <Route path="/" element={<Homepage />} />
       <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
       <Route path="/register" element={user ? <Navigate to="/" replace /> : <Register />} />
       <Route path="*" element={<MainLayout />} />

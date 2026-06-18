@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
-import { ShoppingBag, CreditCard, Star, Clock, CheckCircle2, AlertTriangle, ArrowRight } from 'lucide-react';
+import { ShoppingBag, CreditCard, Star, Clock, CheckCircle2, ArrowRight } from 'lucide-react';
 import PlaceOrderWizard from './PlaceOrderWizard';
 import ReviewModal from './ReviewModal';
+import StatCard from '../Common/StatCard';
+import EmptyState from '../Common/EmptyState';
 
 export default function CustomerDashboard() {
   const { user } = useAuth();
@@ -35,11 +37,9 @@ export default function CustomerDashboard() {
 
   const handlePayNow = async (orderId, totalCost) => {
     try {
-      // 1. Initiate payment
       const initReq = { orderId, paymentMethod: 'RAZORPAY' };
       const payment = await api.payments.initiate(initReq);
       
-      // 2. Process simulated payment success
       const processReq = { transactionId: 'TXN_' + Math.random().toString(36).substr(2, 9).toUpperCase(), simulateSuccess: true };
       await api.payments.process(payment.paymentId, processReq);
       
@@ -73,90 +73,115 @@ export default function CustomerDashboard() {
   };
 
   const getStatusBadge = (status) => {
+    let badgeClass = 'badge-info';
+    let text = status;
+
     switch (status) {
-      case 'PLACED': return <span className="badge badge-info">Placed</span>;
-      case 'ACCEPTED': return <span className="badge badge-info">Accepted</span>;
-      case 'PICKUP_ASSIGNED': return <span className="badge badge-warning">Pickup Assigned</span>;
-      case 'PICKED_UP': return <span className="badge badge-warning">Picked Up</span>;
-      case 'PROCESSING': return <span className="badge badge-warning">Processing</span>;
-      case 'READY_FOR_DELIVERY': return <span className="badge badge-warning">Ready</span>;
-      case 'DELIVERY_ASSIGNED': return <span className="badge badge-warning">Out for Delivery</span>;
-      case 'DELIVERED': return <span className="badge badge-success">Delivered</span>;
-      case 'CANCELLED': return <span className="badge badge-error">Cancelled</span>;
-      default: return <span className="badge">{status}</span>;
+      case 'PLACED':
+        badgeClass = 'badge-info';
+        text = 'Placed';
+        break;
+      case 'ACCEPTED':
+        badgeClass = 'badge-info';
+        text = 'Accepted';
+        break;
+      case 'PICKUP_ASSIGNED':
+        badgeClass = 'badge-warning';
+        text = 'Pickup Assigned';
+        break;
+      case 'PICKED_UP':
+        badgeClass = 'badge-warning';
+        text = 'Picked Up';
+        break;
+      case 'PROCESSING':
+        badgeClass = 'badge-warning';
+        text = 'Processing';
+        break;
+      case 'READY_FOR_DELIVERY':
+        badgeClass = 'badge-success';
+        text = 'Ready';
+        break;
+      case 'DELIVERY_ASSIGNED':
+        badgeClass = 'badge-warning';
+        text = 'Out for Delivery';
+        break;
+      case 'DELIVERED':
+        badgeClass = 'badge-success';
+        text = 'Delivered';
+        break;
+      case 'CANCELLED':
+        badgeClass = 'badge-error';
+        text = 'Cancelled';
+        break;
     }
+
+    return <span className={`badge ${badgeClass}`}>{text}</span>;
   };
 
   return (
     <div className="main-content">
+      {/* Welcome Row */}
       <div style={styles.welcomeRow}>
         <div>
-          <h1 style={{ fontSize: '28px', marginBottom: '4px' }}>Hello, {user.displayName}</h1>
-          <p style={{ color: 'var(--text-secondary)' }}>Track your laundry and checkout services dynamically.</p>
+          <h1 style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--primary-navy)', fontFamily: 'Outfit, sans-serif', margin: '0 0 4px 0' }}>
+            Hello, {user.displayName}!
+          </h1>
+          <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: '0.95rem' }}>
+            Let's get your garments fresh and clean today.
+          </p>
         </div>
-        <button onClick={() => setIsWizardOpen(true)} className="btn btn-primary">
+        <button onClick={() => setIsWizardOpen(true)} className="velora-btn velora-btn-primary animate-pulse">
           + Place New Order
         </button>
       </div>
 
-      {successMsg && <div className="alert alert-success">{successMsg}</div>}
-      {error && <div className="alert alert-error">{error}</div>}
+      {successMsg && <div className="alert alert-success animate-fadeInUp">{successMsg}</div>}
+      {error && <div className="alert alert-error animate-fadeInUp">{error}</div>}
 
-      {/* KPI Cards */}
-      <div className="grid-cols-4" style={{ marginBottom: '32px' }}>
-        <div className="glass-card" style={styles.kpiCard}>
-          <div style={{ ...styles.kpiIcon, background: 'rgba(99, 102, 241, 0.15)', color: 'var(--accent-primary)' }}>
-            <Clock size={20} />
-          </div>
-          <div>
-            <h3 style={styles.kpiVal}>{getActiveOrders().length}</h3>
-            <p style={styles.kpiLabel}>Active Orders</p>
-          </div>
-        </div>
-
-        <div className="glass-card" style={styles.kpiCard}>
-          <div style={{ ...styles.kpiIcon, background: 'rgba(34, 197, 94, 0.15)', color: 'var(--color-success)' }}>
-            <CheckCircle2 size={20} />
-          </div>
-          <div>
-            <h3 style={styles.kpiVal}>{getCompletedOrders().length}</h3>
-            <p style={styles.kpiLabel}>Completed Orders</p>
-          </div>
-        </div>
-
-        <div className="glass-card" style={styles.kpiCard}>
-          <div style={{ ...styles.kpiIcon, background: 'rgba(6, 182, 212, 0.15)', color: 'var(--accent-secondary)' }}>
-            <CreditCard size={20} />
-          </div>
-          <div>
-            <h3 style={styles.kpiVal}>₹{getSpentAmount()}</h3>
-            <p style={styles.kpiLabel}>Total Spent</p>
-          </div>
-        </div>
-
-        <div className="glass-card" style={styles.kpiCard}>
-          <div style={{ ...styles.kpiIcon, background: 'rgba(245, 158, 11, 0.15)', color: 'var(--color-warning)' }}>
-            <Star size={20} />
-          </div>
-          <div>
-            <h3 style={styles.kpiVal}>{orders.length}</h3>
-            <p style={styles.kpiLabel}>Total Placed</p>
-          </div>
-        </div>
+      {/* KPI Cards Grid */}
+      <div className="grid-cols-4" style={{ marginBottom: '2.5rem', gap: '1.25rem' }}>
+        <StatCard
+          title="Active Orders"
+          value={getActiveOrders().length}
+          icon={Clock}
+          description="In progress laundry trackings"
+        />
+        <StatCard
+          title="Completed Orders"
+          value={getCompletedOrders().length}
+          icon={CheckCircle2}
+          description="Successfully cleaned"
+        />
+        <StatCard
+          title="Total Spent"
+          value={`₹${getSpentAmount()}`}
+          icon={CreditCard}
+          description="Lifetime spent"
+        />
+        <StatCard
+          title="Total Placed"
+          value={orders.length}
+          icon={ShoppingBag}
+          description="Total orders history"
+        />
       </div>
 
       {/* Active Orders List */}
-      <div className="glass-card" style={{ marginBottom: '32px' }}>
-        <h3 style={{ fontSize: '18px', marginBottom: '20px' }}>Active Laundry Trackings</h3>
+      <div className="velora-card animate-fadeInUp" style={{ marginBottom: '2.5rem', padding: '2rem' }}>
+        <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary-navy)', fontFamily: 'Outfit, sans-serif', margin: '0 0 1.5rem 0' }}>
+          Active Laundry Trackings
+        </h3>
 
         {loading ? (
-          <p style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '24px 0' }}>Loading tracking details...</p>
+          <p style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '2rem' }}>Loading tracking details...</p>
         ) : getActiveOrders().length === 0 ? (
-          <div style={styles.emptyState}>
-            <ShoppingBag size={48} color="var(--text-muted)" style={{ marginBottom: '12px' }} />
-            <p style={{ color: 'var(--text-secondary)', marginBottom: '16px' }}>No active laundry orders at this moment.</p>
-            <button onClick={() => setIsWizardOpen(true)} className="btn btn-outline">Place Your First Order</button>
-          </div>
+          <EmptyState
+            title="No active orders"
+            description="Your wardrobe looks dry. Schedule a fresh pickup to clean your clothes."
+            actionLabel="Place Your First Order"
+            onAction={() => setIsWizardOpen(true)}
+            mascotState="thinking"
+          />
         ) : (
           <div className="table-container">
             <table>
@@ -173,9 +198,9 @@ export default function CustomerDashboard() {
               <tbody>
                 {getActiveOrders().map((order) => (
                   <tr key={order.orderId}>
-                    <td style={{ fontFamily: 'monospace', fontSize: '12px' }}>{order.orderId.substring(0, 8)}...</td>
-                    <td>{order.partnerEmail}</td>
-                    <td>₹{order.totalCost}</td>
+                    <td style={{ fontFamily: 'monospace', fontSize: '12px', fontWeight: 600 }}>{order.orderId.substring(0, 8).toUpperCase()}</td>
+                    <td style={{ fontWeight: 600, color: 'var(--primary-navy)' }}>{order.partnerEmail}</td>
+                    <td style={{ fontWeight: 700 }}>₹{order.totalCost}</td>
                     <td>{getStatusBadge(order.status)}</td>
                     <td style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{order.pickupSlot}</td>
                     <td>
@@ -183,15 +208,15 @@ export default function CustomerDashboard() {
                         {!order.paymentId && (
                           <button
                             onClick={() => handlePayNow(order.orderId, order.totalCost)}
-                            className="btn btn-primary"
+                            className="velora-btn velora-btn-primary"
                             style={{ padding: '6px 12px', fontSize: '12px' }}
                           >
                             Pay Now
                           </button>
                         )}
                         {order.paymentId && (
-                          <span style={{ fontSize: '12px', color: 'var(--color-success)', alignSelf: 'center' }}>
-                            Paid (Pending Delivery)
+                          <span style={{ fontSize: '12px', color: 'var(--primary-teal)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                            ✓ Paid (Pending Delivery)
                           </span>
                         )}
                       </div>
@@ -205,13 +230,15 @@ export default function CustomerDashboard() {
       </div>
 
       {/* Recently Completed Orders */}
-      <div className="glass-card">
-        <h3 style={{ fontSize: '18px', marginBottom: '20px' }}>Recently Completed</h3>
+      <div className="velora-card animate-fadeInUp" style={{ padding: '2rem' }}>
+        <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary-navy)', fontFamily: 'Outfit, sans-serif', margin: '0 0 1.5rem 0' }}>
+          Recently Completed
+        </h3>
         
         {loading ? (
           <p style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>Loading...</p>
         ) : getCompletedOrders().length === 0 ? (
-          <p style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>No completed orders found.</p>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '14px', margin: 0, textAlign: 'center', padding: '1.5rem 0' }}>No completed orders found.</p>
         ) : (
           <div className="table-container">
             <table>
@@ -227,19 +254,19 @@ export default function CustomerDashboard() {
               <tbody>
                 {getCompletedOrders().slice(0, 5).map((order) => (
                   <tr key={order.orderId}>
-                    <td style={{ fontFamily: 'monospace', fontSize: '12px' }}>{order.orderId.substring(0, 8)}...</td>
-                    <td>{order.partnerEmail}</td>
-                    <td>₹{order.totalCost}</td>
+                    <td style={{ fontFamily: 'monospace', fontSize: '12px', fontWeight: 600 }}>{order.orderId.substring(0, 8).toUpperCase()}</td>
+                    <td style={{ fontWeight: 600, color: 'var(--primary-navy)' }}>{order.partnerEmail}</td>
+                    <td style={{ fontWeight: 700 }}>₹{order.totalCost}</td>
                     <td style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
                       {new Date(order.updatedAt * 1000).toLocaleString()}
                     </td>
                     <td>
                       <button
                         onClick={() => handleOpenReview(order.orderId, order.partnerEmail)}
-                        className="btn btn-outline"
+                        className="velora-btn velora-btn-secondary"
                         style={{ padding: '6px 12px', fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                       >
-                        <Star size={14} color="var(--color-warning)" fill="var(--color-warning)" />
+                        <Star size={12} color="var(--primary-teal)" fill="var(--primary-teal)" />
                         Review Service
                       </button>
                     </td>
@@ -282,36 +309,8 @@ const styles = {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: '32px',
-  },
-  kpiCard: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '20px',
-    padding: '20px 24px',
-  },
-  kpiIcon: {
-    width: '44px',
-    height: '44px',
-    borderRadius: 'var(--radius-sm)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  kpiVal: {
-    fontSize: '24px',
-    fontWeight: 'bold',
-    marginBottom: '2px',
-  },
-  kpiLabel: {
-    fontSize: '12px',
-    color: 'var(--text-secondary)',
-    fontWeight: 500,
-  },
-  emptyState: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    padding: '40px 0',
-  },
+    marginBottom: '2.5rem',
+    flexWrap: 'wrap',
+    gap: '1rem',
+  }
 };

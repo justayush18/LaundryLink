@@ -1,6 +1,7 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import VeloraMascot from './VeloraMascot';
 
 export default function ProtectedRoute({ children, allowedRoles }) {
   const { user, loading } = useAuth();
@@ -8,8 +9,10 @@ export default function ProtectedRoute({ children, allowedRoles }) {
   if (loading) {
     return (
       <div style={styles.loadingContainer}>
-        <div style={styles.spinner}></div>
-        <p style={{ marginTop: '12px', color: 'var(--text-secondary)' }}>Loading session...</p>
+        <VeloraMascot state="loading" size={100} />
+        <p style={{ marginTop: '16px', color: 'var(--primary-teal)', fontFamily: 'Outfit, sans-serif', fontWeight: 600 }}>
+          Making things clean & fresh...
+        </p>
       </div>
     );
   }
@@ -19,7 +22,6 @@ export default function ProtectedRoute({ children, allowedRoles }) {
   }
 
   if (allowedRoles && !allowedRoles.includes(user.role)) {
-    // Redirect to home or standard path
     if (user.role === 'CUSTOMER') return <Navigate to="/customer/dashboard" replace />;
     if (user.role === 'LAUNDRY_PARTNER') return <Navigate to="/partner/dashboard" replace />;
     if (user.role === 'DELIVERY_PARTNER') return <Navigate to="/delivery/dashboard" replace />;
@@ -38,24 +40,6 @@ const styles = {
     alignItems: 'center',
     minHeight: '100vh',
     backgroundColor: 'var(--bg-primary)',
-  },
-  spinner: {
-    width: '40px',
-    height: '40px',
-    border: '4px solid var(--border-color)',
-    borderTop: '4px solid var(--accent-primary)',
-    borderRadius: '50%',
-    animation: 'spin 1s linear infinite',
-  },
+  }
 };
 
-// Add keyframe animation programmatically if not defined globally
-const styleSheet = document.styleSheets[0];
-try {
-  styleSheet.insertRule(`
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-  `, styleSheet.cssRules.length);
-} catch (e) {}

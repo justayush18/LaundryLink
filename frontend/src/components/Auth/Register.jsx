@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import WaveBackground from '../Common/WaveBackground';
+import FloatingBubbles from '../Common/FloatingBubbles';
+import VeloraMascot from '../Common/VeloraMascot';
 
 export default function Register() {
   const [email, setEmail] = useState('');
@@ -36,92 +39,120 @@ export default function Register() {
     }
   };
 
+  const roles = [
+    { id: 'CUSTOMER', title: 'Customer', desc: 'Order laundry services', emoji: '👕' },
+    { id: 'LAUNDRY_PARTNER', title: 'Laundry Partner', desc: 'Provide washing services', emoji: '🧼' },
+    { id: 'DELIVERY_PARTNER', title: 'Rider', desc: 'Deliver laundry orders', emoji: '🛵' }
+  ];
+
   return (
     <div style={styles.container}>
-      <div className="glass-card" style={styles.card}>
+      <WaveBackground variant="hero" />
+      <FloatingBubbles count={12} />
+      
+      <div className="velora-card animate-fadeInUp" style={styles.card}>
         <div style={styles.header}>
+          <VeloraMascot state={error ? 'thinking' : submitting ? 'loading' : 'celebrating'} size={80} />
           <h1 style={styles.brand}>Velora</h1>
-          <p style={styles.subtitle}>Join us today! Choose your role to start</p>
+          <p style={styles.subtitle}>Create your account to get started</p>
         </div>
 
         {error && (
-          <div className="alert alert-error" style={styles.alert}>
+          <div className="alert alert-error animate-pulse" style={styles.alert}>
             <span>{error}</span>
           </div>
         )}
 
         <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label className="form-label">Full Name</label>
-            <input
-              type="text"
-              className="form-control"
-              placeholder="Aarav Mehta"
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              required
-              disabled={submitting}
-            />
+          <div style={styles.formGrid}>
+            <div className="form-group">
+              <label className="form-label" style={styles.label}>Full Name</label>
+              <input
+                type="text"
+                className="form-control"
+                placeholder="Aarav Mehta"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                required
+                disabled={submitting}
+                style={styles.input}
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label" style={styles.label}>Email Address</label>
+              <input
+                type="email"
+                className="form-control"
+                placeholder="name@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                disabled={submitting}
+                style={styles.input}
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label" style={styles.label}>Phone Number</label>
+              <input
+                type="tel"
+                className="form-control"
+                placeholder="+91 9876543210"
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+                required
+                disabled={submitting}
+                style={styles.input}
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label" style={styles.label}>Password</label>
+              <input
+                type="password"
+                className="form-control"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                disabled={submitting}
+                style={styles.input}
+              />
+            </div>
           </div>
 
-          <div className="form-group">
-            <label className="form-label">Email Address</label>
-            <input
-              type="email"
-              className="form-control"
-              placeholder="name@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              disabled={submitting}
-            />
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">Phone Number</label>
-            <input
-              type="tel"
-              className="form-control"
-              placeholder="+91 9876543210"
-              value={phoneNumber}
-              onChange={(e) => setPhoneNumber(e.target.value)}
-              required
-              disabled={submitting}
-            />
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">Password</label>
-            <input
-              type="password"
-              className="form-control"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              disabled={submitting}
-            />
-          </div>
-
-          <div className="form-group" style={{ marginBottom: '28px' }}>
-            <label className="form-label">Register As</label>
-            <select
-              className="form-control"
-              value={role}
-              onChange={(e) => setRole(e.target.value)}
-              disabled={submitting}
-              style={{ background: 'var(--bg-secondary)', cursor: 'pointer' }}
-            >
-              <option value="CUSTOMER">Customer (Order Laundry)</option>
-              <option value="LAUNDRY_PARTNER">Laundry Partner (Provide Service)</option>
-              <option value="DELIVERY_PARTNER">Delivery Partner (Deliver Orders)</option>
-            </select>
+          <div className="form-group" style={{ margin: '1.5rem 0 2rem 0' }}>
+            <label className="form-label" style={{ ...styles.label, marginBottom: '0.75rem' }}>Join as</label>
+            <div style={styles.roleGrid}>
+              {roles.map((r) => {
+                const isSelected = role === r.id;
+                return (
+                  <button
+                    key={r.id}
+                    type="button"
+                    onClick={() => setRole(r.id)}
+                    disabled={submitting}
+                    style={{
+                      ...styles.roleCard,
+                      borderColor: isSelected ? 'var(--primary-teal)' : 'var(--sky-blue)',
+                      background: isSelected ? 'var(--sky-blue-light)' : '#FFFFFF',
+                      boxShadow: isSelected ? '0 4px 12px rgba(86, 124, 141, 0.15)' : 'none',
+                    }}
+                  >
+                    <span style={{ fontSize: '24px', marginBottom: '4px' }}>{r.emoji}</span>
+                    <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--primary-navy)' }}>{r.title}</span>
+                    <span style={{ fontSize: '10px', color: 'var(--text-secondary)', textAlign: 'center' }}>{r.desc}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           <button
             type="submit"
-            className="btn btn-primary"
-            style={{ width: '100%', padding: '12px', fontSize: '15px' }}
+            className="velora-btn velora-btn-primary animate-pulse"
+            style={{ width: '100%', padding: '12px', fontSize: '15px', fontWeight: 700 }}
             disabled={submitting}
           >
             {submitting ? 'Creating account...' : 'Create Account'}
@@ -129,9 +160,9 @@ export default function Register() {
         </form>
 
         <div style={styles.footer}>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '14px', margin: 0 }}>
             Already have an account?{' '}
-            <Link to="/login" style={{ color: 'var(--accent-secondary)', fontWeight: 500 }}>
+            <Link to="/login" style={{ color: 'var(--primary-teal)', fontWeight: 700, textDecoration: 'none' }}>
               Sign In
             </Link>
           </p>
@@ -147,37 +178,81 @@ const styles = {
     justifyContent: 'center',
     alignItems: 'center',
     minHeight: '100vh',
-    background: 'radial-gradient(ellipse at bottom, #111827 0%, #0b0f19 100%)',
-    padding: '20px',
+    background: 'var(--bg-primary)',
+    padding: '40px 20px',
+    position: 'relative',
+    overflow: 'hidden',
   },
   card: {
     width: '100%',
-    maxWidth: '450px',
-    padding: '36px 32px',
+    maxWidth: '520px',
+    padding: '3rem 2.5rem',
+    background: '#FFFFFF',
+    boxShadow: 'var(--shadow-lg)',
+    borderRadius: '32px',
+    zIndex: 2,
+    border: '1px solid var(--sky-blue-light)',
   },
   header: {
     textAlign: 'center',
-    marginBottom: '24px',
+    marginBottom: '1.75rem',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
   },
   brand: {
-    fontSize: '32px',
-    fontWeight: '800',
-    background: 'linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%)',
-    WebkitBackgroundClip: 'text',
-    WebkitTextFillColor: 'transparent',
-    marginBottom: '6px',
+    fontSize: '2rem',
+    fontWeight: 800,
+    color: 'var(--primary-navy)',
+    fontFamily: 'Outfit, sans-serif',
+    margin: '0.5rem 0 0.25rem 0',
   },
   subtitle: {
     color: 'var(--text-secondary)',
     fontSize: '14px',
+    margin: 0,
   },
   alert: {
-    marginBottom: '20px',
+    marginBottom: '1.5rem',
     padding: '12px',
     fontSize: '13px',
+    borderRadius: '16px',
+    textAlign: 'center',
+  },
+  formGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+    gap: '1rem',
+  },
+  label: {
+    color: 'var(--primary-navy)',
+    fontWeight: 600,
+  },
+  input: {
+    borderRadius: '16px',
+    border: '2px solid var(--sky-blue)',
+    background: 'var(--bg-secondary)',
+    padding: '10px 14px',
+    fontSize: '14px',
+    color: 'var(--primary-navy)',
+  },
+  roleGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(3, 1fr)',
+    gap: '0.75rem',
+  },
+  roleCard: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    padding: '12px 8px',
+    borderRadius: '20px',
+    border: '2px solid',
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
   },
   footer: {
     textAlign: 'center',
-    marginTop: '24px',
+    marginTop: '2rem',
   },
 };

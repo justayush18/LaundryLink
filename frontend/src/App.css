@@ -1,1 +1,36 @@
-/* App specific styles (overridden by custom components) */
+/* Velora App Layout */
+.app-layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: var(--bg-primary);
+  position: relative;
+}
+
+/* Ensure content sits above wave decorations */
+.page-container {
+  position: relative;
+  z-index: 1;
+}
+
+/* Auth pages layout */
+.auth-layout {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-primary);
+  position: relative;
+  overflow: hidden;
+  padding: 24px;
+}
+
+/* Homepage layout — no nav padding needed */
+.homepage-layout {
+  background: var(--white);
+}
+
+/* Smooth page transitions */
+.page-transition {
+  animation: fadeInUp 0.4s ease-out;
+}

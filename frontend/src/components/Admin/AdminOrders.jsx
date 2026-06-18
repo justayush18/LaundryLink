@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../services/api';
-import { Search, Filter, Eye, RefreshCw, AlertCircle } from 'lucide-react';
+import { Search, Filter, Eye, RefreshCw, AlertCircle, ShoppingBag, Clock } from 'lucide-react';
 
 export default function AdminOrders() {
   const [orders, setOrders] = useState([]);
@@ -45,16 +45,16 @@ export default function AdminOrders() {
 
   const getStatusBadge = (status) => {
     switch (status) {
-      case 'PLACED': return <span className="badge badge-info">Placed</span>;
-      case 'ACCEPTED': return <span className="badge badge-info">Accepted</span>;
-      case 'PICKUP_ASSIGNED': return <span className="badge badge-warning">Pickup Assigned</span>;
-      case 'PICKED_UP': return <span className="badge badge-warning">Picked Up</span>;
-      case 'PROCESSING': return <span className="badge badge-warning">Processing</span>;
-      case 'READY_FOR_DELIVERY': return <span className="badge badge-warning">Ready</span>;
-      case 'DELIVERY_ASSIGNED': return <span className="badge badge-warning">Out for Delivery</span>;
-      case 'DELIVERED': return <span className="badge badge-success">Delivered</span>;
-      case 'CANCELLED': return <span className="badge badge-error">Cancelled</span>;
-      default: return <span className="badge">{status}</span>;
+      case 'PLACED': return <span className="velora-badge velora-badge-info">Placed</span>;
+      case 'ACCEPTED': return <span className="velora-badge velora-badge-info">Accepted</span>;
+      case 'PICKUP_ASSIGNED': return <span className="velora-badge velora-badge-warning">Pickup Assigned</span>;
+      case 'PICKED_UP': return <span className="velora-badge velora-badge-warning">Picked Up</span>;
+      case 'PROCESSING': return <span className="velora-badge velora-badge-warning">Processing</span>;
+      case 'READY_FOR_DELIVERY': return <span className="velora-badge velora-badge-warning">Ready</span>;
+      case 'DELIVERY_ASSIGNED': return <span className="velora-badge velora-badge-warning">Out for Delivery</span>;
+      case 'DELIVERED': return <span className="velora-badge velora-badge-success">Delivered</span>;
+      case 'CANCELLED': return <span className="velora-badge velora-badge-error">Cancelled</span>;
+      default: return <span className="velora-badge">{status}</span>;
     }
   };
 
@@ -62,28 +62,38 @@ export default function AdminOrders() {
     <div className="main-content">
       <div style={styles.header}>
         <div>
-          <h1 style={{ fontSize: '28px', marginBottom: '4px' }}>System Orders</h1>
-          <p style={{ color: 'var(--text-secondary)' }}>Audit and monitor all laundry orders, fulfillment timelines, and rider coordinates.</p>
+          <h1 style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--primary-navy)', fontFamily: 'Outfit, sans-serif', margin: '0 0 4px 0' }}>
+            System Orders
+          </h1>
+          <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: '0.95rem' }}>
+            Audit and monitor all laundry orders, fulfillment timelines, and rider coordinates.
+          </p>
         </div>
-        <button onClick={fetchOrders} className="btn btn-outline" disabled={loading}>
-          <RefreshCw size={14} style={{ marginRight: '4px' }} /> Refresh Table
+        <button 
+          onClick={fetchOrders} 
+          className="velora-btn velora-btn-secondary" 
+          disabled={loading}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+        >
+          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> 
+          Refresh Table
         </button>
       </div>
 
-      {error && <div className="alert alert-error">{error}</div>}
+      {error && <div className="alert alert-error animate-fadeInUp">{error}</div>}
 
       <div style={styles.grid}>
         {/* Table & Filters */}
-        <div className="glass-card" style={{ flex: 1.4, minWidth: '320px' }}>
+        <div className="velora-card animate-fadeInUp" style={{ flex: 1.4, minWidth: '320px', background: '#FFFFFF', border: '1px solid var(--sky-blue-light)', padding: '1.5rem' }}>
           {/* Filters Bar */}
           <div style={styles.filterGrid}>
             <div className="form-group">
-              <label className="form-label">Order Status</label>
+              <label className="form-label" style={{ fontWeight: 600, color: 'var(--primary-navy)', fontSize: '0.85rem' }}>Order Status</label>
               <select
-                className="form-control"
+                className="velora-input"
                 value={status}
                 onChange={(e) => setStatus(e.target.value)}
-                style={{ background: 'var(--bg-secondary)', padding: '8px' }}
+                style={{ background: '#FFFFFF', padding: '8px 12px', height: '42px', fontSize: '0.85rem' }}
               >
                 <option value="">All Statuses</option>
                 <option value="PLACED">Placed</option>
@@ -97,46 +107,49 @@ export default function AdminOrders() {
             </div>
 
             <div className="form-group">
-              <label className="form-label">Customer Email</label>
+              <label className="form-label" style={{ fontWeight: 600, color: 'var(--primary-navy)', fontSize: '0.85rem' }}>Customer Email</label>
               <input
                 type="text"
-                className="form-control"
+                className="velora-input"
                 placeholder="aarav@..."
                 value={customerEmail}
                 onChange={(e) => setCustomerEmail(e.target.value)}
+                style={{ height: '42px', fontSize: '0.85rem', padding: '8px 12px' }}
               />
             </div>
 
             <div className="form-group">
-              <label className="form-label">Merchant Email</label>
+              <label className="form-label" style={{ fontWeight: 600, color: 'var(--primary-navy)', fontSize: '0.85rem' }}>Merchant Email</label>
               <input
                 type="text"
-                className="form-control"
+                className="velora-input"
                 placeholder="partner@..."
                 value={partnerEmail}
                 onChange={(e) => setPartnerEmail(e.target.value)}
+                style={{ height: '42px', fontSize: '0.85rem', padding: '8px 12px' }}
               />
             </div>
 
             <div className="form-group">
-              <label className="form-label">Rider Email</label>
+              <label className="form-label" style={{ fontWeight: 600, color: 'var(--primary-navy)', fontSize: '0.85rem' }}>Rider Email</label>
               <input
                 type="text"
-                className="form-control"
+                className="velora-input"
                 placeholder="rider@..."
                 value={deliveryPartnerEmail}
                 onChange={(e) => setDeliveryPartnerEmail(e.target.value)}
+                style={{ height: '42px', fontSize: '0.85rem', padding: '8px 12px' }}
               />
             </div>
           </div>
 
           {loading ? (
-            <p style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>Loading ledger...</p>
+            <p style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '2rem 0' }}>Loading ledger...</p>
           ) : orders.length === 0 ? (
-            <p style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '24px 0' }}>No matching orders found.</p>
+            <p style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '2rem 0' }}>No matching orders found.</p>
           ) : (
-            <div className="table-container">
-              <table>
+            <div className="table-container" style={{ overflowX: 'auto', marginTop: '1rem' }}>
+              <table className="velora-table">
                 <thead>
                   <tr>
                     <th>Order ID</th>
@@ -149,15 +162,17 @@ export default function AdminOrders() {
                 <tbody>
                   {orders.map((o) => (
                     <tr key={o.orderId}>
-                      <td style={{ fontFamily: 'monospace', fontSize: '11px' }}>#{o.orderId.substring(0, 8)}</td>
-                      <td style={{ fontSize: '12px' }}>{o.customerEmail}</td>
-                      <td style={{ fontSize: '12px' }}>{o.partnerEmail}</td>
+                      <td style={{ fontFamily: 'monospace', fontSize: '0.8rem', color: 'var(--primary-navy)', fontWeight: 600 }}>
+                        #{o.orderId.substring(0, 8)}
+                      </td>
+                      <td style={{ fontSize: '0.85rem', color: 'var(--text-primary)' }}>{o.customerEmail}</td>
+                      <td style={{ fontSize: '0.85rem', color: 'var(--text-primary)' }}>{o.partnerEmail}</td>
                       <td>{getStatusBadge(o.status)}</td>
                       <td>
                         <button
                           onClick={() => handleInspect(o.orderId)}
-                          className="btn btn-outline"
-                          style={{ padding: '4px 8px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                          className="velora-btn velora-btn-secondary"
+                          style={{ padding: '6px 12px', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '4px', height: 'auto' }}
                         >
                           <Eye size={12} /> Inspect
                         </button>
@@ -171,29 +186,31 @@ export default function AdminOrders() {
         </div>
 
         {/* Audit Inspect Ticket */}
-        <div className="glass-card" style={{ flex: 0.9, minWidth: '320px' }}>
-          <h3 style={{ fontSize: '18px', marginBottom: '20px' }}>System Audit Ticket</h3>
+        <div className="velora-card animate-fadeInUp" style={{ flex: 0.9, minWidth: '320px', background: '#FFFFFF', border: '1px solid var(--sky-blue-light)', padding: '1.5rem' }}>
+          <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--primary-navy)', fontFamily: 'Outfit, sans-serif', borderBottom: '2px solid var(--bg-secondary)', paddingBottom: '12px', margin: '0 0 1rem 0' }}>
+            System Audit Ticket
+          </h3>
 
           {selectedOrder ? (
-            <div className="glass-panel" style={styles.inspectCard}>
-              <h4 style={{ fontFamily: 'monospace', fontSize: '13px', color: 'var(--accent-secondary)' }}>
+            <div className="velora-card" style={styles.inspectCard}>
+              <h4 style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.95rem', color: 'var(--primary-teal)', margin: '0 0 12px 0', fontWeight: 700 }}>
                 Audit Ref: #{selectedOrder.orderId}
               </h4>
-              <div style={{ margin: '14px 0', fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <p><strong>Customer:</strong> {selectedOrder.customerEmail}</p>
-                <p><strong>Merchant Partner:</strong> {selectedOrder.partnerEmail}</p>
-                <p><strong>Assigned Rider:</strong> {selectedOrder.deliveryPartnerEmail || 'Unassigned'}</p>
-                <p><strong>Fulfillment Cost:</strong> ₹{selectedOrder.totalCost}</p>
+              <div style={{ margin: '14px 0', fontSize: '0.85rem', display: 'flex', flexDirection: 'column', gap: '8px', color: 'var(--text-secondary)' }}>
+                <p style={{ margin: 0 }}><strong style={{ color: 'var(--primary-navy)' }}>Customer:</strong> {selectedOrder.customerEmail}</p>
+                <p style={{ margin: 0 }}><strong style={{ color: 'var(--primary-navy)' }}>Merchant Partner:</strong> {selectedOrder.partnerEmail}</p>
+                <p style={{ margin: 0 }}><strong style={{ color: 'var(--primary-navy)' }}>Assigned Rider:</strong> {selectedOrder.deliveryPartnerEmail || 'Unassigned'}</p>
+                <p style={{ margin: 0 }}><strong style={{ color: 'var(--primary-navy)' }}>Fulfillment Cost:</strong> ₹{selectedOrder.totalCost}</p>
               </div>
 
               <div style={styles.divider}></div>
 
               <div>
-                <p style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-muted)', marginBottom: '8px' }}>ITEMS</p>
+                <p style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--primary-navy)', letterSpacing: '0.05em', marginBottom: '8px' }}>ITEMS</p>
                 {selectedOrder.items?.map((item, idx) => (
-                  <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', margin: '2px 0' }}>
-                    <span>{item.quantity}x {item.itemCategory}</span>
-                    <span>{item.serviceType.replace('_', ' ')}</span>
+                  <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', margin: '4px 0', color: 'var(--text-primary)' }}>
+                    <span style={{ fontWeight: 600 }}>{item.quantity}x {item.itemCategory}</span>
+                    <span style={{ color: 'var(--text-secondary)' }}>{item.serviceType.replace('_', ' ')}</span>
                   </div>
                 ))}
               </div>
@@ -201,15 +218,17 @@ export default function AdminOrders() {
               <div style={styles.divider}></div>
 
               <div>
-                <p style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-muted)', marginBottom: '8px' }}>TIMESTAMPS & HISTORY</p>
+                <p style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--primary-navy)', letterSpacing: '0.05em', marginBottom: '8px' }}>TIMESTAMPS & HISTORY</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {selectedOrder.history?.map((hist, idx) => (
-                    <div key={idx} style={{ fontSize: '11px', background: 'rgba(255,255,255,0.01)', padding: '6px', borderRadius: '4px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600, color: 'var(--accent-primary)' }}>
+                    <div key={idx} style={{ fontSize: '0.8rem', background: 'var(--bg-secondary)', padding: '10px', borderRadius: '12px', border: '1px solid var(--sky-blue-light)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, color: 'var(--primary-navy)', marginBottom: '4px' }}>
                         <span>{hist.status}</span>
-                        <span>{new Date(hist.timestamp * 1000).toLocaleTimeString()}</span>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
+                          <Clock size={10} /> {new Date(hist.timestamp * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
                       </div>
-                      <p style={{ color: 'var(--text-secondary)', marginTop: '2px' }}>{hist.notes}</p>
+                      <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: '0.75rem' }}>{hist.notes}</p>
                     </div>
                   ))}
                 </div>
@@ -217,8 +236,10 @@ export default function AdminOrders() {
             </div>
           ) : (
             <div style={styles.noSelection}>
-              <AlertCircle size={48} color="var(--text-muted)" style={{ marginBottom: '12px' }} />
-              <p style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>
+              <div style={{ background: 'var(--bg-secondary)', width: '60px', height: '60px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifycontent: 'center', margin: '0 auto 16px auto', color: 'var(--text-secondary)' }}>
+                <ShoppingBag size={28} />
+              </div>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', maxWidth: '320px', margin: '0 auto', lineHeight: 1.5 }}>
                 Select an order and click "Inspect" next to it to audit system logs, addresses, items, and riders.
               </p>
             </div>
@@ -234,7 +255,9 @@ const styles = {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: '24px',
+    marginBottom: '2.5rem',
+    flexWrap: 'wrap',
+    gap: '16px',
   },
   filterGrid: {
     display: 'grid',
@@ -249,11 +272,14 @@ const styles = {
   },
   inspectCard: {
     padding: '16px',
-    background: 'rgba(15, 23, 42, 0.5)',
+    background: 'var(--bg-secondary)',
+    border: '1px solid var(--sky-blue-light)',
+    borderRadius: '16px',
+    boxShadow: 'none',
   },
   divider: {
     height: '1px',
-    background: 'var(--border-color)',
+    background: 'var(--sky-blue-light)',
     margin: '14px 0',
   },
   noSelection: {

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../services/api';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { TrendingUp, RefreshCw, Calendar, Award } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, Cell } from 'recharts';
+import { TrendingUp, RefreshCw, Calendar, Award, Star } from 'lucide-react';
+import StatCard from '../Common/StatCard';
 
 export default function AdminReports() {
   const [revenue, setRevenue] = useState(null);
@@ -31,10 +32,10 @@ export default function AdminReports() {
   const getKPIs = () => {
     if (!revenue) return [];
     return [
-      { name: 'Daily Rolling', val: `₹${revenue.dailyRevenue ? revenue.dailyRevenue.toFixed(0) : '0'}`, icon: Calendar },
-      { name: 'Weekly Rolling', val: `₹${revenue.weeklyRevenue ? revenue.weeklyRevenue.toFixed(0) : '0'}`, icon: Calendar },
-      { name: 'Monthly Rolling', val: `₹${revenue.monthlyRevenue ? revenue.monthlyRevenue.toFixed(0) : '0'}`, icon: Calendar },
-      { name: 'Total Revenue', val: `₹${revenue.totalRevenue ? revenue.totalRevenue.toFixed(0) : '0'}`, icon: TrendingUp },
+      { name: 'Daily Rolling', val: `₹${revenue.dailyRevenue ? revenue.dailyRevenue.toFixed(0) : '0'}`, icon: Calendar, desc: 'Past 24 hours sales' },
+      { name: 'Weekly Rolling', val: `₹${revenue.weeklyRevenue ? revenue.weeklyRevenue.toFixed(0) : '0'}`, icon: Calendar, desc: 'Past 7 days sales' },
+      { name: 'Monthly Rolling', val: `₹${revenue.monthlyRevenue ? revenue.monthlyRevenue.toFixed(0) : '0'}`, icon: Calendar, desc: 'Past 30 days sales' },
+      { name: 'Total Revenue', val: `₹${revenue.totalRevenue ? revenue.totalRevenue.toFixed(0) : '0'}`, icon: TrendingUp, desc: 'Cumulative total' },
     ];
   };
 
@@ -51,84 +52,92 @@ export default function AdminReports() {
     <div className="main-content">
       <div style={styles.header}>
         <div>
-          <h1 style={{ fontSize: '28px', marginBottom: '4px' }}>Revenue & Performance Reports</h1>
-          <p style={{ color: 'var(--text-secondary)' }}>Fulfillment statistics, rolling revenue metrics, and laundry partner rankings.</p>
+          <h1 style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--primary-navy)', fontFamily: 'Outfit, sans-serif', margin: '0 0 4px 0' }}>
+            Revenue & Performance
+          </h1>
+          <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: '0.95rem' }}>
+            Fulfillment statistics, rolling revenue metrics, and laundry partner rankings.
+          </p>
         </div>
-        <button onClick={fetchReports} className="btn btn-outline" disabled={loading}>
-          <RefreshCw size={14} style={{ marginRight: '4px' }} /> Refresh Reports
+        <button 
+          onClick={fetchReports} 
+          className="velora-btn velora-btn-secondary" 
+          disabled={loading}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+        >
+          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> 
+          Refresh Reports
         </button>
       </div>
 
-      {error && <div className="alert alert-error">{error}</div>}
+      {error && <div className="alert alert-error animate-fadeInUp">{error}</div>}
 
       {loading && !revenue ? (
-        <p style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '40px 0' }}>Compiling financial ledgers...</p>
+        <p style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '3rem 0' }}>Compiling financial ledgers...</p>
       ) : (
         <>
           {/* Revenue KPIs */}
-          <div className="grid-cols-4" style={{ marginBottom: '32px' }}>
-            {getKPIs().map((kpi, idx) => {
-              const Icon = kpi.icon;
-              return (
-                <div key={idx} className="glass-card" style={styles.kpiCard}>
-                  <div style={styles.kpiIcon}>
-                    <Icon size={20} color="var(--accent-secondary)" />
-                  </div>
-                  <div>
-                    <h3 style={styles.kpiVal}>{kpi.val}</h3>
-                    <p style={styles.kpiLabel}>{kpi.name}</p>
-                  </div>
-                </div>
-              );
-            })}
+          <div className="grid-cols-4" style={{ marginBottom: '2.5rem', gap: '1.25rem' }}>
+            {getKPIs().map((kpi, idx) => (
+              <StatCard
+                key={idx}
+                title={kpi.name}
+                value={kpi.val}
+                icon={kpi.icon}
+                description={kpi.desc}
+              />
+            ))}
           </div>
 
           <div style={styles.dashboardRow}>
             {/* Recharts comparison graph */}
-            <div className="glass-card" style={{ flex: 1.5, minWidth: '320px', padding: '24px' }}>
-              <h3 style={{ fontSize: '16px', marginBottom: '20px', borderBottom: '1px solid var(--border-color)', paddingBottom: '8px' }}>
+            <div className="velora-card animate-fadeInUp" style={{ flex: 1.5, minWidth: '320px', padding: '2rem', background: '#FFFFFF', border: '1px solid var(--sky-blue-light)' }}>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--primary-navy)', fontFamily: 'Outfit, sans-serif', borderBottom: '2px solid var(--bg-secondary)', paddingBottom: '12px', margin: '0 0 1.5rem 0' }}>
                 Merchant Performance Analytics
               </h3>
               <div style={{ width: '100%', height: '300px' }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={getChartData()} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                    <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={11} />
-                    <YAxis stroke="var(--text-muted)" fontSize={11} />
-                    <Tooltip contentStyle={{ background: 'var(--bg-secondary)', borderColor: 'var(--border-color)', borderRadius: '6px' }} />
-                    <Legend wrapperStyle={{ fontSize: '12px', marginTop: '10px' }} />
-                    <Bar dataKey="Orders" fill="var(--accent-primary)" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="Completed" fill="var(--accent-secondary)" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="Revenue" fill="var(--color-success)" radius={[4, 4, 0, 0]} />
+                    <XAxis dataKey="name" stroke="var(--text-secondary)" fontSize={11} fontWeight={600} />
+                    <YAxis stroke="var(--text-secondary)" fontSize={11} fontWeight={600} />
+                    <Tooltip contentStyle={{ background: '#FFFFFF', borderColor: 'var(--sky-blue-light)', borderRadius: '12px', fontFamily: 'Outfit, sans-serif' }} />
+                    <Legend wrapperStyle={{ fontSize: '12px', marginTop: '10px', fontFamily: 'Outfit, sans-serif' }} />
+                    <Bar dataKey="Orders" fill="var(--primary-navy)" radius={[6, 6, 0, 0]} />
+                    <Bar dataKey="Completed" fill="var(--primary-teal)" radius={[6, 6, 0, 0]} />
+                    <Bar dataKey="Revenue" fill="var(--sky-blue)" radius={[6, 6, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
             </div>
 
             {/* Merchant Leaderboard list */}
-            <div className="glass-card" style={{ flex: 0.9, minWidth: '320px', padding: '24px' }}>
-              <h3 style={{ fontSize: '16px', marginBottom: '20px', borderBottom: '1px solid var(--border-color)', paddingBottom: '8px' }}>
+            <div className="velora-card animate-fadeInUp" style={{ flex: 0.9, minWidth: '320px', padding: '2rem', background: '#FFFFFF', border: '1px solid var(--sky-blue-light)' }}>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--primary-navy)', fontFamily: 'Outfit, sans-serif', borderBottom: '2px solid var(--bg-secondary)', paddingBottom: '12px', margin: '0 0 1.5rem 0' }}>
                 Merchant Leaderboard
               </h3>
               <div style={styles.leaderboardList}>
                 {partnerStats.length === 0 ? (
-                  <p style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>No partners registered.</p>
+                  <p style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '1rem 0' }}>No partners registered.</p>
                 ) : (
                   partnerStats
                     .sort((a, b) => b.totalRevenueGenerated - a.totalRevenueGenerated)
                     .map((partner, idx) => (
-                      <div key={idx} className="glass-panel" style={styles.leaderCard}>
+                      <div key={idx} className="velora-card" style={styles.leaderCard}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <div>
-                            <strong style={{ fontSize: '14px' }}>#{idx + 1} {partner.businessName}</strong>
-                            <p style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{partner.partnerEmail}</p>
+                            <strong style={{ fontSize: '0.95rem', color: 'var(--primary-navy)' }}>#{idx + 1} {partner.businessName}</strong>
+                            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: '2px 0 0 0' }}>{partner.partnerEmail}</p>
                           </div>
-                          <span style={{ fontSize: '15px', fontWeight: 'bold', color: 'var(--color-success)' }}>
+                          <span style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--primary-teal)', fontFamily: 'Outfit, sans-serif' }}>
                             ₹{partner.totalRevenueGenerated}
                           </span>
                         </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px', fontSize: '12px', color: 'var(--text-muted)' }}>
-                          <span>Fulfillments: {partner.completedOrders}/{partner.totalOrders}</span>
-                          <span>Score: ⭐ {partner.averageRating ? partner.averageRating.toFixed(1) : '5.0'}</span>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                          <span>Fulfillments: <strong style={{ color: 'var(--primary-navy)' }}>{partner.completedOrders}/{partner.totalOrders}</strong></span>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
+                            Score: <Star size={12} fill="var(--accent-secondary)" color="var(--accent-secondary)" /> 
+                            <strong style={{ color: 'var(--primary-navy)' }}>{partner.averageRating ? partner.averageRating.toFixed(1) : '5.0'}</strong>
+                          </span>
                         </div>
                       </div>
                     ))
@@ -147,32 +156,9 @@ const styles = {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: '32px',
-  },
-  kpiCard: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '20px',
-    padding: '20px 24px',
-  },
-  kpiIcon: {
-    width: '44px',
-    height: '44px',
-    borderRadius: 'var(--radius-sm)',
-    background: 'rgba(99, 102, 241, 0.1)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  kpiVal: {
-    fontSize: '24px',
-    fontWeight: 'bold',
-    marginBottom: '2px',
-  },
-  kpiLabel: {
-    fontSize: '12px',
-    color: 'var(--text-secondary)',
-    fontWeight: 500,
+    marginBottom: '2.5rem',
+    flexWrap: 'wrap',
+    gap: '16px',
   },
   dashboardRow: {
     display: 'flex',
@@ -187,6 +173,11 @@ const styles = {
     overflowY: 'auto',
   },
   leaderCard: {
-    padding: '12px',
+    padding: '12px 16px',
+    background: 'var(--bg-secondary)',
+    border: '1px solid var(--sky-blue-light)',
+    borderRadius: '16px',
+    boxShadow: 'none',
   },
 };
+

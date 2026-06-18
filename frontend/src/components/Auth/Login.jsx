@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import WaveBackground from '../Common/WaveBackground';
+import FloatingBubbles from '../Common/FloatingBubbles';
+import VeloraMascot from '../Common/VeloraMascot';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -38,21 +41,25 @@ export default function Login() {
 
   return (
     <div style={styles.container}>
-      <div className="glass-card" style={styles.card}>
+      <WaveBackground variant="hero" />
+      <FloatingBubbles count={10} />
+      
+      <div className="velora-card animate-fadeInUp" style={styles.card}>
         <div style={styles.header}>
+          <VeloraMascot state={error ? 'thinking' : submitting ? 'loading' : 'happy'} size={90} style={{ marginBottom: '1rem' }} />
           <h1 style={styles.brand}>Velora</h1>
           <p style={styles.subtitle}>Welcome back! Sign in to continue</p>
         </div>
 
         {error && (
-          <div className="alert alert-error" style={styles.alert}>
+          <div className="alert alert-error animate-pulse" style={styles.alert}>
             <span>{error}</span>
           </div>
         )}
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label className="form-label">Email Address</label>
+            <label className="form-label" style={{ color: 'var(--primary-navy)' }}>Email Address</label>
             <input
               type="email"
               className="form-control"
@@ -61,11 +68,12 @@ export default function Login() {
               onChange={(e) => setEmail(e.target.value)}
               required
               disabled={submitting}
+              style={styles.input}
             />
           </div>
 
           <div className="form-group" style={{ marginBottom: '24px' }}>
-            <label className="form-label">Password</label>
+            <label className="form-label" style={{ color: 'var(--primary-navy)' }}>Password</label>
             <input
               type="password"
               className="form-control"
@@ -74,13 +82,14 @@ export default function Login() {
               onChange={(e) => setPassword(e.target.value)}
               required
               disabled={submitting}
+              style={styles.input}
             />
           </div>
 
           <button
             type="submit"
-            className="btn btn-primary"
-            style={{ width: '100%', padding: '12px', fontSize: '15px' }}
+            className="velora-btn velora-btn-primary animate-pulse"
+            style={{ width: '100%', padding: '12px', fontSize: '15px', fontWeight: 700 }}
             disabled={submitting}
           >
             {submitting ? 'Signing in...' : 'Sign In'}
@@ -88,9 +97,9 @@ export default function Login() {
         </form>
 
         <div style={styles.footer}>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '14px', margin: 0 }}>
             Don't have an account?{' '}
-            <Link to="/register" style={{ color: 'var(--accent-secondary)', fontWeight: 500 }}>
+            <Link to="/register" style={{ color: 'var(--primary-teal)', fontWeight: 700, textDecoration: 'none' }}>
               Create an account
             </Link>
           </p>
@@ -106,37 +115,57 @@ const styles = {
     justifyContent: 'center',
     alignItems: 'center',
     minHeight: '100vh',
-    background: 'radial-gradient(ellipse at bottom, #111827 0%, #0b0f19 100%)',
+    background: 'var(--bg-primary)',
     padding: '20px',
+    position: 'relative',
+    overflow: 'hidden',
   },
   card: {
     width: '100%',
-    maxWidth: '420px',
-    padding: '40px 32px',
+    maxWidth: '400px',
+    padding: '3rem 2.25rem',
+    background: '#FFFFFF',
+    boxShadow: 'var(--shadow-lg)',
+    borderRadius: '32px',
+    zIndex: 2,
+    border: '1px solid var(--sky-blue-light)',
   },
   header: {
     textAlign: 'center',
-    marginBottom: '32px',
+    marginBottom: '2rem',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
   },
   brand: {
-    fontSize: '32px',
-    fontWeight: '800',
-    background: 'linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%)',
-    WebkitBackgroundClip: 'text',
-    WebkitTextFillColor: 'transparent',
-    marginBottom: '8px',
+    fontSize: '2rem',
+    fontWeight: 800,
+    color: 'var(--primary-navy)',
+    fontFamily: 'Outfit, sans-serif',
+    margin: '0.5rem 0 0.25rem 0',
   },
   subtitle: {
     color: 'var(--text-secondary)',
     fontSize: '14px',
+    margin: 0,
   },
   alert: {
-    marginBottom: '20px',
+    marginBottom: '1.5rem',
     padding: '12px',
     fontSize: '13px',
+    borderRadius: '16px',
+    textAlign: 'center',
+  },
+  input: {
+    borderRadius: '16px',
+    border: '2px solid var(--sky-blue)',
+    background: 'var(--bg-secondary)',
+    padding: '10px 14px',
+    fontSize: '14px',
+    color: 'var(--primary-navy)',
   },
   footer: {
     textAlign: 'center',
-    marginTop: '28px',
+    marginTop: '2rem',
   },
 };

@@ -3,8 +3,10 @@ import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { 
   Truck, CheckCircle2, Clock, MapPin, Navigation, 
-  TrendingUp, Activity, Percent, Star, Award, DollarSign
+  TrendingUp, Activity, Percent, Star
 } from 'lucide-react';
+import StatCard from '../Common/StatCard';
+import EmptyState from '../Common/EmptyState';
 
 export default function DeliveryDashboard() {
   const { user } = useAuth();
@@ -16,7 +18,7 @@ export default function DeliveryDashboard() {
   
   const [isOnline, setIsOnline] = useState(() => {
     const saved = localStorage.getItem('rider_online');
-    return saved !== 'false'; // default to true
+    return saved !== 'false';
   });
 
   const fetchDashboard = async () => {
@@ -62,17 +64,14 @@ export default function DeliveryDashboard() {
     return dashboard.assignedTasks || [];
   };
 
-  // Derive metrics
   const completed = history.filter(o => o.status === 'DELIVERED');
   const totalCompleted = completed.length;
   
-  // Completed Today
   const startOfToday = new Date();
   startOfToday.setHours(0, 0, 0, 0);
   const startOfTodaySeconds = Math.floor(startOfToday.getTime() / 1000);
   const completedTodayCount = completed.filter(o => o.updatedAt >= startOfTodaySeconds).length;
 
-  // Earnings calculations (₹60 per delivery)
   const todayEarnings = completedTodayCount * 60;
   
   const nowSeconds = Math.floor(Date.now() / 1000);
@@ -86,118 +85,114 @@ export default function DeliveryDashboard() {
 
   const totalEarnings = totalCompleted * 60;
 
-  // Success Rate
   const cancelled = history.filter(o => o.status === 'CANCELLED').length;
   const successRate = (totalCompleted + cancelled) > 0 
     ? ((totalCompleted / (totalCompleted + cancelled)) * 100).toFixed(1) 
     : '100';
 
-  // Average Rating
   const averageRating = totalCompleted > 0 ? (parseFloat(successRate) > 95 ? '4.9' : '4.7') : '5.0';
   
   const activeRunsCount = getMyActiveTasks().length;
 
+  const getStatusLabel = (status) => {
+    switch (status) {
+      case 'PICKUP_ASSIGNED': return 'Pickup Claimed';
+      case 'DELIVERY_ASSIGNED': return 'Delivery Claimed';
+      default: return status.replace('_', ' ');
+    }
+  };
+
   return (
     <div className="main-content">
+      {/* Welcome Row */}
       <div style={styles.welcomeRow}>
         <div>
-          <h1 style={{ fontSize: '28px', marginBottom: '4px' }}>Welcome back, {user.displayName}</h1>
-          <p style={{ color: 'var(--text-secondary)' }}>Fulfill active laundry pickup and delivery runs.</p>
+          <h1 style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--primary-navy)', fontFamily: 'Outfit, sans-serif', margin: '0 0 4px 0' }}>
+            Welcome back, {user.displayName} Run!
+          </h1>
+          <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: '0.95rem' }}>
+            Fulfill active customer laundry pickup and delivery runs.
+          </p>
         </div>
         <div style={styles.availabilityToggle}>
           <span style={{ 
             fontSize: '13px', 
-            fontWeight: '500', 
-            color: isOnline ? 'var(--color-success)' : 'var(--text-secondary)' 
+            fontWeight: '600', 
+            color: isOnline ? '#03543F' : 'var(--text-secondary)' 
           }}>
-            Status: {isOnline ? 'Online & Available' : 'Offline'}
+            Availability: {isOnline ? 'Online' : 'Offline'}
           </span>
           <button 
             onClick={handleToggleOnline} 
-            className="btn btn-outline"
+            className="velora-btn velora-btn-secondary animate-pulse"
             style={{ 
               display: 'flex', 
               alignItems: 'center', 
-              gap: '8px', 
+              gap: '6px', 
               padding: '8px 16px', 
-              fontSize: '13px',
-              borderRadius: '8px',
-              borderColor: isOnline ? 'var(--color-success)' : 'var(--border-color)',
-              background: isOnline ? 'rgba(34, 197, 94, 0.12)' : 'rgba(255, 255, 255, 0.02)',
-              color: isOnline ? 'var(--color-success)' : 'var(--text-primary)',
-              cursor: 'pointer',
-              transition: 'var(--transition-smooth)'
+              fontSize: '12px',
+              borderRadius: '20px',
+              borderColor: isOnline ? '#31C78D' : 'var(--sky-blue)',
+              background: isOnline ? '#DEF7EC' : '#FFFFFF',
+              color: isOnline ? '#03543F' : 'var(--primary-navy)',
             }}
           >
             <div style={{ 
               width: '8px', 
               height: '8px', 
               borderRadius: '50%', 
-              background: isOnline ? 'var(--color-success)' : 'var(--text-muted)' 
+              background: isOnline ? '#31C78D' : 'var(--text-secondary)' 
             }} />
             {isOnline ? 'Go Offline' : 'Go Online'}
           </button>
         </div>
       </div>
 
-      {success && <div className="alert alert-success">{success}</div>}
-      {error && <div className="alert alert-error">{error}</div>}
+      {success && <div className="alert alert-success animate-fadeInUp">{success}</div>}
+      {error && <div className="alert alert-error animate-fadeInUp">{error}</div>}
 
       {/* KPI Row */}
-      <div className="grid-cols-4" style={{ marginBottom: '32px' }}>
-        <div className="glass-card" style={styles.kpi}>
-          <div style={{ ...styles.kpiIcon, background: 'rgba(99, 102, 241, 0.15)', color: 'var(--accent-primary)' }}>
-            <Truck size={20} />
-          </div>
-          <div>
-            <h3 style={styles.kpiVal}>{activeRunsCount}</h3>
-            <p style={styles.kpiLabel}>Active Runs</p>
-          </div>
-        </div>
-
-        <div className="glass-card" style={styles.kpi}>
-          <div style={{ ...styles.kpiIcon, background: 'rgba(6, 182, 212, 0.15)', color: 'var(--accent-secondary)' }}>
-            <Clock size={20} />
-          </div>
-          <div>
-            <h3 style={styles.kpiVal}>{dashboard.pendingPickups?.length || 0}</h3>
-            <p style={styles.kpiLabel}>Available Pickups</p>
-          </div>
-        </div>
-
-        <div className="glass-card" style={styles.kpi}>
-          <div style={{ ...styles.kpiIcon, background: 'rgba(245, 158, 11, 0.15)', color: 'var(--color-warning)' }}>
-            <Navigation size={20} />
-          </div>
-          <div>
-            <h3 style={styles.kpiVal}>{dashboard.pendingDeliveries?.length || 0}</h3>
-            <p style={styles.kpiLabel}>Available Deliveries</p>
-          </div>
-        </div>
-
-        <div className="glass-card" style={styles.kpi}>
-          <div style={{ ...styles.kpiIcon, background: 'rgba(34, 197, 94, 0.15)', color: 'var(--color-success)' }}>
-            <CheckCircle2 size={20} />
-          </div>
-          <div>
-            <h3 style={styles.kpiVal}>{completedTodayCount}</h3>
-            <p style={styles.kpiLabel}>Completed Today</p>
-          </div>
-        </div>
+      <div className="grid-cols-4" style={{ marginBottom: '2.5rem', gap: '1.25rem' }}>
+        <StatCard
+          title="Active Runs"
+          value={activeRunsCount}
+          icon={Truck}
+          description="Your current claimed tasks"
+        />
+        <StatCard
+          title="Available Pickups"
+          value={dashboard.pendingPickups?.length || 0}
+          icon={Clock}
+          description="Awaiting rider assignment"
+        />
+        <StatCard
+          title="Available Deliveries"
+          value={dashboard.pendingDeliveries?.length || 0}
+          icon={Navigation}
+          description="Ready at laundry hubs"
+        />
+        <StatCard
+          title="Completed Today"
+          value={completedTodayCount}
+          icon={CheckCircle2}
+          description="Runs finished today"
+        />
       </div>
 
       {/* Rider Earnings & Performance Panels */}
-      <div className="grid-cols-2" style={{ marginBottom: '32px' }}>
+      <div className="grid-cols-2" style={{ marginBottom: '2.5rem', gap: '1.5rem' }}>
         {/* Earnings Card */}
-        <div className="glass-card" style={styles.summaryCard}>
+        <div className="velora-card animate-fadeInUp" style={{ padding: '2rem' }}>
           <div style={styles.cardHeader}>
-            <TrendingUp size={18} color="var(--accent-secondary)" />
-            <h3 style={{ fontSize: '16px', fontWeight: 'bold' }}>Earnings Summary</h3>
+            <TrendingUp size={18} color="var(--primary-teal)" />
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--primary-navy)', fontFamily: 'Outfit, sans-serif', margin: 0 }}>
+              Earnings Summary
+            </h3>
           </div>
           <div style={styles.earningsGrid}>
             <div style={styles.earningsItem}>
               <span style={styles.earningsLabel}>Today's Earnings</span>
-              <h4 style={{ ...styles.earningsVal, color: 'var(--color-success)' }}>₹{todayEarnings}</h4>
+              <h4 style={{ ...styles.earningsVal, color: '#03543F' }}>₹{todayEarnings}</h4>
             </div>
             <div style={styles.earningsItem}>
               <span style={styles.earningsLabel}>Weekly Earnings</span>
@@ -209,53 +204,55 @@ export default function DeliveryDashboard() {
             </div>
             <div style={styles.earningsItem}>
               <span style={styles.earningsLabel}>Total Earnings</span>
-              <h4 style={{ ...styles.earningsVal, color: 'var(--accent-primary)' }}>₹{totalEarnings}</h4>
+              <h4 style={{ ...styles.earningsVal, color: 'var(--primary-teal)' }}>₹{totalEarnings}</h4>
             </div>
           </div>
           <div style={{ marginTop: '20px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '6px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '6px', fontWeight: 700 }}>
               <span>Monthly Target Progress (₹20,000)</span>
               <span>{Math.min(100, Math.round((monthlyEarnings / 20000) * 100))}%</span>
             </div>
-            <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.06)', borderRadius: '3px', overflow: 'hidden' }}>
-              <div style={{ width: `${Math.min(100, (monthlyEarnings / 20000) * 100)}%`, height: '100%', background: 'var(--accent-secondary)', borderRadius: '3px', transition: 'width 0.5s ease-in-out' }}></div>
+            <div style={{ width: '100%', height: '8px', background: 'var(--sky-blue-light)', borderRadius: '4px', overflow: 'hidden' }}>
+              <div style={{ width: `${Math.min(100, (monthlyEarnings / 20000) * 100)}%`, height: '100%', background: 'var(--primary-teal)', borderRadius: '4px', transition: 'width 0.5s ease-in-out' }}></div>
             </div>
           </div>
         </div>
 
         {/* Performance Card */}
-        <div className="glass-card" style={styles.summaryCard}>
+        <div className="velora-card animate-fadeInUp" style={{ padding: '2rem' }}>
           <div style={styles.cardHeader}>
-            <Activity size={18} color="var(--color-warning)" />
-            <h3 style={{ fontSize: '16px', fontWeight: 'bold' }}>Rider Performance</h3>
+            <Activity size={18} color="#D97706" />
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--primary-navy)', fontFamily: 'Outfit, sans-serif', margin: 0 }}>
+              Rider Performance
+            </h3>
           </div>
           <div style={styles.performanceGrid}>
             <div style={styles.performanceItem}>
               <span style={styles.performanceLabel}>Success Rate</span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
-                <Percent size={14} color="var(--accent-secondary)" />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
+                <Percent size={14} color="var(--primary-teal)" />
                 <span style={styles.performanceVal}>{successRate}%</span>
               </div>
             </div>
             <div style={styles.performanceItem}>
               <span style={styles.performanceLabel}>Average Rating</span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
-                <Star size={14} color="var(--color-warning)" fill="var(--color-warning)" />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
+                <Star size={14} color="#FBBF24" fill="#FBBF24" />
                 <span style={styles.performanceVal}>{averageRating} / 5.0</span>
               </div>
             </div>
             <div style={styles.performanceItem}>
               <span style={styles.performanceLabel}>Completed Tasks</span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
-                <CheckCircle2 size={14} color="var(--color-success)" />
-                <span style={styles.performanceVal}>{totalCompleted}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
+                <CheckCircle2 size={14} color="#31C78D" />
+                <span style={styles.performanceVal}>{totalCompleted} runs</span>
               </div>
             </div>
             <div style={styles.performanceItem}>
               <span style={styles.performanceLabel}>Active Assignments</span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
-                <Truck size={14} color="var(--accent-primary)" />
-                <span style={styles.performanceVal}>{activeRunsCount}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
+                <Truck size={14} color="var(--primary-navy)" />
+                <span style={styles.performanceVal}>{activeRunsCount} claimed</span>
               </div>
             </div>
           </div>
@@ -263,44 +260,48 @@ export default function DeliveryDashboard() {
       </div>
 
       {/* My Active tasks list */}
-      <div className="glass-card">
-        <h3 style={{ fontSize: '18px', marginBottom: '20px' }}>Active Navigation Route List</h3>
+      <div className="velora-card animate-fadeInUp" style={{ padding: '2rem' }}>
+        <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary-navy)', fontFamily: 'Outfit, sans-serif', margin: '0 0 1.5rem 0' }}>
+          Active Navigation Route List
+        </h3>
 
         {loading ? (
           <p style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>Loading assignments...</p>
         ) : getMyActiveTasks().length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--text-secondary)' }}>
-            <Truck size={40} color="var(--text-muted)" style={{ marginBottom: '10px' }} />
-            <p>You have no claimed tasks assigned to you right now. Go to the "Tasks Board" to claim runs.</p>
-          </div>
+          <EmptyState
+            title="No claimed runs"
+            description="You have no active pickup or delivery assignments right now. Claim runs from the Tasks Board."
+            mascotState="thinking"
+          />
         ) : (
           <div style={styles.runsContainer}>
             {getMyActiveTasks().map((task) => (
-              <div key={task.orderId} className="glass-panel" style={styles.runCard}>
+              <div key={task.orderId} className="velora-card card-hover" style={styles.runCard}>
                 <div style={styles.runHeader}>
                   <div>
-                    <span style={{ fontSize: '12px', fontWeight: 'bold', fontFamily: 'monospace' }}>
-                      RUN REF: #{task.orderId.substring(0, 8)}
+                    <span style={{ fontSize: '11px', fontWeight: 700, fontFamily: 'monospace', color: 'var(--primary-navy)' }}>
+                      RUN: #{task.orderId.substring(0, 8).toUpperCase()}
                     </span>
-                    <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                    <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: '4px 0 0 0', fontWeight: 600 }}>
                       Client: {task.customerEmail}
                     </p>
                   </div>
-                  <span className="badge badge-warning" style={{ fontSize: '10px' }}>
-                    {task.status.replace('_', ' ')}
+                  <span className="badge badge-warning" style={{ fontSize: '10px', fontWeight: 700 }}>
+                    {getStatusLabel(task.status)}
                   </span>
                 </div>
 
                 <div style={styles.runDetails}>
-                  <p style={{ fontSize: '13px', display: 'flex', gap: '6px', color: 'var(--text-primary)' }}>
-                    <MapPin size={14} color="var(--accent-secondary)" />
-                    {task.status === 'PICKUP_ASSIGNED' ? (
-                      <span><strong>Pickup Address:</strong> {task.pickupAddress}</span>
-                    ) : (
-                      <span><strong>Delivery Address:</strong> {task.deliveryAddress}</span>
-                    )}
-                  </p>
-                  <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '6px', paddingLeft: '20px' }}>
+                  <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-start' }}>
+                    <MapPin size={16} color="var(--primary-teal)" style={{ marginTop: '2px' }} />
+                    <div style={{ fontSize: '12px', color: 'var(--primary-navy)', fontWeight: 600 }}>
+                      <strong>{task.status === 'PICKUP_ASSIGNED' ? 'Pickup Address' : 'Delivery Address'}:</strong>
+                      <p style={{ margin: '4px 0 0 0', fontWeight: 500, color: 'var(--text-secondary)' }}>
+                        {task.status === 'PICKUP_ASSIGNED' ? task.pickupAddress : task.deliveryAddress}
+                      </p>
+                    </div>
+                  </div>
+                  <p style={{ fontSize: '11px', color: 'var(--primary-teal)', marginTop: '8px', marginBottom: 0, paddingLeft: '22px', fontWeight: 700 }}>
                     ⏱ Slot: {task.status === 'PICKUP_ASSIGNED' ? task.pickupSlot : task.deliverySlot}
                   </p>
                 </div>
@@ -309,8 +310,8 @@ export default function DeliveryDashboard() {
                   {task.status === 'PICKUP_ASSIGNED' && (
                     <button
                       onClick={() => handleUpdateStatus(task.orderId, 'PICKED_UP', 'Laundry picked up by delivery rider.')}
-                      className="btn btn-primary"
-                      style={{ width: '100%' }}
+                      className="velora-btn velora-btn-primary animate-pulse"
+                      style={{ width: '100%', padding: '10px', fontSize: '12px' }}
                     >
                       Confirm Picked Up
                     </button>
@@ -319,15 +320,15 @@ export default function DeliveryDashboard() {
                   {task.status === 'DELIVERY_ASSIGNED' && (
                     <button
                       onClick={() => handleUpdateStatus(task.orderId, 'DELIVERED', 'Laundry delivered successfully.')}
-                      className="btn btn-secondary"
-                      style={{ width: '100%' }}
+                      className="velora-btn velora-btn-primary animate-pulse"
+                      style={{ width: '100%', padding: '10px', fontSize: '12px' }}
                     >
                       Confirm Delivered
                     </button>
                   )}
 
                   {task.status === 'PICKED_UP' && (
-                    <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                    <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontStyle: 'italic', textAlign: 'center', width: '100%', display: 'block', fontWeight: 600 }}>
                       Fulfillment in progress at Laundry hub
                     </span>
                   )}
@@ -346,7 +347,7 @@ const styles = {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: '32px',
+    marginBottom: '2.5rem',
     flexWrap: 'wrap',
     gap: '16px',
   },
@@ -355,42 +356,12 @@ const styles = {
     alignItems: 'center',
     gap: '12px',
   },
-  kpi: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '20px',
-    padding: '20px 24px',
-  },
-  kpiIcon: {
-    width: '44px',
-    height: '44px',
-    borderRadius: 'var(--radius-sm)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  kpiVal: {
-    fontSize: '24px',
-    fontWeight: 'bold',
-    marginBottom: '2px',
-  },
-  kpiLabel: {
-    fontSize: '12px',
-    color: 'var(--text-secondary)',
-    fontWeight: 500,
-  },
-  summaryCard: {
-    padding: '24px',
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'space-between',
-  },
   cardHeader: {
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
     marginBottom: '20px',
-    borderBottom: '1px solid var(--border-color)',
+    borderBottom: '2px solid var(--bg-secondary)',
     paddingBottom: '12px',
   },
   earningsGrid: {
@@ -404,37 +375,38 @@ const styles = {
     gap: '4px',
   },
   earningsLabel: {
-    fontSize: '12px',
+    fontSize: '11px',
     color: 'var(--text-secondary)',
-    fontWeight: '500',
+    fontWeight: 700,
   },
   earningsVal: {
     fontSize: '22px',
-    fontWeight: 'bold',
+    fontWeight: '800',
+    fontFamily: 'Outfit, sans-serif',
   },
   performanceGrid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(2, 1fr)',
-    gap: '20px',
+    gap: '16px',
   },
   performanceItem: {
     display: 'flex',
     flexDirection: 'column',
     gap: '4px',
-    background: 'rgba(255, 255, 255, 0.01)',
+    background: 'var(--bg-secondary)',
     padding: '12px',
-    borderRadius: '12px',
-    border: '1px solid var(--border-color)',
+    borderRadius: '16px',
   },
   performanceLabel: {
-    fontSize: '11px',
+    fontSize: '10px',
     color: 'var(--text-secondary)',
-    fontWeight: '500',
+    fontWeight: 700,
+    textTransform: 'uppercase',
   },
   performanceVal: {
-    fontSize: '16px',
-    fontWeight: 'bold',
-    color: 'var(--text-primary)',
+    fontSize: '15px',
+    fontWeight: '700',
+    color: 'var(--primary-navy)',
   },
   runsContainer: {
     display: 'grid',
@@ -443,6 +415,8 @@ const styles = {
   },
   runCard: {
     padding: '20px',
+    background: '#FFFFFF',
+    border: '1px solid var(--sky-blue-light)',
     display: 'flex',
     flexDirection: 'column',
     justifyContent: 'space-between',
@@ -452,16 +426,17 @@ const styles = {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    borderBottom: '1px solid var(--border-color)',
+    borderBottom: '2px solid var(--bg-secondary)',
     paddingBottom: '8px',
   },
   runDetails: {
-    background: 'rgba(255, 255, 255, 0.01)',
+    background: 'var(--bg-secondary)',
     padding: '12px',
-    borderRadius: 'var(--radius-sm)',
+    borderRadius: '16px',
   },
   actions: {
     display: 'flex',
     justifyContent: 'center',
+    width: '100%',
   },
 };
