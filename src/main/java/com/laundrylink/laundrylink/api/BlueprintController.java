@@ -22,7 +22,7 @@ public class BlueprintController {
     @GetMapping("/blueprint")
     public BlueprintResponse blueprint() {
         return new BlueprintResponse(
-                "LaundryLink",
+                "Velora",
                 "Multi-vendor on-demand laundry aggregator platform",
                 blueprintCatalogService.orderLifecycle(),
                 blueprintCatalogService.serviceCatalog()

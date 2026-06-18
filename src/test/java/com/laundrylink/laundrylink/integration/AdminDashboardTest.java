@@ -46,8 +46,8 @@ public class AdminDashboardTest {
                 .addFilter(jwtAuthenticationFilter)
                 .build();
 
-        UserEntity admin = userRepository.findByEmail("admin@laundrylink.example")
-                .orElseGet(() -> userRepository.save(new UserEntity("admin@laundrylink.example", "hash", "Admin User", "999", UserRoleType.ADMIN)));
+        UserEntity admin = userRepository.findByEmail("admin@velora.example")
+                .orElseGet(() -> userRepository.save(new UserEntity("admin@velora.example", "hash", "Admin User", "999", UserRoleType.ADMIN)));
         adminToken = "Bearer " + jwtService.generateToken(admin);
 
         UserEntity customer = userRepository.findByEmail("aarav@example.com")

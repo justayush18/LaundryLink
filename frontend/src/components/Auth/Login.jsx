@@ -40,7 +40,7 @@ export default function Login() {
     <div style={styles.container}>
       <div className="glass-card" style={styles.card}>
         <div style={styles.header}>
-          <h1 style={styles.brand}>LaundryLink</h1>
+          <h1 style={styles.brand}>Velora</h1>
           <p style={styles.subtitle}>Welcome back! Sign in to continue</p>
         </div>
 

@@ -86,7 +86,7 @@ public class AuthService {
                     UserRoleType.LAUNDRY_PARTNER);
             registerSeed("Ravi Singh", "ravi.delivery@example.com", "Password@123", "+91-90000-30003",
                     UserRoleType.DELIVERY_PARTNER);
-            registerSeed("LaundryLink Admin", "admin@laundrylink.example", "Password@123", "+91-90000-40004",
+            registerSeed("Velora Admin", "admin@velora.example", "Password@123", "+91-90000-40004",
                     UserRoleType.ADMIN);
         }
     }

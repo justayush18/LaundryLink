@@ -40,7 +40,7 @@ export default function Register() {
     <div style={styles.container}>
       <div className="glass-card" style={styles.card}>
         <div style={styles.header}>
-          <h1 style={styles.brand}>LaundryLink</h1>
+          <h1 style={styles.brand}>Velora</h1>
           <p style={styles.subtitle}>Join us today! Choose your role to start</p>
         </div>
 

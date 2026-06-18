@@ -60,7 +60,7 @@ export default function Sidebar() {
   return (
     <aside style={styles.sidebar} className="glass-panel">
       <div style={styles.brandContainer}>
-        <span style={styles.brand}>LaundryLink</span>
+        <span style={styles.brand}>Velora</span>
         {user && (
           <span className="badge badge-info" style={styles.roleBadge}>
             {user.role.replace('_', ' ')}

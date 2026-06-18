@@ -1,6 +1,6 @@
 # PROJECT JOURNEY
 
-This file is an append-only development diary for LaundryLink. New work must be added chronologically, without deleting earlier entries.
+This file is an append-only development diary for Velora. New work must be added chronologically, without deleting earlier entries.
 
 ## Development Log
 
@@ -20,7 +20,7 @@ This file is an append-only development diary for LaundryLink. New work must be 
 
 ### 2026-06-18 - Phase 1 Foundation API Scaffold
 - Date and phase: 2026-06-18, Phase 1.
-- Goal of the task: Create a small API foundation that reflects the LaundryLink blueprint without adding database or security complexity.
+- Goal of the task: Create a small API foundation that reflects the Velora blueprint without adding database or security complexity.
 - What was implemented: Added a health endpoint, a blueprint endpoint, and a stakeholder endpoint, each powered by simple in-memory service classes.
 - Files created:
   - [src/main/java/com/laundrylink/laundrylink/api/HealthController.java](src/main/java/com/laundrylink/laundrylink/api/HealthController.java)

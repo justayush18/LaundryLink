@@ -20,7 +20,7 @@ public class JwtService {
 
     private static final Duration TOKEN_TTL = Duration.ofHours(4);
     private static final String HMAC_ALGORITHM = "HmacSHA256";
-    private static final String SECRET = "LaundryLink-Phase3-JWT-Secret-Key-Replace-In-Prod";
+    private static final String SECRET = "Velora-Phase3-JWT-Secret-Key-Replace-In-Prod";
     private static final String HEADER_JSON = "{\"alg\":\"HS256\",\"typ\":\"JWT\"}";
 
     public String generateToken(UserEntity account) {

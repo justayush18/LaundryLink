@@ -147,7 +147,7 @@ export default function CustomerPayments() {
           ) : selectedInvoice ? (
             <div style={styles.invoiceCard} className="glass-panel">
               <div style={styles.invoiceHead}>
-                <span style={styles.invoiceBrand}>LaundryLink Receipt</span>
+                <span style={styles.invoiceBrand}>Velora Receipt</span>
                 <span className={`badge ${selectedInvoice.invoiceStatus === 'CANCELLED' ? 'badge-error' : 'badge-success'}`}>
                   {selectedInvoice.invoiceStatus}
                 </span>
@@ -181,7 +181,7 @@ export default function CustomerPayments() {
                 </span>
               </div>
 
-              <p style={styles.thankyou}>Thank you for choosing LaundryLink!</p>
+              <p style={styles.thankyou}>Thank you for choosing Velora!</p>
             </div>
           ) : (
             <div style={styles.noSelection}>
