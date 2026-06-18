@@ -764,3 +764,76 @@ graph TD
 - **Enhanced Metrics Compilation**: Calculated total revenue (successful payments), refund counts/amounts, top rated partner (max reputation), average partner reputation, and average order cycle times (PLACED to DELIVERED status transition time delta) via repository aggregations and history transition logs.
 
 
+## Phase 12 Snapshot - Frontend React Client
+
+### Frontend Tech Stack
+- **Framework**: React 19 (via Vite bundler)
+- **Routing**: React Router DOM (`BrowserRouter`)
+- **Iconography**: Lucide React
+- **Charting**: Recharts
+- **Styling**: Custom Vanilla CSS with CSS Variables and responsive HSL dark theme
+
+### Frontend Folder Structure
+```
+frontend/
+  ├── public/
+  ├── src/
+  │   ├── assets/
+  │   ├── context/
+  │   │   └── AuthContext.jsx
+  │   ├── services/
+  │   │   └── api.js
+  │   ├── styles/
+  │   ├── components/
+  │   │   ├── Common/
+  │   │   │   ├── Navbar.jsx
+  │   │   │   ├── Sidebar.jsx
+  │   │   │   └── ProtectedRoute.jsx
+  │   │   ├── Notifications/
+  │   │   │   └── NotificationCenter.jsx
+  │   │   ├── Auth/
+  │   │   │   ├── Login.jsx
+  │   │   │   └── Register.jsx
+  │   │   ├── Customer/
+  │   │   │   ├── CustomerDashboard.jsx
+  │   │   │   ├── CustomerOrders.jsx
+  │   │   │   ├── CustomerPayments.jsx
+  │   │   │   ├── CustomerReviews.jsx
+  │   │   │   ├── PlaceOrderWizard.jsx
+  │   │   │   └── ReviewModal.jsx
+  │   │   ├── Partner/
+  │   │   │   ├── PartnerDashboard.jsx
+  +--...
+``` (simplified view)
+
+### Router Mapping Surface
+| Route Path | Gated Role | Connected View Component | REST API Client Resources |
+|---|---|---|---|
+| `/login` | Public | `<Login />` | `POST /api/v1/auth/login` |
+| `/register` | Public | `<Register />` | `POST /api/v1/auth/register` |
+| `/customer/dashboard` | `CUSTOMER` | `<CustomerDashboard />` | `GET /api/v1/orders/my`, `POST /api/v1/payments/initiate` |
+| `/customer/orders` | `CUSTOMER` | `<CustomerOrders />` | `GET /api/v1/orders/my`, `PUT /api/v1/orders/{id}/status` |
+| `/customer/payments` | `CUSTOMER` | `<CustomerPayments />` | `GET /api/v1/payments/orders/{id}/invoice` |
+| `/customer/reviews` | `CUSTOMER` | `<CustomerReviews />` | `GET /api/v1/reviews/history` |
+| `/partner/dashboard` | `LAUNDRY_PARTNER` | `<PartnerDashboard />` | `GET /api/v1/partners/profile`, `PUT /api/v1/orders/{id}/status` |
+| `/partner/orders` | `LAUNDRY_PARTNER` | `<PartnerOrders />` | `GET /api/v1/orders/my` |
+| `/partner/pricing` | `LAUNDRY_PARTNER` | `<PartnerPricing />` | `GET/PUT /api/v1/partners/pricing` |
+| `/partner/documents` | `LAUNDRY_PARTNER` | `<PartnerDocuments />` | `GET/POST /api/v1/partners/documents` |
+| `/delivery/dashboard` | `DELIVERY_PARTNER` | `<DeliveryDashboard />` | `GET /api/v1/deliveries/dashboard` |
+| `/delivery/tasks` | `DELIVERY_PARTNER` | `<DeliveryTasks />` | `GET /api/v1/deliveries/dashboard`, `PUT /api/v1/orders/{id}/assign-delivery` |
+| `/admin/dashboard` | `ADMIN` | `<AdminDashboard />` | `GET /api/v1/admin/dashboard` |
+| `/admin/users` | `ADMIN` | `<AdminUsers />` | `GET /api/v1/admin/users`, `PUT /api/v1/admin/users/{email}/role` |
+| `/admin/partners` | `ADMIN` | `<AdminPartners />` | `GET /api/v1/admin/partners`, `PUT /api/v1/admin/partners/{email}/verify` |
+| `/admin/orders` | `ADMIN` | `<AdminOrders />` | `GET /api/v1/admin/orders` |
+| `/admin/payments` | `ADMIN` | `<AdminPayments />` | `GET /api/v1/admin/payments`, `POST /api/v1/payments/{id}/refund` |
+| `/admin/reports` | `ADMIN` | `<AdminReports />` | `GET /api/v1/admin/reports/revenue`, `GET /api/v1/admin/analytics/partners` |
+
+### Key Frontend Architecture Decisions
+- **Vite Proxy Bypass**: Local development server proxies all `/api` requests to backend port 8080. This handles CORS dynamically without requiring Spring Security CORS configuration changes.
+- **Dynamic Role Routing**: Authentication payload wraps state roles; on initialization, `ProtectedRoute` filters routing credentials or redirects unauthorized sessions back to login.
+- **Self-Assignment Resolution**: Delivery task claiming resolves rider emails from standard backend JWT contexts during `/assign-delivery` updates.
+- **Glassmorphic theme variables**: Customized HSL colors allow switching layout styles easily.
+- **Responsive Flex Grids**: Dashboard structures scale from mobile columns to desktop grids using unified container patterns.
+
+
+

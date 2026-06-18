@@ -1,0 +1,317 @@
+import React, { useState, useEffect } from 'react';
+import { api } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
+import { ShoppingBag, CreditCard, Star, Clock, CheckCircle2, AlertTriangle, ArrowRight } from 'lucide-react';
+import PlaceOrderWizard from './PlaceOrderWizard';
+import ReviewModal from './ReviewModal';
+
+export default function CustomerDashboard() {
+  const { user } = useAuth();
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [isWizardOpen, setIsWizardOpen] = useState(false);
+  const [isReviewOpen, setIsReviewOpen] = useState(false);
+  const [reviewOrderId, setReviewOrderId] = useState('');
+  const [reviewPartnerEmail, setReviewPartnerEmail] = useState('');
+  const [error, setError] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
+
+  const fetchDashboardData = async () => {
+    setLoading(true);
+    try {
+      const myOrders = await api.orders.getMyOrders();
+      setOrders(myOrders || []);
+    } catch (err) {
+      console.error(err);
+      setError('Failed to fetch dashboard data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const handlePayNow = async (orderId, totalCost) => {
+    try {
+      // 1. Initiate payment
+      const initReq = { orderId, paymentMethod: 'RAZORPAY' };
+      const payment = await api.payments.initiate(initReq);
+      
+      // 2. Process simulated payment success
+      const processReq = { transactionId: 'TXN_' + Math.random().toString(36).substr(2, 9).toUpperCase(), simulateSuccess: true };
+      await api.payments.process(payment.paymentId, processReq);
+      
+      setSuccessMsg(`Payment of ₹${totalCost} processed successfully! Invoice generated.`);
+      setTimeout(() => setSuccessMsg(''), 5000);
+      fetchDashboardData();
+    } catch (err) {
+      setError(err.message || 'Payment processing failed');
+      setTimeout(() => setError(''), 5000);
+    }
+  };
+
+  const handleOpenReview = (orderId, partnerEmail) => {
+    setReviewOrderId(orderId);
+    setReviewPartnerEmail(partnerEmail);
+    setIsReviewOpen(true);
+  };
+
+  const getActiveOrders = () => {
+    return orders.filter(o => o.status !== 'DELIVERED' && o.status !== 'CANCELLED');
+  };
+
+  const getCompletedOrders = () => {
+    return orders.filter(o => o.status === 'DELIVERED');
+  };
+
+  const getSpentAmount = () => {
+    return orders
+      .filter(o => o.status === 'DELIVERED')
+      .reduce((sum, o) => sum + o.totalCost, 0);
+  };
+
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case 'PLACED': return <span className="badge badge-info">Placed</span>;
+      case 'ACCEPTED': return <span className="badge badge-info">Accepted</span>;
+      case 'PICKUP_ASSIGNED': return <span className="badge badge-warning">Pickup Assigned</span>;
+      case 'PICKED_UP': return <span className="badge badge-warning">Picked Up</span>;
+      case 'PROCESSING': return <span className="badge badge-warning">Processing</span>;
+      case 'READY_FOR_DELIVERY': return <span className="badge badge-warning">Ready</span>;
+      case 'DELIVERY_ASSIGNED': return <span className="badge badge-warning">Out for Delivery</span>;
+      case 'DELIVERED': return <span className="badge badge-success">Delivered</span>;
+      case 'CANCELLED': return <span className="badge badge-error">Cancelled</span>;
+      default: return <span className="badge">{status}</span>;
+    }
+  };
+
+  return (
+    <div className="main-content">
+      <div style={styles.welcomeRow}>
+        <div>
+          <h1 style={{ fontSize: '28px', marginBottom: '4px' }}>Hello, {user.displayName}</h1>
+          <p style={{ color: 'var(--text-secondary)' }}>Track your laundry and checkout services dynamically.</p>
+        </div>
+        <button onClick={() => setIsWizardOpen(true)} className="btn btn-primary">
+          + Place New Order
+        </button>
+      </div>
+
+      {successMsg && <div className="alert alert-success">{successMsg}</div>}
+      {error && <div className="alert alert-error">{error}</div>}
+
+      {/* KPI Cards */}
+      <div className="grid-cols-4" style={{ marginBottom: '32px' }}>
+        <div className="glass-card" style={styles.kpiCard}>
+          <div style={{ ...styles.kpiIcon, background: 'rgba(99, 102, 241, 0.15)', color: 'var(--accent-primary)' }}>
+            <Clock size={20} />
+          </div>
+          <div>
+            <h3 style={styles.kpiVal}>{getActiveOrders().length}</h3>
+            <p style={styles.kpiLabel}>Active Orders</p>
+          </div>
+        </div>
+
+        <div className="glass-card" style={styles.kpiCard}>
+          <div style={{ ...styles.kpiIcon, background: 'rgba(34, 197, 94, 0.15)', color: 'var(--color-success)' }}>
+            <CheckCircle2 size={20} />
+          </div>
+          <div>
+            <h3 style={styles.kpiVal}>{getCompletedOrders().length}</h3>
+            <p style={styles.kpiLabel}>Completed Orders</p>
+          </div>
+        </div>
+
+        <div className="glass-card" style={styles.kpiCard}>
+          <div style={{ ...styles.kpiIcon, background: 'rgba(6, 182, 212, 0.15)', color: 'var(--accent-secondary)' }}>
+            <CreditCard size={20} />
+          </div>
+          <div>
+            <h3 style={styles.kpiVal}>₹{getSpentAmount()}</h3>
+            <p style={styles.kpiLabel}>Total Spent</p>
+          </div>
+        </div>
+
+        <div className="glass-card" style={styles.kpiCard}>
+          <div style={{ ...styles.kpiIcon, background: 'rgba(245, 158, 11, 0.15)', color: 'var(--color-warning)' }}>
+            <Star size={20} />
+          </div>
+          <div>
+            <h3 style={styles.kpiVal}>{orders.length}</h3>
+            <p style={styles.kpiLabel}>Total Placed</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Active Orders List */}
+      <div className="glass-card" style={{ marginBottom: '32px' }}>
+        <h3 style={{ fontSize: '18px', marginBottom: '20px' }}>Active Laundry Trackings</h3>
+
+        {loading ? (
+          <p style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '24px 0' }}>Loading tracking details...</p>
+        ) : getActiveOrders().length === 0 ? (
+          <div style={styles.emptyState}>
+            <ShoppingBag size={48} color="var(--text-muted)" style={{ marginBottom: '12px' }} />
+            <p style={{ color: 'var(--text-secondary)', marginBottom: '16px' }}>No active laundry orders at this moment.</p>
+            <button onClick={() => setIsWizardOpen(true)} className="btn btn-outline">Place Your First Order</button>
+          </div>
+        ) : (
+          <div className="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Order ID</th>
+                  <th>Laundry Partner</th>
+                  <th>Total Cost</th>
+                  <th>Status</th>
+                  <th>Pickup Slot</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {getActiveOrders().map((order) => (
+                  <tr key={order.orderId}>
+                    <td style={{ fontFamily: 'monospace', fontSize: '12px' }}>{order.orderId.substring(0, 8)}...</td>
+                    <td>{order.partnerEmail}</td>
+                    <td>₹{order.totalCost}</td>
+                    <td>{getStatusBadge(order.status)}</td>
+                    <td style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{order.pickupSlot}</td>
+                    <td>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        {!order.paymentId && (
+                          <button
+                            onClick={() => handlePayNow(order.orderId, order.totalCost)}
+                            className="btn btn-primary"
+                            style={{ padding: '6px 12px', fontSize: '12px' }}
+                          >
+                            Pay Now
+                          </button>
+                        )}
+                        {order.paymentId && (
+                          <span style={{ fontSize: '12px', color: 'var(--color-success)', alignSelf: 'center' }}>
+                            Paid (Pending Delivery)
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Recently Completed Orders */}
+      <div className="glass-card">
+        <h3 style={{ fontSize: '18px', marginBottom: '20px' }}>Recently Completed</h3>
+        
+        {loading ? (
+          <p style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>Loading...</p>
+        ) : getCompletedOrders().length === 0 ? (
+          <p style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>No completed orders found.</p>
+        ) : (
+          <div className="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Order ID</th>
+                  <th>Laundry Partner</th>
+                  <th>Total Cost</th>
+                  <th>Delivered Time</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {getCompletedOrders().slice(0, 5).map((order) => (
+                  <tr key={order.orderId}>
+                    <td style={{ fontFamily: 'monospace', fontSize: '12px' }}>{order.orderId.substring(0, 8)}...</td>
+                    <td>{order.partnerEmail}</td>
+                    <td>₹{order.totalCost}</td>
+                    <td style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+                      {new Date(order.updatedAt * 1000).toLocaleString()}
+                    </td>
+                    <td>
+                      <button
+                        onClick={() => handleOpenReview(order.orderId, order.partnerEmail)}
+                        className="btn btn-outline"
+                        style={{ padding: '6px 12px', fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                      >
+                        <Star size={14} color="var(--color-warning)" fill="var(--color-warning)" />
+                        Review Service
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Place Order Modal */}
+      <PlaceOrderWizard
+        isOpen={isWizardOpen}
+        onClose={() => setIsWizardOpen(false)}
+        onOrderPlaced={() => {
+          setIsWizardOpen(false);
+          fetchDashboardData();
+        }}
+      />
+
+      {/* Review Modal */}
+      <ReviewModal
+        isOpen={isReviewOpen}
+        onClose={() => setIsReviewOpen(false)}
+        orderId={reviewOrderId}
+        partnerEmail={reviewPartnerEmail}
+        onReviewSubmitted={() => {
+          setSuccessMsg('Thank you! Review submitted successfully.');
+          setTimeout(() => setSuccessMsg(''), 5000);
+          fetchDashboardData();
+        }}
+      />
+    </div>
+  );
+}
+
+const styles = {
+  welcomeRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '32px',
+  },
+  kpiCard: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '20px',
+    padding: '20px 24px',
+  },
+  kpiIcon: {
+    width: '44px',
+    height: '44px',
+    borderRadius: 'var(--radius-sm)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  kpiVal: {
+    fontSize: '24px',
+    fontWeight: 'bold',
+    marginBottom: '2px',
+  },
+  kpiLabel: {
+    fontSize: '12px',
+    color: 'var(--text-secondary)',
+    fontWeight: 500,
+  },
+  emptyState: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    padding: '40px 0',
+  },
+};

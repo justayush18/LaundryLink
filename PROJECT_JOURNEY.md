@@ -489,4 +489,60 @@ This file is an append-only development diary for LaundryLink. New work must be 
 - Mistake: Registration test used `"name"` field instead of `"displayName"`, causing a `PropertyValueException`.
   - Fix: Aligned the test request JSON with the `AuthRegisterRequest` record field name `displayName`.
 - Mistake: Adding the `active` column to `UserEntity` caused all existing users to default to inactive (`\0`), resulting in login failures.
-  - Fix: Executed SQL update `UPDATE users SET active = 1;` in MySQL to restore the active state for pre-existing accounts.
+  - Fix: Executed SQL update `UPDATE users SET active = 1;` in MySQL to restore the active state for pre-existing accounts.
+
+### 2026-06-18 - Phase 12 React Frontend / UI-UX Development
+- Date and phase: 2026-06-18, Phase 12.
+- Goal of the task: Build a premium, responsive React Single Page Application (SPA) using Vite, mapping all previously created backend REST resources (security, dashboards, order wizard, billing, reviews, notifications, and analytics).
+- What was implemented:
+  - **Project Scaffolding**: Setup Vite + React inside a new `frontend/` workspace directory. Installed required routing (`react-router-dom`), icons (`lucide-react`), and charting (`recharts`) libraries.
+  - **Proxy Configuration**: Integrated proxy server in `vite.config.js` to route all local `/api/*` requests directly to backend port 8080.
+  - **Design System & CSS Variables**: Overwrote `index.css` to define global custom properties (background `#0B0F19`, indigo `#6366F1`, cyan `#06B6D4`), Outfit/Inter fonts, scrollbar styles, flex/grid templates, and glassmorphic card effects (`backdrop-filter`).
+  - **Authentication Context**: Created `AuthContext.jsx` and `api.js` client wrapper to save JWT inside `localStorage`, inject Bearer tokens, handle logins/registrations, and redirect users to role-specific layouts.
+  - **Common Layout & Protection**: Designed `Sidebar.jsx`, `Navbar.jsx`, and `ProtectedRoute.jsx` to secure routes and dynamically render tabs depending on whether the user is a Customer, Merchant, Rider, or Admin.
+  - **Notification Center**: Created `NotificationCenter.jsx` dropdown bell indicator in the Navbar to fetch unread histories, display notification type badges, and trigger read checks.
+  - **Customer Dashboards**: Built active order list tracking, Place Order step-by-step wizard (checking partner rate cards), payment initiate/process triggers, and 1-to-5 star Review Modal submissions.
+  - **Merchant Dashboards**: Added workload counts, order acceptance status transitions, pricing card edits, and documents onboarding uploader.
+  - **Rider Dashboards**: Set up Available Pickups/Deliveries claim board and update status controls.
+  - **Admin Operations**: Implemented consolidated KPI statistics, Recharts bar charts comparing merchant performances and stakeholder roles, user search and deactivation toggles, partner document audit verifier, filterable order table, and payment refunds trigger.
+  - **Verification**: Compiled the entire frontend project into production assets (`npm run build`) with zero compiler warnings/errors.
+- Files created:
+  - `frontend/vite.config.js` (modified)
+  - `frontend/src/index.css` (overwritten)
+  - `frontend/src/App.css` (reset)
+  - `frontend/src/App.jsx` (overwritten)
+  - [frontend/src/services/api.js](frontend/src/services/api.js)
+  - [frontend/src/context/AuthContext.jsx](frontend/src/context/AuthContext.jsx)
+  - [frontend/src/components/Common/ProtectedRoute.jsx](frontend/src/components/Common/ProtectedRoute.jsx)
+  - [frontend/src/components/Common/Sidebar.jsx](frontend/src/components/Common/Sidebar.jsx)
+  - [frontend/src/components/Common/Navbar.jsx](frontend/src/components/Common/Navbar.jsx)
+  - [frontend/src/components/Notifications/NotificationCenter.jsx](frontend/src/components/Notifications/NotificationCenter.jsx)
+  - [frontend/src/components/Auth/Login.jsx](frontend/src/components/Auth/Login.jsx)
+  - [frontend/src/components/Auth/Register.jsx](frontend/src/components/Auth/Register.jsx)
+  - [frontend/src/components/Customer/PlaceOrderWizard.jsx](frontend/src/components/Customer/PlaceOrderWizard.jsx)
+  - [frontend/src/components/Customer/ReviewModal.jsx](frontend/src/components/Customer/ReviewModal.jsx)
+  - [frontend/src/components/Customer/CustomerDashboard.jsx](frontend/src/components/Customer/CustomerDashboard.jsx)
+  - [frontend/src/components/Customer/CustomerOrders.jsx](frontend/src/components/Customer/CustomerOrders.jsx)
+  - [frontend/src/components/Customer/CustomerPayments.jsx](frontend/src/components/Customer/CustomerPayments.jsx)
+  - [frontend/src/components/Customer/CustomerReviews.jsx](frontend/src/components/Customer/CustomerReviews.jsx)
+  - [frontend/src/components/Partner/PartnerDashboard.jsx](frontend/src/components/Partner/PartnerDashboard.jsx)
+  - [frontend/src/components/Partner/PartnerOrders.jsx](frontend/src/components/Partner/PartnerOrders.jsx)
+  - [frontend/src/components/Partner/PartnerPricing.jsx](frontend/src/components/Partner/PartnerPricing.jsx)
+  - [frontend/src/components/Partner/PartnerDocuments.jsx](frontend/src/components/Partner/PartnerDocuments.jsx)
+  - [frontend/src/components/Delivery/DeliveryDashboard.jsx](frontend/src/components/Delivery/DeliveryDashboard.jsx)
+  - [frontend/src/components/Delivery/DeliveryTasks.jsx](frontend/src/components/Delivery/DeliveryTasks.jsx)
+  - [frontend/src/components/Admin/AdminDashboard.jsx](frontend/src/components/Admin/AdminDashboard.jsx)
+  - [frontend/src/components/Admin/AdminUsers.jsx](frontend/src/components/Admin/AdminUsers.jsx)
+  - [frontend/src/components/Admin/AdminPartners.jsx](frontend/src/components/Admin/AdminPartners.jsx)
+  - [frontend/src/components/Admin/AdminOrders.jsx](frontend/src/components/Admin/AdminOrders.jsx)
+  - [frontend/src/components/Admin/AdminPayments.jsx](frontend/src/components/Admin/AdminPayments.jsx)
+  - [frontend/src/components/Admin/AdminReports.jsx](frontend/src/components/Admin/AdminReports.jsx)
+- Files modified: None.
+- Problems encountered: Resolving modular absolute layouts for sidebar on mobile screens.
+- Errors faced: None during final compilation; Vite production build yielded clean output assets.
+- Root cause of the issue: Responsive flex layouts must shift direction from row to column on smaller screens.
+- How the issue was resolved: Added CSS `@media` overrides in `index.css` and `Navbar.jsx` to toggle layouts fluidly.
+- Important design decisions: Swapped external styling frameworks for custom CSS variables and glassmorphic card stylings; used Recharts for performant interactive SVG chart renderings.
+- What I learned from this step: Setting up Vite local server proxies is the cleanest way to prevent CORS problems during local REST API development.
+- Next planned step: Handover project baseline for deployment staging.
+
