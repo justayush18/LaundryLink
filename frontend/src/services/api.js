@@ -51,6 +51,7 @@ export const api = {
 
   // Partners
   partners: {
+    list: () => request('/api/v1/partners'),
     getProfile: () => request('/api/v1/partners/profile'),
     updateProfile: (profile) => request('/api/v1/partners/profile', { method: 'PUT', body: profile }),
     getPublicProfile: (email) => request(`/api/v1/partners/${email}/profile`),
@@ -61,6 +62,7 @@ export const api = {
     getDocuments: () => request('/api/v1/partners/documents'),
     uploadDocument: (doc) => request('/api/v1/partners/documents', { method: 'POST', body: doc }),
     getPricing: () => request('/api/v1/partners/pricing'),
+    getPartnerPricing: (email) => request(`/api/v1/partners/${email}/pricing`),
     updatePricing: (pricing) => request('/api/v1/partners/pricing', { method: 'PUT', body: pricing }),
   },
 
@@ -68,7 +70,7 @@ export const api = {
   orders: {
     placeOrder: (order) => request('/api/v1/orders', { method: 'POST', body: order }),
     getOrder: (orderId) => request(`/api/v1/orders/${orderId}`),
-    getMyOrders: () => request('/api/v1/orders/my'),
+    getMyOrders: () => request('/api/v1/orders/history'),
     getHistory: (orderId) => request(`/api/v1/orders/history`), // List of order overview and count
     updateStatus: (orderId, statusUpdate) => request(`/api/v1/orders/${orderId}/status`, { method: 'PUT', body: statusUpdate }),
     assignDelivery: (orderId, assignRequest) => request(`/api/v1/orders/${orderId}/assign-delivery`, { method: 'PUT', body: assignRequest }),

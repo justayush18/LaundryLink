@@ -195,6 +195,14 @@ a:hover {
   border-color: var(--border-hover);
 }
 
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
 /* Inputs and Forms */
 .form-group {
   margin-bottom: 20px;
@@ -340,3 +348,17 @@ tr:hover td {
   border: 1px solid rgba(239, 68, 68, 0.2);
   color: #fecaca;
 }
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+

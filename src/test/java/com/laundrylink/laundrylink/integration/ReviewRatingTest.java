@@ -60,12 +60,12 @@ public class ReviewRatingTest {
                 .orElseGet(() -> userRepository.save(new UserEntity("aarav@example.com", "hash", "Aarav", "123", UserRoleType.CUSTOMER)));
         customerToken = "Bearer " + jwtService.generateToken(customer);
 
-        UserEntity partnerUser = userRepository.findByEmail("partner@freshfold.example")
-                .orElseGet(() -> userRepository.save(new UserEntity("partner@freshfold.example", "hash", "FreshFold", "456", UserRoleType.LAUNDRY_PARTNER)));
+        UserEntity partnerUser = userRepository.findByEmail("partner-test-unique@freshfold.example")
+                .orElseGet(() -> userRepository.save(new UserEntity("partner-test-unique@freshfold.example", "hash", "FreshFold", "456", UserRoleType.LAUNDRY_PARTNER)));
 
-        partnerRepository.findByEmail("partner@freshfold.example")
+        partnerRepository.findByEmail("partner-test-unique@freshfold.example")
                 .orElseGet(() -> {
-                    PartnerEntity partner = new PartnerEntity("partner@freshfold.example", "FreshFold Laundry", "Desc", "Address", "ACTIVE");
+                    PartnerEntity partner = new PartnerEntity("partner-test-unique@freshfold.example", "FreshFold Laundry", "Desc", "Address", "ACTIVE");
                     partner.setPricingRateCard(List.of(new RateCardItemEntity("SHIRT", "WASH_AND_FOLD", 45.0)));
                     return partnerRepository.save(partner);
                 });
@@ -73,7 +73,7 @@ public class ReviewRatingTest {
         OrderEntity order = new OrderEntity(
                 "order-rev-123",
                 "aarav@example.com",
-                "partner@freshfold.example",
+                "partner-test-unique@freshfold.example",
                 90.0,
                 "Pickup Address",
                 "Slot A",
@@ -99,7 +99,7 @@ public class ReviewRatingTest {
                 .andExpect(jsonPath("$.comment").value("Perfect wash"));
 
         // 2. Fetch partner ratings
-        mockMvc.perform(get("/api/v1/reviews/partners/partner@freshfold.example")
+        mockMvc.perform(get("/api/v1/reviews/partners/partner-test-unique@freshfold.example")
                 .header(HttpHeaders.AUTHORIZATION, customerToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.averageRating").value(5.0))

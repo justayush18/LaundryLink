@@ -45,6 +45,20 @@ public class LaundryPartnerService {
         );
     }
 
+    public List<PartnerProfileView> getAllPartners() {
+        return partnerRepository.findAll().stream()
+                .map(profile -> new PartnerProfileView(
+                        profile.getEmail(),
+                        profile.getBusinessName(),
+                        profile.getDescription(),
+                        profile.getServiceHubAddress(),
+                        profile.getOnboardingStatus(),
+                        profile.getReputationScore(),
+                        profile.getTotalReviews()
+                ))
+                .collect(Collectors.toList());
+    }
+
     public PartnerProfileView updateProfile(String email, String businessName, String description, String serviceHubAddress) {
         PartnerEntity profile = getOrCreateProfile(email);
         profile.setBusinessName(businessName);
@@ -163,7 +177,8 @@ public class LaundryPartnerService {
 
     public PricingView updatePricing(String email, List<RateCardItem> rateCard) {
         PartnerEntity profile = getOrCreateProfile(email);
-        profile.setPricingRateCard(toRateCardItemEntities(rateCard));
+        profile.getPricingRateCard().clear();
+        profile.getPricingRateCard().addAll(toRateCardItemEntities(rateCard));
         partnerRepository.save(profile);
         return new PricingView(profile.getEmail(), toRateCardItems(profile.getPricingRateCard()));
     }

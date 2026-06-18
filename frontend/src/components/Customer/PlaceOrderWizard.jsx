@@ -27,7 +27,7 @@ export default function PlaceOrderWizard({ isOpen, onClose, onOrderPlaced }) {
 
   const fetchPartners = async () => {
     try {
-      const data = await api.admin.getPartners();
+      const data = await api.partners.list();
       // Filter only active partners
       const active = data.filter(p => p.onboardingStatus === 'ACTIVE');
       setPartners(active);
@@ -39,27 +39,15 @@ export default function PlaceOrderWizard({ isOpen, onClose, onOrderPlaced }) {
   const handleSelectPartner = async (partner) => {
     setSelectedPartner(partner);
     try {
-      const detailed = await api.partners.getPublicProfile(partner.email);
-      // Detailed view contains rateCard from partner's config
-      // Let's get rates
-      const rates = await api.partners.getPricing(); // Fallback to pricing endpoint or custom mapping
-      // Wait, let's fetch pricing for this specific partner
-      // In Phase 4 we added GET /api/v1/partners/{email}/pricing
-      const detailedPricing = await api.partners.updatePricing; // Let's check api.js
-      // Wait, in api.js: getPricing: () => request('/api/v1/partners/pricing') or getPricing for partner:
-      // Oh! In api.js we have: api.partners.getPricing() or api.admin.getPartner(email) which includes docs and details.
-      // Wait, let's see what api.admin.getPartner returns. Let's see if the rateCard is attached.
-      // Let's verify what DetailedPartner profile has. In PartnerEntity, rateCard is a child.
-      // Let's use detailed partner lookup or pricing lookup. Let's check api.js:
-      // api.js has: getPricing: () => request('/api/v1/partners/pricing') (for current partner), and
-      // Wait! Is there an endpoint to get pricing for another partner?
-      // Yes! In ARCHITECTURE_SNAPSHOT.md: `GET /api/v1/partners/{email}/pricing` is exposed!
-      // Let's add that to api.js if needed, or did we? Yes, `api.partners.getPublicProfile` fetches the profile.
-      // Wait, let's check `api.js` line 44: `getPricing: () => request('/api/v1/partners/pricing')`
-      // Wait! Let's edit `api.js` to ensure it has `getPartnerPricing: (email) => request(`/api/v1/partners/${email}/pricing`)`.
-      // Let's check if we have `/api/v1/partners/{email}/pricing`. Yes!
+      const detailedPricing = await api.partners.getPartnerPricing(partner.email);
+      if (detailedPricing && detailedPricing.rateCard) {
+        setRateCard(detailedPricing.rateCard);
+      } else {
+        setRateCard([]);
+      }
     } catch (err) {
-      console.error(err);
+      console.error("Failed to fetch partner pricing, using fallback pricing", err);
+      setRateCard([]);
     }
     setStep(2);
   };
@@ -70,7 +58,13 @@ export default function PlaceOrderWizard({ isOpen, onClose, onOrderPlaced }) {
   // PANTS + DRY_CLEAN = 90.0, SUIT + DRY_CLEAN = 350.0
   // Let's define fallback rates if the API call fails or doesn't resolve.
   const getPrice = (itemCategory, serviceType) => {
-    // FreshFold seeded rates
+    if (rateCard && rateCard.length > 0) {
+      const match = rateCard.find(
+        r => r.itemCategory === itemCategory && r.serviceType === serviceType
+      );
+      if (match) return match.price;
+    }
+    // Fallback static rates
     if (itemCategory === 'SHIRT' && serviceType === 'WASH_AND_FOLD') return 45.0;
     if (itemCategory === 'SHIRT' && serviceType === 'DRY_CLEAN') return 85.0;
     if (itemCategory === 'PANTS' && serviceType === 'WASH_AND_FOLD') return 50.0;

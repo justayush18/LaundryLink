@@ -6,6 +6,8 @@ export default function PartnerDocuments() {
   const [documents, setDocuments] = useState([]);
   const [documentType, setDocumentType] = useState('GSTIN');
   const [fileName, setFileName] = useState('');
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState('');
@@ -27,22 +29,82 @@ export default function PartnerDocuments() {
     fetchDocuments();
   }, []);
 
+  const handleFileChange = (e) => {
+    setError('');
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Validate type: PDF, JPG, PNG
+    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
+    const hasAllowedExtension = file.name.endsWith('.pdf') || file.name.endsWith('.jpg') || file.name.endsWith('.jpeg') || file.name.endsWith('.png');
+    if (!allowedTypes.includes(file.type) && !hasAllowedExtension) {
+      setError('Only PDF, JPG, and PNG files are allowed.');
+      setSelectedFile(null);
+      setFileName('');
+      return;
+    }
+
+    // Validate size: Under 5MB
+    if (file.size > 5 * 1024 * 1024) {
+      setError('File size must be less than 5MB.');
+      setSelectedFile(null);
+      setFileName('');
+      return;
+    }
+
+    setSelectedFile(file);
+    setFileName(file.name);
+  };
+
   const handleUpload = async (e) => {
     e.preventDefault();
+    if (!selectedFile) {
+      setError('Please select a file to upload.');
+      return;
+    }
+
     setSubmitting(true);
     setError('');
     setSuccess('');
+    setUploadProgress(0);
 
-    try {
-      await api.partners.uploadDocument({ documentType, fileName });
-      setSuccess('Document uploaded successfully! Waiting for Admin verification.');
-      setFileName('');
-      setTimeout(() => setSuccess(''), 4000);
-      fetchDocuments();
-    } catch (err) {
-      setError(err.message || 'Failed to upload document');
-    } finally {
-      setSubmitting(false);
+    // Simulate file upload progress
+    const duration = 1500; // 1.5 seconds
+    const intervalTime = 150;
+    const step = 100 / (duration / intervalTime);
+
+    const timer = setInterval(async () => {
+      setUploadProgress((prev) => {
+        if (prev >= 100) {
+          clearInterval(timer);
+          // Trigger actual backend metadata API call on 100% upload completion
+          (async () => {
+            try {
+              await api.partners.uploadDocument({ documentType, fileName: selectedFile.name });
+              setSuccess(`Document "${selectedFile.name}" uploaded successfully! Waiting for Admin verification.`);
+              setFileName('');
+              setSelectedFile(null);
+              setUploadProgress(0);
+              setTimeout(() => setSuccess(''), 4000);
+              fetchDocuments();
+            } catch (err) {
+              setError(err.message || 'Failed to upload document');
+              setUploadProgress(0);
+            } finally {
+              setSubmitting(false);
+            }
+          })();
+          return 100;
+        }
+        return Math.min(prev + step, 100);
+      });
+    }, intervalTime);
+  };
+
+  const handleButtonClick = (e) => {
+    if (!selectedFile) {
+      e.preventDefault();
+      document.getElementById('fileInput').click();
     }
   };
 
@@ -97,6 +159,7 @@ export default function PartnerDocuments() {
                 value={documentType}
                 onChange={(e) => setDocumentType(e.target.value)}
                 style={{ background: 'var(--bg-secondary)', cursor: 'pointer' }}
+                disabled={submitting}
               >
                 <option value="GSTIN">GSTIN Tax Certificate</option>
                 <option value="BUSINESS_LICENSE">Business Registration License</option>
@@ -105,26 +168,55 @@ export default function PartnerDocuments() {
             </div>
 
             <div className="form-group" style={{ marginBottom: '24px' }}>
-              <label className="form-label">File Name Reference</label>
+              <label className="form-label">Select Document File</label>
+              <div 
+                onClick={() => !submitting && document.getElementById('fileInput').click()}
+                style={{
+                  border: '2px dashed var(--border-color)',
+                  borderRadius: 'var(--radius-sm)',
+                  padding: '20px',
+                  textAlign: 'center',
+                  cursor: submitting ? 'not-allowed' : 'pointer',
+                  background: 'rgba(255, 255, 255, 0.02)',
+                  transition: 'var(--transition-smooth)'
+                }}
+              >
+                <Upload size={24} color="var(--text-secondary)" style={{ margin: '0 auto 8px auto' }} />
+                <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+                  {selectedFile ? `Selected: ${selectedFile.name}` : 'Click to browse files (PDF, PNG, JPG under 5MB)'}
+                </p>
+              </div>
               <input
-                type="text"
-                className="form-control"
-                placeholder="e.g. gstin_cert_2026.pdf"
-                value={fileName}
-                onChange={(e) => setFileName(e.target.value)}
-                required
+                type="file"
+                id="fileInput"
+                onChange={handleFileChange}
+                style={{ display: 'none' }}
                 disabled={submitting}
+                accept=".pdf,.png,.jpg,.jpeg"
               />
             </div>
+
+            {submitting && (
+              <div style={{ marginBottom: '20px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '6px', color: 'var(--text-secondary)' }}>
+                  <span>Uploading certificate...</span>
+                  <span>{Math.round(uploadProgress)}%</span>
+                </div>
+                <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '3px', overflow: 'hidden' }}>
+                  <div style={{ width: `${uploadProgress}%`, height: '100%', background: 'var(--accent-primary)', transition: 'width 0.15s ease-out' }}></div>
+                </div>
+              </div>
+            )}
 
             <button
               type="submit"
               className="btn btn-primary"
-              disabled={submitting || !fileName}
+              disabled={submitting}
+              onClick={handleButtonClick}
               style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
             >
               <Upload size={16} />
-              {submitting ? 'Uploading certificate...' : 'Upload Reference File'}
+              {submitting ? 'Uploading certificate...' : selectedFile ? `Upload Selected File (${selectedFile.name})` : 'Upload Reference File'}
             </button>
           </form>
         </div>

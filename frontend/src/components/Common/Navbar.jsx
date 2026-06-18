@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { LogOut, User } from 'lucide-react';
 import NotificationCenter from '../Notifications/NotificationCenter';
@@ -6,15 +7,34 @@ import NotificationCenter from '../Notifications/NotificationCenter';
 export default function Navbar() {
   const { user, logout } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
+  const location = useLocation();
 
   if (!user) return null;
+
+  // Determine breadcrumb based on URL path
+  const getBreadcrumbs = () => {
+    const segments = location.pathname.split('/').filter(Boolean);
+    if (segments.length === 0) {
+      return { title: 'Dashboard', active: 'Overview' };
+    }
+    
+    // Capitalize first segment (role context) and second segment (page name)
+    const title = segments[0].charAt(0).toUpperCase() + segments[0].slice(1);
+    const active = segments[1]
+      ? segments[1].charAt(0).toUpperCase() + segments[1].slice(1).replace('-', ' ')
+      : 'Overview';
+      
+    return { title, active };
+  };
+
+  const { title, active } = getBreadcrumbs();
 
   return (
     <header style={styles.header} className="glass-panel">
       <div style={styles.breadcrumb}>
-        <span style={styles.breadcrumbTitle}>Dashboard</span>
+        <span style={styles.breadcrumbTitle}>{title}</span>
         <span style={styles.breadcrumbSeparator}>/</span>
-        <span style={styles.breadcrumbActive}>Overview</span>
+        <span style={styles.breadcrumbActive}>{active}</span>
       </div>
 
       <div style={styles.actions}>

@@ -38,6 +38,7 @@ public class AuthServiceTest {
     @BeforeEach
     public void setUp() {
         lenient().when(userRepository.count()).thenReturn(10L);
+        lenient().when(userRepository.findByEmail("admin@velora.example")).thenReturn(Optional.of(new UserEntity()));
         authService = new AuthService(userRepository, passwordEncoder, jwtService);
     }
 

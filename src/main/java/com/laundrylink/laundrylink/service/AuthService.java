@@ -80,7 +80,7 @@ public class AuthService {
     }
 
     private void seedDefaultAccounts() {
-        if (userRepository.count() == 0) {
+        if (userRepository.findByEmail(normalizeEmail("admin@velora.example")).isEmpty()) {
             registerSeed("Aarav Mehta", "aarav@example.com", "Password@123", "+91-90000-10001", UserRoleType.CUSTOMER);
             registerSeed("FreshFold Laundry", "partner@freshfold.example", "Password@123", "+91-90000-20002",
                     UserRoleType.LAUNDRY_PARTNER);

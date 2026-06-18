@@ -8,6 +8,11 @@ export default function DeliveryTasks() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  
+  const [isOnline, setIsOnline] = useState(() => {
+    const saved = localStorage.getItem('rider_online');
+    return saved !== 'false'; // default to true
+  });
 
   const fetchTasks = async () => {
     setLoading(true);
@@ -26,6 +31,10 @@ export default function DeliveryTasks() {
   }, []);
 
   const handleClaim = async (orderId) => {
+    if (!isOnline) {
+      setError('You must be online to claim tasks.');
+      return;
+    }
     setSubmitting(true);
     setError('');
     setSuccess('');
@@ -50,6 +59,13 @@ export default function DeliveryTasks() {
         <p style={{ color: 'var(--text-secondary)' }}>Browse and self-assign available laundry pickups and deliveries.</p>
       </div>
 
+      {!isOnline && (
+        <div className="alert alert-warning" style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--color-warning)' }} />
+          <span>You are currently <strong>OFFLINE</strong>. Go to the Dashboard to change your status to Online if you wish to claim tasks.</span>
+        </div>
+      )}
+
       {success && <div className="alert alert-success">{success}</div>}
       {error && <div className="alert alert-error">{error}</div>}
 
@@ -70,7 +86,7 @@ export default function DeliveryTasks() {
                 <p style={styles.emptyText}>No pickups pending.</p>
               ) : (
                 dashboard.pendingPickups.map((p) => (
-                  <div key={p.orderId} className="glass-panel" style={styles.taskCard}>
+                   <div key={p.orderId} className="glass-panel" style={styles.taskCard}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                       <span style={styles.ref}>Ref: #{p.orderId.substring(0, 8)}</span>
                       <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>₹{p.totalCost}</span>
@@ -82,7 +98,7 @@ export default function DeliveryTasks() {
                       onClick={() => handleClaim(p.orderId)}
                       className="btn btn-secondary"
                       style={styles.claimBtn}
-                      disabled={submitting}
+                      disabled={submitting || !isOnline}
                     >
                       Claim Pickup <ChevronRight size={14} />
                     </button>
@@ -117,7 +133,7 @@ export default function DeliveryTasks() {
                       onClick={() => handleClaim(d.orderId)}
                       className="btn btn-primary"
                       style={styles.claimBtn}
-                      disabled={submitting}
+                      disabled={submitting || !isOnline}
                     >
                       Claim Delivery <ChevronRight size={14} />
                     </button>

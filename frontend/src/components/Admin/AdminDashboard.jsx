@@ -7,12 +7,17 @@ export default function AdminDashboard() {
   const [metrics, setMetrics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
 
   const fetchSummary = async () => {
     setLoading(true);
+    setError('');
+    setSuccessMsg('');
     try {
       const data = await api.admin.getDashboard();
       setMetrics(data);
+      setSuccessMsg('Dashboard statistics refreshed successfully!');
+      setTimeout(() => setSuccessMsg(''), 3000);
     } catch (err) {
       setError('Failed to load admin summary indicators');
     } finally {
@@ -51,10 +56,11 @@ export default function AdminDashboard() {
           <p style={{ color: 'var(--text-secondary)' }}>Consolidated system analytics, verification tasks, and financial metrics.</p>
         </div>
         <button onClick={fetchSummary} className="btn btn-outline" disabled={loading}>
-          <RefreshCw size={14} style={{ marginRight: '4px' }} /> Refresh Stats
+          <RefreshCw size={14} style={{ marginRight: '4px' }} className={loading ? 'animate-spin' : ''} /> Refresh Stats
         </button>
       </div>
 
+      {successMsg && <div className="alert alert-success">{successMsg}</div>}
       {error && <div className="alert alert-error">{error}</div>}
 
       {loading && !metrics ? (

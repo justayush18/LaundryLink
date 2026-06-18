@@ -12,8 +12,12 @@ public abstract class AuditedEntity {
     @PrePersist
     protected void onCreate() {
         long now = System.currentTimeMillis() / 1000L;
-        this.createdAt = now;
-        this.updatedAt = now;
+        if (this.createdAt == 0) {
+            this.createdAt = now;
+        }
+        if (this.updatedAt == 0) {
+            this.updatedAt = now;
+        }
     }
 
     @PreUpdate

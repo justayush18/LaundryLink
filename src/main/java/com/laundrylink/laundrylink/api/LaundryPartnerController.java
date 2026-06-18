@@ -28,6 +28,12 @@ public class LaundryPartnerController {
         this.laundryPartnerService = laundryPartnerService;
     }
 
+    @GetMapping
+    public List<PartnerProfileView> getAllPartners() {
+        currentPrincipal();
+        return laundryPartnerService.getAllPartners();
+    }
+
     @GetMapping("/profile")
     public PartnerProfileView getOwnProfile() {
         AuthenticatedPrincipal principal = currentPrincipal();
