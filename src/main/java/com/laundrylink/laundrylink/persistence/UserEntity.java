@@ -27,6 +27,9 @@ public class UserEntity extends AuditedEntity {
     @Column(nullable = false)
     private UserRoleType role;
 
+    @Column(nullable = false)
+    private boolean active = true;
+
     public UserEntity() {}
 
     public UserEntity(String email, String passwordHash, String displayName, String phoneNumber, UserRoleType role) {
@@ -35,6 +38,7 @@ public class UserEntity extends AuditedEntity {
         this.displayName = displayName;
         this.phoneNumber = phoneNumber;
         this.role = role;
+        this.active = true;
     }
 
     public Long getId() {
@@ -83,5 +87,13 @@ public class UserEntity extends AuditedEntity {
 
     public void setRole(UserRoleType role) {
         this.role = role;
+    }
+
+    public boolean isActive() {
+        return active;
+    }
+
+    public void setActive(boolean active) {
+        this.active = active;
     }
 }

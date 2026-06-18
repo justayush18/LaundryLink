@@ -717,3 +717,50 @@ graph TD
 - 11 controllers → 11 services → 8 repositories → MySQL
 - 95 Java source files compiling successfully
 
+
+## Phase 11 Snapshot - Admin Dashboard APIs
+
+### Current Controllers
+- All controllers from previous phases.
+- AdminController
+
+### Current Services
+- All services from previous phases.
+- AdminService
+
+### Current Package Structure
+- `com.laundrylink.laundrylink.api` - DTOs, controllers, enums, request/response records
+- `com.laundrylink.laundrylink.service` - Business logic services
+- `com.laundrylink.laundrylink.security` - JWT, authentication filter, security config
+- `com.laundrylink.laundrylink.persistence` - JPA entities, repositories, audited base class
+
+### Current Endpoints (New Admin Surface)
+| Endpoint | Method | Auth | Purpose |
+|---|---|---|---|
+| `/api/v1/admin/dashboard` | GET | ADMIN | Get consolidated dashboard metrics for cards |
+| `/api/v1/admin/users` | GET | ADMIN | List all users (optional role and active filter) |
+| `/api/v1/admin/users/search` | GET | ADMIN | Search users by email or display name |
+| `/api/v1/admin/users/{email}/role` | PUT | ADMIN | Update user role |
+| `/api/v1/admin/users/{email}/status` | PUT | ADMIN | Toggle user active status |
+| `/api/v1/admin/partners` | GET | ADMIN | List all partners |
+| `/api/v1/admin/partners/{email}` | GET | ADMIN | Get partner details (profile + documents) |
+| `/api/v1/admin/partners/{email}/status` | PUT | ADMIN | Update partner onboarding status |
+| `/api/v1/admin/partners/{email}/documents/{documentId}/verify` | PUT | ADMIN | Verify/reject partner document |
+| `/api/v1/admin/orders` | GET | ADMIN | List all orders (optional status, customerEmail, partnerEmail, deliveryPartnerEmail filters) |
+| `/api/v1/admin/orders/{orderId}` | GET | ADMIN | Get specific order details |
+| `/api/v1/admin/payments` | GET | ADMIN | List all payments (optional status filter) |
+| `/api/v1/admin/invoices` | GET | ADMIN | List all invoices |
+| `/api/v1/admin/reviews` | GET | ADMIN | List all reviews |
+| `/api/v1/admin/reviews/partners/{email}` | GET | ADMIN | List reviews for a partner |
+| `/api/v1/admin/notifications` | GET | ADMIN | List all notifications |
+| `/api/v1/admin/notifications/summary` | GET | ADMIN | Get notification system summary stats |
+| `/api/v1/admin/reports/revenue` | GET | ADMIN | Get daily, weekly, monthly, and total revenue charts data |
+| `/api/v1/admin/analytics/summary` | GET | ADMIN | Get enhanced business metrics summary |
+| `/api/v1/admin/analytics/partners` | GET | ADMIN | Get partner performance statistics and ranking |
+
+### Key Architecture Decisions
+- **User Activation**: Added `active` boolean status column to `UserEntity` (defaulting to true) and integrated verification check in `AuthService` to reject deactivated login and token requests with `401 Unauthorized`.
+- **Common Route Prefix**: Mapped all admin endpoints under `/api/v1/admin` to facilitate standard authentication and authorization checks.
+- **Enhanced Metrics Compilation**: Calculated total revenue (successful payments), refund counts/amounts, top rated partner (max reputation), average partner reputation, and average order cycle times (PLACED to DELIVERED status transition time delta) via repository aggregations and history transition logs.
+
+

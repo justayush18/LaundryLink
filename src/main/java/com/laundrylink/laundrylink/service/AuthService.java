@@ -45,6 +45,9 @@ public class AuthService {
 
     public AuthResponse login(AuthLoginRequest request) {
         UserEntity account = requireAccount(request.email());
+        if (!account.isActive()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User account is deactivated");
+        }
         if (!passwordEncoder.matches(request.password(), account.getPasswordHash())) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid email or password");
         }
@@ -53,6 +56,9 @@ public class AuthService {
 
     public AuthenticatedPrincipal authenticate(String email) {
         UserEntity account = requireAccount(email);
+        if (!account.isActive()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User account is deactivated");
+        }
         return new AuthenticatedPrincipal(account.getDisplayName(), account.getEmail(), account.getPhoneNumber(), account.getRole());
     }
 

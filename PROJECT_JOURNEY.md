@@ -407,6 +407,45 @@ This file is an append-only development diary for LaundryLink. New work must be 
 - Important design decisions: MySQL-only (no H2/PostgreSQL), no migration framework (using `ddl-auto=update`), mixed ID strategy (UUIDs for orders/payments, auto-increment Long for everything else), `AuditedEntity` base class for consistent timestamp management.
 - What I learned from this step: JPA lifecycle callbacks (`@PrePersist`, `@PreUpdate`) fire during the database flush, not during `save()`. When building API responses from the same entity, always use `saveAndFlush()` and capture the returned entity to ensure callback-populated fields are visible.
 - Next planned step: Phase 10 is complete. Application is fully persistent with MySQL.
+- Persistence Verification (Post-Restart):
+  - Stopped and restarted the Spring Boot application to verify MySQL persistence.
+  - Verified database counts remain the same: Users = 7, Orders = 5, Payments = 1, Notifications = 38.
+  - Verified existing customer login still works (successfully authenticated `aarav@example.com` and retrieved access token).
+  - Verified existing orders can still be fetched (retrieved all 5 order records successfully with correct items, status, and history).
+
+### 2026-06-18 - Phase 11 Admin Dashboard APIs
+- Date and phase: 2026-06-18, Phase 11.
+- Goal of the task: Implement administrative endpoints under `/api/v1/admin` to support User Management, Partner Management & Verification, Order Monitoring, Payment Monitoring, Review/Notification Monitoring, and Reports & Analytics.
+- What was implemented:
+  - **User Management**: Exposed endpoints to list all users, update roles, and activate/deactivate accounts. Modified `UserEntity` to add the `active` column. Added User Search & Filtering (`GET /api/v1/admin/users/search`) supporting query filters by email and display name, and filters on list by role and active status.
+  - **Partner Verification**: Enabled list and details of partners, updating partner onboarding status, and verifying onboarding documents.
+  - **Order & Payment Monitoring**: Allowed tracking any order, payment, or invoice in the system. Added Order Monitoring Filters (filtering by status, customerEmail, partnerEmail, deliveryPartnerEmail).
+  - **Review & Notification Monitoring**: Implemented endpoints to list reviews, partner-specific reviews, all notifications, and notification summary statistics.
+  - **Enhanced Analytics**: Exposed dashboard summary report with metrics for total revenue, successful vs refunded payments, top-rated partner, average reputation, average processing time, and status breakdown.
+  - **Dashboard Summary API**: Added a consolidated `GET /api/v1/admin/dashboard` endpoint returning all card metrics (users, customers, partners, delivery partners, orders, revenue, payments, reviews, notifications, active partners, pending verifications).
+  - **Revenue Reports API**: Added `GET /api/v1/admin/reports/revenue` returning daily, weekly, monthly, and total revenue.
+  - **Partner Analytics API**: Added `GET /api/v1/admin/analytics/partners` returning total/completed orders, average rating, revenue generated, and active status for ranking laundry partners.
+  - **Security Gate**: Consolidated `requireAdmin()` check across all `/api/v1/admin/**` routes.
+- Files created:
+  - [src/main/java/com/laundrylink/laundrylink/api/AdminController.java](src/main/java/com/laundrylink/laundrylink/api/AdminController.java)
+  - [src/main/java/com/laundrylink/laundrylink/service/AdminService.java](src/main/java/com/laundrylink/laundrylink/service/AdminService.java)
+  - [src/main/java/com/laundrylink/laundrylink/api/AdminUserView.java](src/main/java/com/laundrylink/laundrylink/api/AdminUserView.java)
+  - [src/main/java/com/laundrylink/laundrylink/api/AdminPartnerView.java](src/main/java/com/laundrylink/laundrylink/api/AdminPartnerView.java)
+  - [src/main/java/com/laundrylink/laundrylink/api/AdminNotificationSummary.java](src/main/java/com/laundrylink/laundrylink/api/AdminNotificationSummary.java)
+  - [src/main/java/com/laundrylink/laundrylink/api/AdminAnalyticsSummary.java](src/main/java/com/laundrylink/laundrylink/api/AdminAnalyticsSummary.java)
+  - [src/main/java/com/laundrylink/laundrylink/api/AdminDashboardView.java](src/main/java/com/laundrylink/laundrylink/api/AdminDashboardView.java)
+  - [src/main/java/com/laundrylink/laundrylink/api/AdminRevenueReport.java](src/main/java/com/laundrylink/laundrylink/api/AdminRevenueReport.java)
+  - [src/main/java/com/laundrylink/laundrylink/api/PartnerPerformanceAnalytics.java](src/main/java/com/laundrylink/laundrylink/api/PartnerPerformanceAnalytics.java)
+- Files modified:
+  - [src/main/java/com/laundrylink/laundrylink/persistence/UserEntity.java](src/main/java/com/laundrylink/laundrylink/persistence/UserEntity.java)
+  - [src/main/java/com/laundrylink/laundrylink/service/AuthService.java](src/main/java/com/laundrylink/laundrylink/service/AuthService.java)
+- Problems encountered: Defaulting of new columns to false for existing data.
+- Errors faced: `401 Unauthorized` for all existing users after database schema update.
+- Root cause of the issue: Adding a non-nullable column without defaults in JPA leaves existing records with false/zero defaults.
+- How the issue was resolved: Executed SQL script `UPDATE users SET active = 1;` to restore the active state for existing users.
+- Important design decisions: Common route prefix `/api/v1/admin` to facilitate standard authentication checks.
+- What I learned from this step: Exposing dashboard metrics via unified database aggregation keeps analytics logic clean and fast.
+- Next planned step: Phase 11 is complete. Ready for Phase 12 (React Frontend / UI-UX Development).
 
 ## Lessons Learned
 - Keep the first working slice small and verifiable before adding persistence or security.
@@ -429,6 +468,8 @@ This file is an append-only development diary for LaundryLink. New work must be 
 - `saveAndFlush()` is essential when JPA lifecycle callbacks need to populate fields that the API response will read from the same entity instance.
 - `@MappedSuperclass` is an elegant way to enforce consistent audit fields across all entities without repeating boilerplate in every class.
 - Creating a dedicated MySQL user with limited privileges (instead of using root) is a best practice that prevents accidental schema damage during development.
+- Exposing administrative endpoints under a consolidated route prefix (`/api/v1/admin/**`) simplifies security authorization gates by centralizing role constraints.
+- Adding boolean state columns (like `active`) to a pre-populated database requires setting explicit defaults or executing a one-time SQL update to avoid locking out existing records.
 
 ## Mistakes and Fixes
 - Mistake: The first terminal-based Maven validation was skipped by the environment.
@@ -446,4 +487,6 @@ This file is an append-only development diary for LaundryLink. New work must be 
 - Mistake: Audit timestamps (`createdAt`, `updatedAt`) returned 0 in API responses after entity creation.
   - Fix: JPA `@PrePersist` fires during flush, not during `save()`. Changed `save()` to `saveAndFlush()` and captured the returned entity to ensure callback-populated fields are visible before building the DTO.
 - Mistake: Registration test used `"name"` field instead of `"displayName"`, causing a `PropertyValueException`.
-  - Fix: Aligned the test request JSON with the `AuthRegisterRequest` record field name `displayName`.
+  - Fix: Aligned the test request JSON with the `AuthRegisterRequest` record field name `displayName`.
+- Mistake: Adding the `active` column to `UserEntity` caused all existing users to default to inactive (`\0`), resulting in login failures.
+  - Fix: Executed SQL update `UPDATE users SET active = 1;` in MySQL to restore the active state for pre-existing accounts.
