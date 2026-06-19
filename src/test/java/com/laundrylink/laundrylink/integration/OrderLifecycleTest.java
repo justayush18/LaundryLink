@@ -84,13 +84,13 @@ public class OrderLifecycleTest {
 
         deliveryToken = "Bearer " + jwtService.generateToken(deliveryUser);
 
-        // Ensure partner profile exists in database
-        partnerRepository.findByEmail("partner@freshfold.example")
-                .orElseGet(() -> {
-                    PartnerEntity partner = new PartnerEntity("partner@freshfold.example", "FreshFold Laundry", "Desc", "Address", "ACTIVE");
-                    partner.setPricingRateCard(List.of(new RateCardItemEntity("SHIRT", "WASH_AND_FOLD", 45.0)));
-                    return partnerRepository.save(partner);
-                });
+        // Ensure partner profile exists in database and has correct rate card
+        PartnerEntity partner = partnerRepository.findByEmail("partner@freshfold.example")
+                .orElseGet(() -> new PartnerEntity("partner@freshfold.example", "FreshFold Laundry", "Desc", "Address", "ACTIVE"));
+        partner.getPricingRateCard().clear();
+        partner.getPricingRateCard().add(new RateCardItemEntity("SHIRT", "WASH_AND_FOLD", 40.0));
+        partner.setOnboardingStatus("ACTIVE");
+        partnerRepository.save(partner);
     }
 
     @Test

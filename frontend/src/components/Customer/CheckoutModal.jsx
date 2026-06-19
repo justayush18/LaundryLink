@@ -12,11 +12,12 @@ export default function CheckoutModal({ isOpen, onClose, orderId, totalCost, onP
   const [cardName, setCardName] = useState('');
   const [otp, setOtp] = useState('');
   
-  const [step, setStep] = useState(1); // 1: Select Method, 2: Details/Input, 3: Processing Loader, 4: OTP Screen (Razorpay), 5: Success Screen
+  const [step, setStep] = useState(1); // 1: Select Method, 2: Details/Input, 3: Processing Loader, 4: OTP Screen (Razorpay), 5: Success Screen, 6: Failed Screen
   const [loadingMsg, setLoadingMsg] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [activePayment, setActivePayment] = useState(null);
+  const [timeLeft, setTimeLeft] = useState(60);
 
   useEffect(() => {
     if (isOpen) {
@@ -33,8 +34,53 @@ export default function CheckoutModal({ isOpen, onClose, orderId, totalCost, onP
       setError('');
       setSubmitting(false);
       setActivePayment(null);
+      setTimeLeft(60);
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    if (isOpen && step === 1) {
+      setTimeLeft(60);
+    }
+  }, [isOpen, step]);
+
+  useEffect(() => {
+    let timer;
+    if (isOpen && step >= 1 && step <= 4) {
+      timer = setInterval(() => {
+        setTimeLeft((prev) => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            setError('Payment session timed out. Please try again.');
+            setStep(6); // Step 6 is Failed Screen
+            setSubmitting(false);
+            setLoadingMsg('');
+            
+            if (activePayment) {
+              api.payments.process(activePayment.paymentId, { simulateSuccess: false })
+                .catch(err => console.error("Failed to mark payment as failed on timeout:", err));
+            }
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [isOpen, step, activePayment]);
+
+  const handleCancelPayment = async () => {
+    if (window.confirm("Are you sure you want to cancel the payment? Your order has been placed and will remain unpaid. You can complete the payment later from your dashboard.")) {
+      if (activePayment) {
+        try {
+          await api.payments.process(activePayment.paymentId, { simulateSuccess: false });
+        } catch (err) {
+          console.error("Failed to cancel payment in backend:", err);
+        }
+      }
+      onClose();
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -118,7 +164,7 @@ export default function CheckoutModal({ isOpen, onClose, orderId, totalCost, onP
       }
     } catch (err) {
       setError(getFriendlyErrorMessage(err));
-      setStep(2);
+      setStep(6);
     } finally {
       setSubmitting(false);
     }
@@ -143,7 +189,7 @@ export default function CheckoutModal({ isOpen, onClose, orderId, totalCost, onP
       setStep(5);
     } catch (err) {
       setError(getFriendlyErrorMessage(err));
-      setStep(4);
+      setStep(6);
     } finally {
       setSubmitting(false);
     }
@@ -160,7 +206,7 @@ export default function CheckoutModal({ isOpen, onClose, orderId, totalCost, onP
               Fulfillment Checkout
             </h2>
           </div>
-          {step !== 3 && step !== 5 && (
+          {step !== 3 && step !== 5 && step !== 6 && (
             <button onClick={onClose} style={styles.closeBtn}>
               <X size={20} />
             </button>
@@ -170,6 +216,17 @@ export default function CheckoutModal({ isOpen, onClose, orderId, totalCost, onP
         {error && (
           <div className="alert alert-error animate-pulse" style={{ marginBottom: '14px', padding: '10px 14px', borderRadius: '14px', fontSize: '12px' }}>
             {error}
+          </div>
+        )}
+
+        {step < 5 && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--color-warning-light)', padding: '10px 14px', borderRadius: '14px', marginBottom: '14px', border: '1px solid var(--color-warning)' }}>
+            <span style={{ fontSize: '12px', color: 'var(--primary-navy)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+              ⏱️ Payment session expires in:
+            </span>
+            <span style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: '14px', color: timeLeft <= 15 ? 'var(--color-error)' : 'var(--primary-navy)' }} className={timeLeft <= 15 ? 'animate-pulse' : ''}>
+              {timeLeft}s
+            </span>
           </div>
         )}
 
@@ -234,6 +291,14 @@ export default function CheckoutModal({ isOpen, onClose, orderId, totalCost, onP
               <ShieldCheck size={14} color="var(--primary-teal)" />
               <span>100% Encrypted & Secure Payments</span>
             </div>
+
+            <button
+              onClick={handleCancelPayment}
+              className="velora-btn velora-btn-secondary"
+              style={{ width: '100%', marginTop: '16px', justifyContent: 'center', border: '2px solid var(--color-error-light)', color: 'var(--color-error)' }}
+            >
+              Cancel Payment & Pay Later
+            </button>
           </div>
         )}
 
@@ -410,6 +475,14 @@ export default function CheckoutModal({ isOpen, onClose, orderId, totalCost, onP
                 </button>
               </div>
             )}
+
+            <button
+              onClick={handleCancelPayment}
+              className="velora-btn velora-btn-secondary"
+              style={{ width: '100%', marginTop: '14px', justifyContent: 'center', border: '2px solid var(--color-error-light)', color: 'var(--color-error)' }}
+            >
+              Cancel Payment & Pay Later
+            </button>
           </div>
         )}
 
@@ -460,6 +533,15 @@ export default function CheckoutModal({ isOpen, onClose, orderId, totalCost, onP
                 Submit OTP Code
               </button>
             </form>
+
+            <button
+              type="button"
+              onClick={handleCancelPayment}
+              className="velora-btn velora-btn-secondary"
+              style={{ width: '100%', marginTop: '14px', justifyContent: 'center', border: '2px solid var(--color-error-light)', color: 'var(--color-error)' }}
+            >
+              Cancel Payment & Pay Later
+            </button>
           </div>
         )}
 
@@ -485,6 +567,83 @@ export default function CheckoutModal({ isOpen, onClose, orderId, totalCost, onP
             >
               Done
             </button>
+          </div>
+        )}
+
+        {/* Step 6: Payment Failed Screen */}
+        {step === 6 && (
+          <div style={{ textAlign: 'center', padding: '1.5rem 0', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <svg className="failure-cross" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52" style={{ width: '80px', height: '80px', marginBottom: '1.25rem' }}>
+              <style>{`
+                .failure-cross .circle {
+                  stroke-dasharray: 166;
+                  stroke-dashoffset: 166;
+                  stroke-width: 3;
+                  stroke-miterlimit: 10;
+                  stroke: var(--color-error);
+                  fill: none;
+                  animation: stroke 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+                }
+                .failure-cross .line1 {
+                  stroke-dasharray: 48;
+                  stroke-dashoffset: 48;
+                  stroke-width: 3;
+                  stroke: var(--color-error);
+                  fill: none;
+                  animation: stroke 0.3s cubic-bezier(0.65, 0, 0.45, 1) 0.6s forwards;
+                }
+                .failure-cross .line2 {
+                  stroke-dasharray: 48;
+                  stroke-dashoffset: 48;
+                  stroke-width: 3;
+                  stroke: var(--color-error);
+                  fill: none;
+                  animation: stroke 0.3s cubic-bezier(0.65, 0, 0.45, 1) 0.8s forwards;
+                }
+                @keyframes stroke {
+                  100% {
+                    stroke-dashoffset: 0;
+                  }
+                }
+                @keyframes shake {
+                  0%, 100% { transform: translateX(0); }
+                  20%, 60% { transform: translateX(-4px); }
+                  40%, 80% { transform: translateX(4px); }
+                }
+                .failure-cross {
+                  animation: shake 0.5s ease-in-out 0.9s both;
+                }
+              `}</style>
+              <circle className="circle" cx="26" cy="26" r="25" />
+              <path className="line1" d="M16 16l20 20" />
+              <path className="line2" d="M36 16L16 36" />
+            </svg>
+            
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--primary-navy)', fontFamily: 'Outfit, sans-serif', margin: '0 0 8px 0' }}>
+              Payment Failed
+            </h3>
+            <p style={{ color: 'var(--color-error)', fontSize: '13px', maxWidth: '300px', margin: '0 auto 20px auto', lineHeight: '1.45', fontWeight: 600 }}>
+              {error || 'Something went wrong while processing your payment.'}
+            </p>
+            <div style={{ display: 'flex', gap: '10px', width: '100%', justifyContent: 'center' }}>
+              <button
+                onClick={() => {
+                  setError('');
+                  setStep(1);
+                }}
+                className="velora-btn velora-btn-primary"
+                style={{ flex: 1, maxWidth: '160px', justifyContent: 'center' }}
+              >
+                Retry Payment
+              </button>
+              <button
+                onClick={onClose}
+                className="velora-btn velora-btn-secondary"
+                style={{ flex: 1, maxWidth: '160px', justifyContent: 'center' }}
+              >
+                Pay Later
+              </button>
+            </div>
           </div>
         )}
       </div>

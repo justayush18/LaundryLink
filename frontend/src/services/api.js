@@ -100,7 +100,10 @@ export const api = {
   // Payments & Invoices
   payments: {
     initiate: (req) => request('/api/v1/payments/initiate', { method: 'POST', body: req }),
-    process: (paymentId, body) => request(`/api/v1/payments/${paymentId}/process`, { method: 'POST', body }),
+    process: (paymentId, body) => {
+      const simulateSuccess = body && body.simulateSuccess !== undefined ? body.simulateSuccess : true;
+      return request(`/api/v1/payments/${paymentId}/process?simulateSuccess=${simulateSuccess}`, { method: 'POST', body });
+    },
     getInvoice: (orderId) => request(`/api/v1/payments/orders/${orderId}/invoice`),
     getPayment: (paymentId) => request(`/api/v1/payments/${paymentId}`),
   },

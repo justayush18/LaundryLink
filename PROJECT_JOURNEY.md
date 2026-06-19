@@ -674,6 +674,44 @@ This file is an append-only development diary for Velora. New work must be added
 - Important design decisions: Prevent cancellation counts from increasing when canceling a `PLACED` order (rejecting), ensuring only cancellations on accepted orders trigger allowance usage.
 - Verification and build testing: All 48 backend integration/unit tests pass cleanly, and the frontend builds successfully with zero bundling warnings.
 
+### 2026-06-19 - Phase 18 In-Wizard Checkout & Integrated Payments
+- Date and phase: 2026-06-19, Phase 18.
+- Goal of the task: Add payment flow directly inside the Place Order Wizard so customers complete booking and checkout in one seamless journey.
+- What was implemented:
+  - **Sequential Wizard Steps**: Extended wizard steps from 3 to 5 (Step 1: Choose Partner, Step 2: Select Items, Step 3: Address/Fulfillment, Step 4: Payment Selection/Forms, Step 5: Success/Celebration).
+  - **Embedded Checkout Modal Logic**: Ported method selection (UPI, Credit/Debit Card via Razorpay, Cash on Delivery), mock UPI app triggers, formatted card input, and 6-digit simulated OTP verification (`123456`) directly into `PlaceOrderWizard.jsx`.
+  - **Outcome Micro-Animations**: Designed SVG drawing success checkmark and shake failure cross icons with self-contained CSS keyframe animations for polished visual feedback.
+  - **Outcome Redirection**: Success transitions the wizard to Step 5 (celebration mascot and details), whereas errors or invalid inputs transition the wizard to a dedicated failure outcome step with options to retry or pay later.
+  - **Safe Closure Guards**: Added close guards that call `onOrderPlaced` when closing the wizard at or after step 4 (meaning an order has already been placed in the database) to keep the customer's dashboard in sync, and disabled the close button during active checkout processing.
+- Files modified:
+  - [frontend/src/components/Customer/PlaceOrderWizard.jsx](frontend/src/components/Customer/PlaceOrderWizard.jsx)
+- Problems encountered: Aborting the wizard after order placement but before checkout left the dashboard unsynced until page reload.
+- How the issue was resolved: Implemented a wrapper `handleClose()` action that checks if `orderId` is present in state, automatically calling the dashboard refresh callback `onOrderPlaced()` to synchronize state.
+- Verification and build testing: Verified React compilation (Vite build successful). All 50 backend tests passing.
 
+### 2026-06-19 - Phase 19 High-Fidelity React UI Order Cancellation Confirm Modal
+- Date and phase: 2026-06-19, Phase 19.
+- Goal of the task: Replace native browser confirm alerts with custom React UI modal dialog overlays inside the Customer Orders portal.
+- What was implemented:
+  - **React Overlay Confirmation**: Replaced `window.confirm()` in `CustomerOrders.jsx` with a customized modal overlay gating order cancellation.
+  - **Dynamic Price Breakdown Box**: Renders the thinking Velora mascot, the progressive cancellation policy details, and a clear breakdown of cancellation penalty rates, penalty fees, and refundable totals.
+  - **Action Button Triggers**: Gated the backend cancel status transaction behind the custom "Cancel Order" button in the modal.
+- Files modified:
+  - [frontend/src/components/Customer/CustomerOrders.jsx](frontend/src/components/Customer/CustomerOrders.jsx)
+- Problems encountered: Native browser alert looked unpolished and disrupted the sleek consumer theme.
+- How the issue was resolved: Implemented standard modal overlays styled using the Velora system color tokens (`--primary-navy`, `--sky-blue`, etc.), delivering a fully integrated, premium user experience.
+- Verification and build testing: Tested compilation and verified the build succeeds. All 50 backend tests pass.
 
-
+### 2026-06-19 - Phase 20 Custom Categories & Services inside Order Wizard
+- Date and phase: 2026-06-19, Phase 20.
+- Goal of the task: Support expanded laundry categories and services, along with manual text input fallback for user-written items.
+- What was implemented:
+  - **Expanded Options**: Added options for Jacket, Blanket, Curtains, Saree, Dress to categories, and Wash & Iron, Steam Press, Premium Dry Clean, Stain Removal to service type lists.
+  - **Other (Write manually) Support**: Included custom categories/service types. Selecting "Other" triggers a text field inside that item row card enabling the customer to type their custom item category or service name.
+  - **Casing & Price Safety**: Configured the frontend price resolver `getPrice` to run case-insensitive lookups, defaulting custom names to 50.0 to match the backend default fallback price exactly. Standardized `handleSubmit` payload mapping to trim and uppercase custom strings.
+  - **Blank Field Validation**: Exposes validation checks rejecting checkout transition if custom selections are left blank.
+- Files modified:
+  - [frontend/src/components/Customer/PlaceOrderWizard.jsx](frontend/src/components/Customer/PlaceOrderWizard.jsx)
+- Problems encountered: Fallback totals mismatched when custom category strings did not align with DB lookup rules.
+- How the issue was resolved: Enabled case-insensitive checkups (`.toUpperCase()`) and synced the default frontend price with the backend's ultimate `50.0` fallback.
+- Verification and build testing: Tested compilation successfully. Backend verification test suite builds cleanly.

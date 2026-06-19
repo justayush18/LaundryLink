@@ -35,6 +35,7 @@ export default function PlaceOrderWizard({ isOpen, onClose, onOrderPlaced }) {
   const [loadingMsg, setLoadingMsg] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [activePayment, setActivePayment] = useState(null);
+  const [timeLeft, setTimeLeft] = useState(60);
 
   useEffect(() => {
     if (isOpen) {
@@ -62,8 +63,59 @@ export default function PlaceOrderWizard({ isOpen, onClose, onOrderPlaced }) {
       setLoadingMsg('');
       setSubmitting(false);
       setActivePayment(null);
+      setTimeLeft(60);
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    if (isOpen && step === 4) {
+      setTimeLeft(60);
+    }
+  }, [isOpen, step]);
+
+  useEffect(() => {
+    if (isOpen && step === 4 && paymentStep === 1) {
+      setTimeLeft(60);
+    }
+  }, [isOpen, step, paymentStep]);
+
+  useEffect(() => {
+    let timer;
+    if (isOpen && step === 4 && paymentStep >= 1 && paymentStep <= 4) {
+      timer = setInterval(() => {
+        setTimeLeft((prev) => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            setError('Payment session timed out. Please try again.');
+            setPaymentStep(5); // Failed step
+            setSubmitting(false);
+            setLoadingMsg('');
+            
+            if (activePayment) {
+              api.payments.process(activePayment.paymentId, { simulateSuccess: false })
+                .catch(err => console.error("Failed to mark payment as failed on timeout:", err));
+            }
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [isOpen, step, paymentStep, activePayment]);
+
+  const handleCancelPayment = async () => {
+    if (window.confirm("Are you sure you want to cancel the payment? Your order has been placed and will remain unpaid. You can complete the payment later from your dashboard.")) {
+      if (activePayment) {
+        try {
+          await api.payments.process(activePayment.paymentId, { simulateSuccess: false });
+        } catch (err) {
+          console.error("Failed to cancel payment in backend:", err);
+        }
+      }
+      handleClose();
+    }
+  };
 
   const fetchPartners = async () => {
     try {
@@ -137,22 +189,29 @@ export default function PlaceOrderWizard({ isOpen, onClose, onOrderPlaced }) {
   };
 
   const getPrice = (itemCategory, serviceType) => {
-    if (rateCard && rateCard.length > 0) {
+    if (rateCard && rateCard.length > 0 && itemCategory && serviceType) {
       const match = rateCard.find(
-        r => r.itemCategory === itemCategory && r.serviceType === serviceType
+        r => r.itemCategory.toUpperCase() === itemCategory.toUpperCase() && 
+             r.serviceType.toUpperCase() === serviceType.toUpperCase()
       );
       if (match) return match.price;
     }
-    if (itemCategory === 'SHIRT' && serviceType === 'WASH_AND_FOLD') return 45.0;
-    if (itemCategory === 'SHIRT' && serviceType === 'DRY_CLEAN') return 85.0;
-    if (itemCategory === 'PANTS' && serviceType === 'WASH_AND_FOLD') return 50.0;
-    if (itemCategory === 'PANTS' && serviceType === 'DRY_CLEAN') return 90.0;
-    if (itemCategory === 'SUIT' && serviceType === 'DRY_CLEAN') return 350.0;
-    return 60.0;
+    const cat = itemCategory ? itemCategory.toUpperCase() : '';
+    const svc = serviceType ? serviceType.toUpperCase() : '';
+    if (cat === 'SHIRT' && svc === 'WASH_AND_FOLD') return 45.0;
+    if (cat === 'SHIRT' && svc === 'DRY_CLEAN') return 85.0;
+    if (cat === 'PANTS' && svc === 'WASH_AND_FOLD') return 50.0;
+    if (cat === 'PANTS' && svc === 'DRY_CLEAN') return 90.0;
+    if (cat === 'SUIT' && svc === 'DRY_CLEAN') return 350.0;
+    return 50.0;
   };
 
   const calculateTotal = () => {
-    return items.reduce((sum, item) => sum + (getPrice(item.itemCategory, item.serviceType) * item.quantity), 0);
+    return items.reduce((sum, item) => {
+      const cat = item.itemCategory === 'CUSTOM' ? (item.customItemCategory || 'CUSTOM') : item.itemCategory;
+      const svc = item.serviceType === 'CUSTOM' ? (item.customServiceType || 'CUSTOM') : item.serviceType;
+      return sum + (getPrice(cat, svc) * item.quantity);
+    }, 0);
   };
 
   const handleAddItem = () => {
@@ -289,14 +348,33 @@ export default function PlaceOrderWizard({ isOpen, onClose, onOrderPlaced }) {
   const handleSubmit = async () => {
     setLoading(true);
     setError('');
+
+    // Validate manual custom inputs
+    for (const item of items) {
+      if (item.itemCategory === 'CUSTOM' && !item.customItemCategory?.trim()) {
+        setError('Please enter a custom item name.');
+        setLoading(false);
+        return;
+      }
+      if (item.serviceType === 'CUSTOM' && !item.customServiceType?.trim()) {
+        setError('Please enter a custom service type.');
+        setLoading(false);
+        return;
+      }
+    }
+
     try {
       const orderPayload = {
         partnerEmail: selectedPartner.email,
-        items: items.map(i => ({
-          itemCategory: i.itemCategory,
-          serviceType: i.serviceType,
-          quantity: parseInt(i.quantity, 10)
-        })),
+        items: items.map(i => {
+          const cat = i.itemCategory === 'CUSTOM' ? i.customItemCategory : i.itemCategory;
+          const svc = i.serviceType === 'CUSTOM' ? i.customServiceType : i.serviceType;
+          return {
+            itemCategory: cat.trim().toUpperCase(),
+            serviceType: svc.trim().toUpperCase(),
+            quantity: parseInt(i.quantity, 10)
+          };
+        }),
         pickupAddress,
         pickupSlot,
         deliveryAddress,
@@ -530,48 +608,87 @@ export default function PlaceOrderWizard({ isOpen, onClose, onOrderPlaced }) {
               
               <div style={styles.itemsList}>
                 {items.map((item, idx) => (
-                  <div key={idx} style={styles.itemRow}>
-                    <select
-                      className="form-control"
-                      value={item.itemCategory}
-                      onChange={(e) => handleItemChange(idx, 'itemCategory', e.target.value)}
-                      style={{ flex: 2, borderRadius: '14px', border: '2px solid var(--sky-blue)', background: '#FFFFFF', padding: '8px' }}
-                    >
-                      <option value="SHIRT">Shirt</option>
-                      <option value="PANTS">Pants</option>
-                      <option value="SUIT">Suit</option>
-                    </select>
+                  <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '8px', background: 'var(--bg-primary)', padding: '14px', borderRadius: '18px', marginBottom: '12px', border: '1px solid var(--sky-blue-light)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <select
+                        className="form-control"
+                        value={item.itemCategory}
+                        onChange={(e) => handleItemChange(idx, 'itemCategory', e.target.value)}
+                        style={{ flex: 2, borderRadius: '14px', border: '2px solid var(--sky-blue)', background: '#FFFFFF', padding: '8px' }}
+                      >
+                        <option value="SHIRT">Shirt</option>
+                        <option value="PANTS">Pants</option>
+                        <option value="SUIT">Suit</option>
+                        <option value="JACKET">Jacket</option>
+                        <option value="BLANKET">Blanket</option>
+                        <option value="CURTAINS">Curtains</option>
+                        <option value="SAREE">Saree</option>
+                        <option value="DRESS">Dress</option>
+                        <option value="CUSTOM">Other (Write manually)</option>
+                      </select>
 
-                    <select
-                      className="form-control"
-                      value={item.serviceType}
-                      onChange={(e) => handleItemChange(idx, 'serviceType', e.target.value)}
-                      style={{ flex: 2, borderRadius: '14px', border: '2px solid var(--sky-blue)', background: '#FFFFFF', padding: '8px' }}
-                    >
-                      <option value="WASH_AND_FOLD">Wash & Fold</option>
-                      <option value="DRY_CLEAN">Dry Clean</option>
-                    </select>
+                      <select
+                        className="form-control"
+                        value={item.serviceType}
+                        onChange={(e) => handleItemChange(idx, 'serviceType', e.target.value)}
+                        style={{ flex: 2, borderRadius: '14px', border: '2px solid var(--sky-blue)', background: '#FFFFFF', padding: '8px' }}
+                      >
+                        <option value="WASH_AND_FOLD">Wash & Fold</option>
+                        <option value="DRY_CLEAN">Dry Clean</option>
+                        <option value="WASH_AND_IRON">Wash & Iron</option>
+                        <option value="STEAM_PRESS">Steam Press</option>
+                        <option value="PREMIUM_DRY_CLEAN">Premium Dry Clean</option>
+                        <option value="STAIN_REMOVAL">Stain Removal</option>
+                        <option value="CUSTOM">Other (Write manually)</option>
+                      </select>
 
-                    <input
-                      type="number"
-                      className="form-control"
-                      min="1"
-                      value={item.quantity}
-                      onChange={(e) => handleItemChange(idx, 'quantity', e.target.value)}
-                      style={{ width: '65px', textAlign: 'center', borderRadius: '14px', border: '2px solid var(--sky-blue)', background: '#FFFFFF', padding: '8px' }}
-                    />
+                      <input
+                        type="number"
+                        className="form-control"
+                        min="1"
+                        value={item.quantity}
+                        onChange={(e) => handleItemChange(idx, 'quantity', e.target.value)}
+                        style={{ width: '65px', textAlign: 'center', borderRadius: '14px', border: '2px solid var(--sky-blue)', background: '#FFFFFF', padding: '8px' }}
+                      />
 
-                    <span style={{ width: '70px', textAlign: 'right', fontSize: '13px', fontWeight: 700, color: 'var(--primary-navy)' }}>
-                      ₹{getPrice(item.itemCategory, item.serviceType) * item.quantity}
-                    </span>
+                      <span style={{ width: '70px', textAlign: 'right', fontSize: '13px', fontWeight: 700, color: 'var(--primary-navy)' }}>
+                        ₹{getPrice(item.itemCategory === 'CUSTOM' ? (item.customItemCategory || 'CUSTOM') : item.itemCategory, item.serviceType === 'CUSTOM' ? (item.customServiceType || 'CUSTOM') : item.serviceType) * item.quantity}
+                      </span>
 
-                    <button 
-                      onClick={() => handleRemoveItem(idx)} 
-                      style={styles.removeBtn} 
-                      disabled={items.length === 1}
-                    >
-                      <X size={16} />
-                    </button>
+                      <button 
+                        onClick={() => handleRemoveItem(idx)} 
+                        style={styles.removeBtn} 
+                        disabled={items.length === 1}
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+
+                    {/* Conditional manual text fields */}
+                    {(item.itemCategory === 'CUSTOM' || item.serviceType === 'CUSTOM') && (
+                      <div style={{ display: 'flex', gap: '12px', marginTop: '4px' }}>
+                        {item.itemCategory === 'CUSTOM' && (
+                          <input
+                            type="text"
+                            className="form-control"
+                            placeholder="Write item name (e.g. Bed Sheet)"
+                            value={item.customItemCategory || ''}
+                            onChange={(e) => handleItemChange(idx, 'customItemCategory', e.target.value)}
+                            style={{ flex: 1, borderRadius: '12px', border: '2px solid var(--sky-blue)', padding: '6px 12px', fontSize: '12px' }}
+                          />
+                        )}
+                        {item.serviceType === 'CUSTOM' && (
+                          <input
+                            type="text"
+                            className="form-control"
+                            placeholder="Write service name (e.g. Dyeing)"
+                            value={item.customServiceType || ''}
+                            onChange={(e) => handleItemChange(idx, 'customServiceType', e.target.value)}
+                            style={{ flex: 1, borderRadius: '12px', border: '2px solid var(--sky-blue)', padding: '6px 12px', fontSize: '12px' }}
+                          />
+                        )}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -701,6 +818,18 @@ export default function PlaceOrderWizard({ isOpen, onClose, onOrderPlaced }) {
 
           {step === 4 && (
             <div>
+              {/* Payment Session Timer */}
+              {paymentStep < 5 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--color-warning-light)', padding: '10px 14px', borderRadius: '14px', marginBottom: '14px', border: '1px solid var(--color-warning)' }}>
+                  <span style={{ fontSize: '12px', color: 'var(--primary-navy)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    ⏱️ Payment session expires in:
+                  </span>
+                  <span style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: '14px', color: timeLeft <= 15 ? 'var(--color-error)' : 'var(--primary-navy)' }} className={timeLeft <= 15 ? 'animate-pulse' : ''}>
+                    {timeLeft}s
+                  </span>
+                </div>
+              )}
+
               {/* Order Summary inside Payment step */}
               <div style={styles.orderSummary}>
                 <div>
@@ -762,6 +891,14 @@ export default function PlaceOrderWizard({ isOpen, onClose, onOrderPlaced }) {
                     <ShieldCheck size={14} color="var(--primary-teal)" />
                     <span>100% Encrypted & Secure Payments</span>
                   </div>
+
+                  <button
+                    onClick={handleCancelPayment}
+                    className="velora-btn velora-btn-secondary"
+                    style={{ width: '100%', marginTop: '16px', justifyContent: 'center', border: '2px solid var(--color-error-light)', color: 'var(--color-error)' }}
+                  >
+                    Cancel Payment & Pay Later
+                  </button>
                 </div>
               )}
 
@@ -937,6 +1074,13 @@ export default function PlaceOrderWizard({ isOpen, onClose, onOrderPlaced }) {
                       </button>
                     </div>
                   )}
+                  <button
+                    onClick={handleCancelPayment}
+                    className="velora-btn velora-btn-secondary"
+                    style={{ width: '100%', marginTop: '14px', justifyContent: 'center', border: '2px solid var(--color-error-light)', color: 'var(--color-error)' }}
+                  >
+                    Cancel Payment & Pay Later
+                  </button>
                 </div>
               )}
 
@@ -985,6 +1129,14 @@ export default function PlaceOrderWizard({ isOpen, onClose, onOrderPlaced }) {
                       Submit OTP Code
                     </button>
                   </form>
+                  <button
+                    type="button"
+                    onClick={handleCancelPayment}
+                    className="velora-btn velora-btn-secondary"
+                    style={{ width: '100%', marginTop: '14px', justifyContent: 'center', border: '2px solid var(--color-error-light)', color: 'var(--color-error)' }}
+                  >
+                    Cancel Payment & Pay Later
+                  </button>
                 </div>
               )}
 

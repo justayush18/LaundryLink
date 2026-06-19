@@ -1,15 +1,40 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../services/api';
-import { DollarSign, Save, RefreshCw } from 'lucide-react';
+import { DollarSign, Save, RefreshCw, Trash2, Plus } from 'lucide-react';
 import VeloraMascot from '../Common/VeloraMascot';
+
+const STANDARD_CATEGORIES = ['SHIRT', 'PANTS', 'SUIT', 'JACKET', 'BLANKET', 'CURTAINS', 'SAREE', 'DRESS'];
+const STANDARD_SERVICES = ['WASH_AND_FOLD', 'DRY_CLEAN', 'WASH_AND_IRON', 'STEAM_PRESS', 'PREMIUM_DRY_CLEAN', 'STAIN_REMOVAL'];
+
+const CATEGORY_OPTIONS = [
+  { value: 'SHIRT', label: 'Shirt / Daily Top' },
+  { value: 'PANTS', label: 'Pants / Trouser' },
+  { value: 'SUIT', label: 'Formal Suit Set' },
+  { value: 'JACKET', label: 'Jacket / Coat' },
+  { value: 'BLANKET', label: 'Bed Blanket / Duvet' },
+  { value: 'CURTAINS', label: 'Curtains / Drapes' },
+  { value: 'SAREE', label: 'Saree' },
+  { value: 'DRESS', label: 'Dress' },
+  { value: 'CUSTOM', label: 'Other (Write manually)' },
+];
+
+const SERVICE_OPTIONS = [
+  { value: 'WASH_AND_FOLD', label: 'Wash & Fold' },
+  { value: 'DRY_CLEAN', label: 'Dry Clean' },
+  { value: 'WASH_AND_IRON', label: 'Wash & Iron' },
+  { value: 'STEAM_PRESS', label: 'Steam Press' },
+  { value: 'PREMIUM_DRY_CLEAN', label: 'Premium Dry Clean' },
+  { value: 'STAIN_REMOVAL', label: 'Stain Removal' },
+  { value: 'CUSTOM', label: 'Other (Write manually)' },
+];
 
 export default function PartnerPricing() {
   const [rateCard, setRateCard] = useState([
-    { itemCategory: 'SHIRT', serviceType: 'WASH_AND_FOLD', price: 45.0 },
-    { itemCategory: 'SHIRT', serviceType: 'DRY_CLEAN', price: 85.0 },
-    { itemCategory: 'PANTS', serviceType: 'WASH_AND_FOLD', price: 50.0 },
-    { itemCategory: 'PANTS', serviceType: 'DRY_CLEAN', price: 90.0 },
-    { itemCategory: 'SUIT', serviceType: 'DRY_CLEAN', price: 350.0 },
+    { itemCategory: 'SHIRT', customItemCategory: '', serviceType: 'WASH_AND_FOLD', customServiceType: '', price: 45.0 },
+    { itemCategory: 'SHIRT', customItemCategory: '', serviceType: 'DRY_CLEAN', customServiceType: '', price: 85.0 },
+    { itemCategory: 'PANTS', customItemCategory: '', serviceType: 'WASH_AND_FOLD', customServiceType: '', price: 50.0 },
+    { itemCategory: 'PANTS', customItemCategory: '', serviceType: 'DRY_CLEAN', customServiceType: '', price: 90.0 },
+    { itemCategory: 'SUIT', customItemCategory: '', serviceType: 'DRY_CLEAN', customServiceType: '', price: 350.0 },
   ]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -22,7 +47,18 @@ export default function PartnerPricing() {
     try {
       const data = await api.partners.getPricing();
       if (data && data.rateCard && data.rateCard.length > 0) {
-        setRateCard(data.rateCard);
+        const mapped = data.rateCard.map(r => {
+          const isStandardCat = STANDARD_CATEGORIES.includes(r.itemCategory.toUpperCase());
+          const isStandardSvc = STANDARD_SERVICES.includes(r.serviceType.toUpperCase());
+          return {
+            itemCategory: isStandardCat ? r.itemCategory.toUpperCase() : 'CUSTOM',
+            customItemCategory: isStandardCat ? '' : r.itemCategory,
+            serviceType: isStandardSvc ? r.serviceType.toUpperCase() : 'CUSTOM',
+            customServiceType: isStandardSvc ? '' : r.serviceType,
+            price: r.price
+          };
+        });
+        setRateCard(mapped);
       }
     } catch (err) {
       console.warn('Failed to load pricing from API, using seeded fallback values');
@@ -41,23 +77,74 @@ export default function PartnerPricing() {
     setRateCard(newRates);
   };
 
+  const handleFieldChange = (index, field, value) => {
+    const newRates = [...rateCard];
+    newRates[index][field] = value;
+    setRateCard(newRates);
+  };
+
+  const handleAddRate = () => {
+    setRateCard([
+      ...rateCard,
+      { itemCategory: 'SHIRT', customItemCategory: '', serviceType: 'WASH_AND_FOLD', customServiceType: '', price: 50.0 }
+    ]);
+  };
+
+  const handleRemoveRate = (index) => {
+    setRateCard(rateCard.filter((_, i) => i !== index));
+  };
+
   const handleSave = async (e) => {
     e.preventDefault();
     setSubmitting(true);
     setError('');
     setSuccess('');
 
+    // Validate manual text fields and prices
+    for (let i = 0; i < rateCard.length; i++) {
+      const r = rateCard[i];
+      if (r.itemCategory === 'CUSTOM' && !r.customItemCategory?.trim()) {
+        setError('Please enter a custom category name for all manual entries.');
+        setSubmitting(false);
+        return;
+      }
+      if (r.serviceType === 'CUSTOM' && !r.customServiceType?.trim()) {
+        setError('Please enter a custom service name for all manual entries.');
+        setSubmitting(false);
+        return;
+      }
+      if (r.price < 0) {
+        setError('Price must be greater than or equal to 0.');
+        setSubmitting(false);
+        return;
+      }
+    }
+
     try {
-      // Clean rateCard payload to ensure it only has itemCategory, serviceType, price
-      const cleanRateCard = rateCard.map(r => ({
-        itemCategory: r.itemCategory,
-        serviceType: r.serviceType,
-        price: parseFloat(r.price) || 0
-      }));
+      const cleanRateCard = rateCard.map(r => {
+        const cat = r.itemCategory === 'CUSTOM' ? r.customItemCategory : r.itemCategory;
+        const svc = r.serviceType === 'CUSTOM' ? r.customServiceType : r.serviceType;
+        return {
+          itemCategory: cat.trim().toUpperCase(),
+          serviceType: svc.trim().toUpperCase(),
+          price: parseFloat(r.price) || 0
+        };
+      });
 
       const res = await api.partners.updatePricing({ rateCard: cleanRateCard });
       if (res && res.rateCard) {
-        setRateCard(res.rateCard);
+        const mapped = res.rateCard.map(rc => {
+          const isStandardCat = STANDARD_CATEGORIES.includes(rc.itemCategory.toUpperCase());
+          const isStandardSvc = STANDARD_SERVICES.includes(rc.serviceType.toUpperCase());
+          return {
+            itemCategory: isStandardCat ? rc.itemCategory.toUpperCase() : 'CUSTOM',
+            customItemCategory: isStandardCat ? '' : rc.itemCategory,
+            serviceType: isStandardSvc ? rc.serviceType.toUpperCase() : 'CUSTOM',
+            customServiceType: isStandardSvc ? '' : rc.serviceType,
+            price: rc.price
+          };
+        });
+        setRateCard(mapped);
       }
       setSuccess('Pricing rate card updated successfully!');
       setTimeout(() => setSuccess(''), 4000);
@@ -65,16 +152,6 @@ export default function PartnerPricing() {
       setError(err.message || 'Failed to update pricing');
     } finally {
       setSubmitting(false);
-    }
-  };
-
-  const getCategoryLabel = (cat) => {
-    switch (cat) {
-      case 'SHIRT': return 'Shirt / Daily Top';
-      case 'PANTS': return 'Pants / Trouser';
-      case 'SUIT': return 'Formal Suit Set';
-      case 'BLANKET': return 'Bed Blanket / Duvet';
-      default: return cat;
     }
   };
 
@@ -93,13 +170,13 @@ export default function PartnerPricing() {
       {error && <div className="alert alert-error animate-fadeInUp">{error}</div>}
 
       <div style={styles.container}>
-        <div className="velora-card animate-fadeInUp" style={{ flex: 1.2, maxWidth: '650px', padding: '2rem' }}>
+        <div className="velora-card animate-fadeInUp" style={{ flex: 1.2, maxWidth: '750px', padding: '2rem' }}>
           <div style={styles.cardHeader}>
             <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary-navy)', fontFamily: 'Outfit, sans-serif', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
               <DollarSign size={20} color="var(--primary-teal)" />
               Service pricing rate card
             </h3>
-            <button onClick={fetchPricing} className="velora-btn velora-btn-secondary" style={{ padding: '6px 12px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '4px' }} disabled={loading}>
+            <button type="button" onClick={fetchPricing} className="velora-btn velora-btn-secondary" style={{ padding: '6px 12px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '4px' }} disabled={loading}>
               <RefreshCw size={12} /> Refresh
             </button>
           </div>
@@ -109,42 +186,117 @@ export default function PartnerPricing() {
           ) : (
             <form onSubmit={handleSave}>
               <div style={styles.ratesContainer}>
-                {rateCard.map((rate, idx) => (
-                  <div key={idx} style={styles.rateRow}>
-                    <div style={styles.rateInfo}>
-                      <span style={styles.category}>{getCategoryLabel(rate.itemCategory)}</span>
-                      <span className="badge badge-info" style={{ fontFamily: 'Outfit, sans-serif', fontWeight: 700, fontSize: '10px' }}>
-                        {rate.serviceType.replace('_', ' ')}
-                      </span>
+                {rateCard.length === 0 ? (
+                  <p style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '1.5rem' }}>No rate entries. Click below to add one!</p>
+                ) : (
+                  rateCard.map((rate, idx) => (
+                    <div key={idx} style={styles.rateRowEditable}>
+                      <div style={styles.rateRowMain}>
+                        <select
+                          className="form-control"
+                          value={rate.itemCategory}
+                          onChange={(e) => handleFieldChange(idx, 'itemCategory', e.target.value)}
+                          style={styles.dropdown}
+                          disabled={submitting}
+                        >
+                          {CATEGORY_OPTIONS.map(opt => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                          ))}
+                        </select>
+
+                        <select
+                          className="form-control"
+                          value={rate.serviceType}
+                          onChange={(e) => handleFieldChange(idx, 'serviceType', e.target.value)}
+                          style={styles.dropdown}
+                          disabled={submitting}
+                        >
+                          {SERVICE_OPTIONS.map(opt => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                          ))}
+                        </select>
+                        
+                        <div style={styles.priceInputGroup}>
+                          <span style={styles.currency}>₹</span>
+                          <input
+                            type="number"
+                            className="form-control"
+                            value={rate.price}
+                            onChange={(e) => handlePriceChange(idx, e.target.value)}
+                            min="0"
+                            step="1"
+                            required
+                            disabled={submitting}
+                            style={styles.priceInput}
+                          />
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveRate(idx)}
+                          style={styles.removeBtn}
+                          disabled={submitting}
+                          title="Remove rate item"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+
+                      {/* Conditional manual text fields */}
+                      {(rate.itemCategory === 'CUSTOM' || rate.serviceType === 'CUSTOM') && (
+                        <div style={styles.customFieldsRow}>
+                          {rate.itemCategory === 'CUSTOM' && (
+                            <input
+                              type="text"
+                              className="form-control"
+                              placeholder="Write category name (e.g. Bed Sheet)"
+                              value={rate.customItemCategory || ''}
+                              onChange={(e) => handleFieldChange(idx, 'customItemCategory', e.target.value)}
+                              style={styles.customInput}
+                              disabled={submitting}
+                              required
+                            />
+                          )}
+                          {rate.serviceType === 'CUSTOM' && (
+                            <input
+                              type="text"
+                              className="form-control"
+                              placeholder="Write service name (e.g. Dyeing)"
+                              value={rate.customServiceType || ''}
+                              onChange={(e) => handleFieldChange(idx, 'customServiceType', e.target.value)}
+                              style={styles.customInput}
+                              disabled={submitting}
+                              required
+                            />
+                          )}
+                        </div>
+                      )}
                     </div>
-                    
-                    <div style={styles.priceInputGroup}>
-                      <span style={styles.currency}>₹</span>
-                      <input
-                        type="number"
-                        className="form-control"
-                        value={rate.price}
-                        onChange={(e) => handlePriceChange(idx, e.target.value)}
-                        min="0"
-                        step="1"
-                        required
-                        disabled={submitting}
-                        style={styles.priceInput}
-                      />
-                    </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
 
-              <button
-                type="submit"
-                className="velora-btn velora-btn-primary animate-pulse"
-                disabled={submitting}
-                style={{ marginTop: '2rem', display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 20px', fontSize: '13px' }}
-              >
-                <Save size={16} />
-                {submitting ? 'Saving changes...' : 'Save Rate Card'}
-              </button>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2rem' }}>
+                <button
+                  type="button"
+                  onClick={handleAddRate}
+                  className="velora-btn velora-btn-secondary"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 16px', fontSize: '12px', fontWeight: 700 }}
+                  disabled={submitting}
+                >
+                  <Plus size={14} /> Add Rate Card Item
+                </button>
+
+                <button
+                  type="submit"
+                  className="velora-btn velora-btn-primary animate-pulse"
+                  disabled={submitting}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 20px', fontSize: '13px' }}
+                >
+                  <Save size={16} />
+                  {submitting ? 'Saving changes...' : 'Save Rate Card'}
+                </button>
+              </div>
             </form>
           )}
         </div>
@@ -173,7 +325,7 @@ const styles = {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    borderBottom: '2px solid var(--bg-secondary)',
+    borderBottom: '2px solid var(--bg-primary)',
     paddingBottom: '14px',
     marginBottom: '20px',
   },
@@ -182,24 +334,31 @@ const styles = {
     flexDirection: 'column',
     gap: '12px',
   },
-  rateRow: {
+  rateRowEditable: {
     display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '12px 18px',
-    background: 'var(--bg-secondary)',
+    flexDirection: 'column',
+    gap: '8px',
+    padding: '14px',
+    background: 'var(--bg-primary)',
     borderRadius: '16px',
+    border: '1px solid var(--sky-blue-light)',
   },
-  rateInfo: {
+  rateRowMain: {
     display: 'flex',
     alignItems: 'center',
-    gap: '16px',
+    gap: '12px',
+    flexWrap: 'wrap',
   },
-  category: {
-    fontWeight: 700,
-    fontSize: '14px',
+  dropdown: {
+    flex: 2,
+    borderRadius: '12px',
+    border: '2px solid var(--sky-blue)',
+    background: '#FFFFFF',
+    padding: '8px 12px',
+    fontWeight: 600,
     color: 'var(--primary-navy)',
-    width: '140px',
+    fontFamily: 'Outfit, sans-serif',
+    minWidth: '130px',
   },
   priceInputGroup: {
     display: 'flex',
@@ -212,13 +371,39 @@ const styles = {
     color: 'var(--primary-navy)',
   },
   priceInput: {
-    width: '90px',
+    width: '85px',
     padding: '8px 12px',
     textAlign: 'right',
     borderRadius: '12px',
     border: '2px solid var(--sky-blue)',
     background: '#FFFFFF',
     fontWeight: 700,
-    color: 'var(--primary-navy)'
+    color: 'var(--primary-navy)',
+  },
+  removeBtn: {
+    background: 'transparent',
+    border: 'none',
+    color: 'var(--color-error)',
+    cursor: 'pointer',
+    padding: '6px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: '8px',
+    transition: 'background 0.2s',
+  },
+  customFieldsRow: {
+    display: 'flex',
+    gap: '12px',
+    width: '100%',
+  },
+  customInput: {
+    flex: 1,
+    borderRadius: '12px',
+    border: '2px solid var(--sky-blue)',
+    padding: '6px 12px',
+    fontSize: '12px',
+    fontWeight: 600,
+    background: '#FFFFFF',
   }
 };
