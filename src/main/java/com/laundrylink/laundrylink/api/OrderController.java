@@ -49,6 +49,12 @@ public class OrderController {
         return orderService.getOrderHistory(principal.email(), principal.role());
     }
 
+    @GetMapping("/{orderId}/cancellation-estimate")
+    public CancellationEstimate getCancellationEstimate(@PathVariable String orderId) {
+        AuthenticatedPrincipal principal = currentPrincipal();
+        return orderService.getCancellationEstimate(orderId, principal.email(), principal.role());
+    }
+
     @PutMapping(value = "/{orderId}/status", consumes = MediaType.APPLICATION_JSON_VALUE)
     public OrderView updateOrderStatus(
             @PathVariable String orderId,

@@ -280,7 +280,9 @@ public class AdminService {
                 order.getCreatedAt(),
                 order.getUpdatedAt(),
                 historyDto,
-                order.isAcceptedByRider()
+                order.isAcceptedByRider(),
+                order.getCancellationFee(),
+                order.getRefundAmount()
         );
     }
 

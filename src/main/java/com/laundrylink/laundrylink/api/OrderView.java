@@ -19,6 +19,8 @@ public record OrderView(
         long createdAt,
         long updatedAt,
         List<StatusTransition> history,
-        boolean acceptedByRider
+        boolean acceptedByRider,
+        Double cancellationFee,
+        Double refundAmount
 ) {
 }

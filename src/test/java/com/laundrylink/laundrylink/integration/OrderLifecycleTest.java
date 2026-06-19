@@ -70,6 +70,18 @@ public class OrderLifecycleTest {
         // Fetch or create delivery partner
         UserEntity deliveryUser = userRepository.findByEmail("ravi.delivery@example.com")
                 .orElseGet(() -> userRepository.save(new UserEntity("ravi.delivery@example.com", "hash", "Ravi", "789", UserRoleType.DELIVERY_PARTNER)));
+        deliveryUser.setOnline(true);
+        deliveryUser.setActive(true);
+        userRepository.save(deliveryUser);
+
+        // Turn off all other riders to ensure deterministic assignment
+        userRepository.findAll().stream()
+                .filter(u -> u.getRole() == UserRoleType.DELIVERY_PARTNER && !u.getEmail().equalsIgnoreCase("ravi.delivery@example.com"))
+                .forEach(u -> {
+                    u.setOnline(false);
+                    userRepository.save(u);
+                });
+
         deliveryToken = "Bearer " + jwtService.generateToken(deliveryUser);
 
         // Ensure partner profile exists in database
@@ -107,21 +119,12 @@ public class OrderLifecycleTest {
         OrderView order = objectMapper.readValue(responseContent, OrderView.class);
         String orderId = order.orderId();
 
-        // 2. Partner accepts order
+        // 2. Partner accepts order -> triggers auto-assignment to ravi.delivery@example.com
         OrderStatusUpdateRequest acceptRequest = new OrderStatusUpdateRequest(OrderStatus.ACCEPTED, "Accepted by partner");
         mockMvc.perform(put("/api/v1/orders/" + orderId + "/status")
                 .header(HttpHeaders.AUTHORIZATION, partnerToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(acceptRequest)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("ACCEPTED"));
-
-        // 3. Delivery partner assigns pickup to themselves
-        AssignDeliveryRequest assignRequest = new AssignDeliveryRequest("ravi.delivery@example.com");
-        mockMvc.perform(put("/api/v1/orders/" + orderId + "/assign-delivery")
-                .header(HttpHeaders.AUTHORIZATION, deliveryToken)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(assignRequest)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("PICKUP_ASSIGNED"))
                 .andExpect(jsonPath("$.deliveryPartnerEmail").value("ravi.delivery@example.com"));

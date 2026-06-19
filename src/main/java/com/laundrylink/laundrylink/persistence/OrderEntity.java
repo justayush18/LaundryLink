@@ -35,6 +35,9 @@ public class OrderEntity extends AuditedEntity {
     private String statusNotes;
     
     private String paymentId;
+    
+    private Double cancellationFee = 0.0;
+    private Double refundAmount = 0.0;
 
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     @JoinColumn(name = "order_id")
@@ -179,5 +182,21 @@ public class OrderEntity extends AuditedEntity {
 
     public void setAcceptedByRider(boolean acceptedByRider) {
         this.acceptedByRider = acceptedByRider;
+    }
+
+    public Double getCancellationFee() {
+        return cancellationFee != null ? cancellationFee : 0.0;
+    }
+
+    public void setCancellationFee(Double cancellationFee) {
+        this.cancellationFee = cancellationFee;
+    }
+
+    public Double getRefundAmount() {
+        return refundAmount != null ? refundAmount : 0.0;
+    }
+
+    public void setRefundAmount(Double refundAmount) {
+        this.refundAmount = refundAmount;
     }
 }

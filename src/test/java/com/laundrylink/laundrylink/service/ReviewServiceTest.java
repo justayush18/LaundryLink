@@ -37,7 +37,7 @@ public class ReviewServiceTest {
         OrderView orderView = new OrderView(
                 "order-123", "customer@example.com", "partner@example.com", null, null,
                 OrderStatus.DELIVERED, List.of(),
-                100.0, "Pickup", "Slot1", "Delivery", "Slot2", "Notes", 0L, 0L, List.of(), false
+                100.0, "Pickup", "Slot1", "Delivery", "Slot2", "Notes", 0L, 0L, List.of(), false, null, null
         );
 
         ReviewEntity review = new ReviewEntity("order-123", "customer@example.com", "partner@example.com", 5, "Great service!");
@@ -66,7 +66,7 @@ public class ReviewServiceTest {
         OrderView orderView = new OrderView(
                 "order-123", "customer@example.com", "partner@example.com", null, null,
                 OrderStatus.PROCESSING, List.of(),
-                100.0, "Pickup", "Slot1", "Delivery", "Slot2", "Notes", 0L, 0L, List.of(), false
+                100.0, "Pickup", "Slot1", "Delivery", "Slot2", "Notes", 0L, 0L, List.of(), false, null, null
         );
 
         when(orderService.getOrder("order-123", "customer@example.com", UserRoleType.CUSTOMER)).thenReturn(orderView);
@@ -83,7 +83,7 @@ public class ReviewServiceTest {
         OrderView orderView = new OrderView(
                 "order-123", "customer@example.com", "partner@example.com", null, null,
                 OrderStatus.DELIVERED, List.of(),
-                100.0, "Pickup", "Slot1", "Delivery", "Slot2", "Notes", 0L, 0L, List.of(), false
+                100.0, "Pickup", "Slot1", "Delivery", "Slot2", "Notes", 0L, 0L, List.of(), false, null, null
         );
 
         when(orderService.getOrder("order-123", "customer@example.com", UserRoleType.CUSTOMER)).thenReturn(orderView);
@@ -101,7 +101,7 @@ public class ReviewServiceTest {
         OrderView orderView = new OrderView(
                 "order-123", "customer@example.com", "partner@example.com", null, null,
                 OrderStatus.DELIVERED, List.of(),
-                100.0, "Pickup", "Slot1", "Delivery", "Slot2", "Notes", 0L, 0L, List.of(), false
+                100.0, "Pickup", "Slot1", "Delivery", "Slot2", "Notes", 0L, 0L, List.of(), false, null, null
         );
 
         when(orderService.getOrder("order-123", "customer@example.com", UserRoleType.CUSTOMER)).thenReturn(orderView);

@@ -43,7 +43,7 @@ public class PaymentServiceTest {
         OrderView orderView = new OrderView(
                 "order-123", "customer@example.com", "partner@example.com", null, null,
                 OrderStatus.PLACED, List.of(new OrderItemDto("SHIRT", "WASH_AND_FOLD", 2)),
-                100.0, "Pickup", "Slot1", "Delivery", "Slot2", "Notes", 0L, 0L, List.of(), false
+                100.0, "Pickup", "Slot1", "Delivery", "Slot2", "Notes", 0L, 0L, List.of(), false, null, null
         );
 
         when(orderService.getOrder("order-123", "customer@example.com", UserRoleType.CUSTOMER)).thenReturn(orderView);
@@ -72,7 +72,7 @@ public class PaymentServiceTest {
         OrderView orderView = new OrderView(
                 "order-123", "customer@example.com", "partner@example.com", null, null,
                 OrderStatus.PLACED, List.of(new OrderItemDto("SHIRT", "WASH_AND_FOLD", 2)),
-                100.0, "Pickup", "Slot1", "Delivery", "Slot2", "Notes", 0L, 0L, List.of(), false
+                100.0, "Pickup", "Slot1", "Delivery", "Slot2", "Notes", 0L, 0L, List.of(), false, null, null
         );
 
         when(orderService.getOrder("order-123", "customer@example.com", UserRoleType.CUSTOMER)).thenReturn(orderView);
@@ -94,7 +94,7 @@ public class PaymentServiceTest {
         OrderView orderView = new OrderView(
                 "order-123", "customer@example.com", "partner@example.com", null, null,
                 OrderStatus.PLACED, List.of(new OrderItemDto("SHIRT", "WASH_AND_FOLD", 2)),
-                100.0, "Pickup", "Slot1", "Delivery", "Slot2", "Notes", 0L, 0L, List.of(), false
+                100.0, "Pickup", "Slot1", "Delivery", "Slot2", "Notes", 0L, 0L, List.of(), false, null, null
         );
 
         when(paymentRepository.findById("pay-123")).thenReturn(Optional.of(payment));
@@ -117,7 +117,7 @@ public class PaymentServiceTest {
         OrderView orderView = new OrderView(
                 "order-123", "customer@example.com", "partner@example.com", null, null,
                 OrderStatus.PLACED, List.of(),
-                100.0, "Pickup", "Slot1", "Delivery", "Slot2", "Notes", 0L, 0L, List.of(), false
+                100.0, "Pickup", "Slot1", "Delivery", "Slot2", "Notes", 0L, 0L, List.of(), false, null, null
         );
 
         when(paymentRepository.findById("pay-123")).thenReturn(Optional.of(payment));
@@ -141,7 +141,7 @@ public class PaymentServiceTest {
         OrderView orderView = new OrderView(
                 "order-123", "customer@example.com", "partner@example.com", null, null,
                 OrderStatus.PLACED, List.of(),
-                100.0, "Pickup", "Slot1", "Delivery", "Slot2", "Notes", 0L, 0L, List.of(), false
+                100.0, "Pickup", "Slot1", "Delivery", "Slot2", "Notes", 0L, 0L, List.of(), false, null, null
         );
 
         when(orderService.getOrderHistory("order-123", UserRoleType.ADMIN)).thenReturn(List.of(orderView));
@@ -166,7 +166,7 @@ public class PaymentServiceTest {
         OrderView orderView = new OrderView(
                 "order-123", "customer@example.com", "partner@example.com", null, null,
                 OrderStatus.DELIVERED, List.of(),
-                100.0, "Pickup", "Slot1", "Delivery", "Slot2", "Notes", 0L, 0L, List.of(), false
+                100.0, "Pickup", "Slot1", "Delivery", "Slot2", "Notes", 0L, 0L, List.of(), false, null, null
         );
         when(orderService.getOrderHistory("order-123", UserRoleType.ADMIN)).thenReturn(List.of(orderView));
 

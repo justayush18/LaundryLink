@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
+import org.springframework.context.annotation.Lazy;
 
 import com.laundrylink.laundrylink.api.AddressView;
 import com.laundrylink.laundrylink.api.UserProfileView;
@@ -16,9 +17,11 @@ import com.laundrylink.laundrylink.persistence.UserEntity;
 public class UserManagementService {
 
     private final UserRepository userRepository;
+    private final OrderService orderService;
 
-    public UserManagementService(UserRepository userRepository) {
+    public UserManagementService(UserRepository userRepository, @Lazy OrderService orderService) {
         this.userRepository = userRepository;
+        this.orderService = orderService;
     }
 
     public List<UserRoleSummary> roleSummaries() {
@@ -53,13 +56,22 @@ public class UserManagementService {
     }
 
     private UserProfileView toProfileView(UserEntity u) {
+        Integer cancellationsCount = null;
+        Integer remainingFree = null;
+        if (u.getRole() == UserRoleType.CUSTOMER) {
+            cancellationsCount = orderService.getCustomerMonthlyCancellationsCount(u.getEmail());
+            remainingFree = Math.max(0, 3 - cancellationsCount);
+        }
+
         return new UserProfileView(
                 u.getRole().name(),
                 u.getDisplayName(),
                 u.getEmail(),
                 u.getPhoneNumber(),
                 "ACTIVE",
-                getCapabilities(u.getRole())
+                getCapabilities(u.getRole()),
+                cancellationsCount,
+                remainingFree
         );
     }
 

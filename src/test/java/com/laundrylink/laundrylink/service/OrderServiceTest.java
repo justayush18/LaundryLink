@@ -85,7 +85,7 @@ public class OrderServiceTest {
         OrderEntity order = new OrderEntity();
         order.setOrderId("order-123");
         order.setCustomerEmail("customer@example.com");
-        order.setStatus(OrderStatus.ACCEPTED); // Already accepted, cannot cancel
+        order.setStatus(OrderStatus.DELIVERED); // Delivered, cannot cancel
         order.setItems(new ArrayList<>());
         order.setHistory(new ArrayList<>());
 
@@ -95,6 +95,64 @@ public class OrderServiceTest {
         assertThrows(ResponseStatusException.class, () -> {
             orderService.updateOrderStatus("order-123", "customer@example.com", UserRoleType.CUSTOMER, request);
         });
+    }
+
+    @Test
+    public void testUpdateStatus_CustomerCancel_FreeAllowance() {
+        OrderEntity order = new OrderEntity();
+        order.setOrderId("order-123");
+        order.setCustomerEmail("customer@example.com");
+        order.setStatus(OrderStatus.ACCEPTED);
+        order.setTotalCost(100.0);
+        order.setItems(new ArrayList<>());
+        order.setHistory(new ArrayList<>());
+
+        when(orderRepository.findById("order-123")).thenReturn(Optional.of(order));
+        when(orderRepository.findAll()).thenReturn(List.of()); // 0 cancellations
+        when(orderRepository.saveAndFlush(any(OrderEntity.class))).thenReturn(order);
+
+        OrderStatusUpdateRequest request = new OrderStatusUpdateRequest(OrderStatus.CANCELLED, "cancelled by customer");
+        OrderView view = orderService.updateOrderStatus("order-123", "customer@example.com", UserRoleType.CUSTOMER, request);
+
+        assertNotNull(view);
+        assertEquals(OrderStatus.CANCELLED, view.status());
+        assertEquals(0.0, view.cancellationFee());
+        assertEquals(100.0, view.refundAmount());
+    }
+
+    @Test
+    public void testUpdateStatus_CustomerCancel_ExceededAllowance_Progression() {
+        OrderEntity order = new OrderEntity();
+        order.setOrderId("order-123");
+        order.setCustomerEmail("customer@example.com");
+        order.setStatus(OrderStatus.ACCEPTED);
+        order.setTotalCost(100.0);
+        order.setItems(new ArrayList<>());
+        order.setHistory(new ArrayList<>());
+
+        // Prepare existing cancelled orders to exceed allowance (3 cancellations)
+        List<OrderEntity> existingOrders = new ArrayList<>();
+        long startOfThisMonthEpoch = java.time.ZonedDateTime.now(java.time.ZoneId.of("Asia/Kolkata"))
+                .toLocalDate().withDayOfMonth(1).atStartOfDay(java.time.ZoneId.of("Asia/Kolkata")).toEpochSecond();
+        
+        for (int i = 0; i < 3; i++) {
+            OrderEntity o = new OrderEntity();
+            o.setCustomerEmail("customer@example.com");
+            o.setHistory(List.of(new StatusTransitionEntity(OrderStatus.CANCELLED, startOfThisMonthEpoch + 10, "cancelled by customer")));
+            existingOrders.add(o);
+        }
+
+        when(orderRepository.findById("order-123")).thenReturn(Optional.of(order));
+        when(orderRepository.findAll()).thenReturn(existingOrders);
+        when(orderRepository.saveAndFlush(any(OrderEntity.class))).thenReturn(order);
+
+        OrderStatusUpdateRequest request = new OrderStatusUpdateRequest(OrderStatus.CANCELLED, "cancelled by customer");
+        OrderView view = orderService.updateOrderStatus("order-123", "customer@example.com", UserRoleType.CUSTOMER, request);
+
+        assertNotNull(view);
+        assertEquals(OrderStatus.CANCELLED, view.status());
+        assertEquals(15.0, view.cancellationFee()); // 15% of 100.0 for ACCEPTED
+        assertEquals(85.0, view.refundAmount());
     }
 
     @Test

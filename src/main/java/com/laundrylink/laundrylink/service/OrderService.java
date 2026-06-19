@@ -12,6 +12,7 @@ import org.springframework.web.server.ResponseStatusException;
 import com.laundrylink.laundrylink.api.OrderItemDto;
 import com.laundrylink.laundrylink.api.OrderStatus;
 import com.laundrylink.laundrylink.api.OrderView;
+import com.laundrylink.laundrylink.api.CancellationEstimate;
 import com.laundrylink.laundrylink.api.PlaceOrderRequest;
 import com.laundrylink.laundrylink.api.PricingView;
 import com.laundrylink.laundrylink.api.RateCardItem;
@@ -153,8 +154,8 @@ public class OrderService {
                 if (newStatus != OrderStatus.CANCELLED) {
                     throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Customers can only cancel orders");
                 }
-                if (order.getStatus() != OrderStatus.PLACED) {
-                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Orders can only be cancelled while in PLACED state");
+                if (order.getStatus() == OrderStatus.DELIVERED || order.getStatus() == OrderStatus.CANCELLED) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Order cannot be cancelled in the current state");
                 }
                 break;
 
@@ -172,8 +173,9 @@ public class OrderService {
                 if (order.getDeliveryPartnerEmail() == null || !order.getDeliveryPartnerEmail().equalsIgnoreCase(email)) {
                     throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied: You are not the assigned delivery partner");
                 }
-                if (newStatus != OrderStatus.PICKUP_ASSIGNED && newStatus != OrderStatus.PICKED_UP 
-                        && newStatus != OrderStatus.DELIVERY_ASSIGNED && newStatus != OrderStatus.DELIVERED) {
+                if (newStatus != OrderStatus.PICKUP_ASSIGNED && newStatus != OrderStatus.ARRIVED_AT_PICKUP 
+                        && newStatus != OrderStatus.PICKED_UP && newStatus != OrderStatus.DELIVERY_ASSIGNED 
+                        && newStatus != OrderStatus.DELIVERED) {
                     throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid status transition for Delivery Partner");
                 }
                 break;
@@ -183,6 +185,12 @@ public class OrderService {
 
             default:
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Unauthorized role");
+        }
+
+        if (role == UserRoleType.CUSTOMER && newStatus == OrderStatus.CANCELLED) {
+            CancellationEstimate estimate = getCancellationEstimate(orderId, email, role);
+            order.setCancellationFee(estimate.cancellationFee());
+            order.setRefundAmount(estimate.refundAmount());
         }
 
         long now = System.currentTimeMillis() / 1000L;
@@ -289,7 +297,8 @@ public class OrderService {
 
         List<OrderView> upcomingPickups = riderOrders.stream()
                 .filter(o -> o.isAcceptedByRider() 
-                        && o.getStatus() == OrderStatus.PICKUP_ASSIGNED)
+                        && (o.getStatus() == OrderStatus.PICKUP_ASSIGNED 
+                            || o.getStatus() == OrderStatus.ARRIVED_AT_PICKUP))
                 .map(this::toView)
                 .collect(Collectors.toList());
 
@@ -596,7 +605,89 @@ public class OrderService {
                 order.getCreatedAt(),
                 order.getUpdatedAt(),
                 historyDto,
-                order.isAcceptedByRider()
+                order.isAcceptedByRider(),
+                order.getCancellationFee(),
+                order.getRefundAmount()
         );
+    }
+
+    public int getCustomerMonthlyCancellationsCount(String email) {
+        java.time.ZoneId kolkata = java.time.ZoneId.of("Asia/Kolkata");
+        java.time.ZonedDateTime nowIst = java.time.ZonedDateTime.now(kolkata);
+        java.time.ZonedDateTime startOfMonthIst = nowIst.toLocalDate().withDayOfMonth(1).atStartOfDay(kolkata);
+        long startOfMonthEpoch = startOfMonthIst.toEpochSecond();
+
+        int count = 0;
+        List<OrderEntity> orders = orderRepository.findAll();
+        for (OrderEntity o : orders) {
+            if (o.getCustomerEmail().equalsIgnoreCase(email) && o.getHistory() != null) {
+                for (StatusTransitionEntity transition : o.getHistory()) {
+                    if (transition.getStatus() == OrderStatus.CANCELLED 
+                            && transition.getTimestamp() >= startOfMonthEpoch
+                            && transition.getNotes() != null
+                            && transition.getNotes().toLowerCase().contains("cancelled by customer")) {
+                        count++;
+                    }
+                }
+            }
+        }
+        return count;
+    }
+
+    public CancellationEstimate getCancellationEstimate(String orderId, String email, UserRoleType role) {
+        OrderEntity order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
+
+        if (role == UserRoleType.CUSTOMER && !order.getCustomerEmail().equalsIgnoreCase(email)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied: You do not own this order");
+        }
+
+        int cancellationsCount = getCustomerMonthlyCancellationsCount(order.getCustomerEmail());
+        
+        double chargePercent = 0.0;
+        String message = "Order has not been accepted by the partner yet.";
+
+        if (cancellationsCount >= 3) {
+            switch (order.getStatus()) {
+                case PLACED:
+                    chargePercent = 0.0;
+                    message = "Order has not been accepted by the partner yet.";
+                    break;
+                case ACCEPTED:
+                    chargePercent = 15.0;
+                    message = "Your order has already been accepted by the laundry partner.";
+                    break;
+                case PICKUP_ASSIGNED:
+                    chargePercent = 25.0;
+                    message = "A delivery rider has been assigned for pickup.";
+                    break;
+                case ARRIVED_AT_PICKUP:
+                    chargePercent = 50.0;
+                    message = "Rider reached pickup location.";
+                    break;
+                case PICKED_UP:
+                    chargePercent = 75.0;
+                    message = "Pickup completed.";
+                    break;
+                case PROCESSING:
+                case READY_FOR_DELIVERY:
+                case DELIVERY_ASSIGNED:
+                    chargePercent = 100.0;
+                    message = "Laundry operations have already begun.";
+                    break;
+                default:
+                    chargePercent = 100.0;
+                    message = "Order cannot be cancelled.";
+                    break;
+            }
+        } else {
+            message = "You have remaining free monthly cancellations. This cancellation is free of charge.";
+        }
+
+        double totalCost = order.getTotalCost();
+        double fee = totalCost * (chargePercent / 100.0);
+        double refund = Math.max(0.0, totalCost - fee);
+
+        return new CancellationEstimate(chargePercent, fee, refund, message);
     }
 }
