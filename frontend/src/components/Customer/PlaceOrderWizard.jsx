@@ -515,6 +515,24 @@ export default function PlaceOrderWizard({ isOpen, onClose, onOrderPlaced }) {
                 </div>
               </div>
 
+              {/* Cancellation Policy Disclosure */}
+              <div className="alert alert-warning" style={{ margin: '20px 0', padding: '12px 16px', borderRadius: '16px', fontSize: '11px', lineHeight: '1.45', display: 'flex', flexDirection: 'column', gap: '6px', border: '1px solid var(--sky-blue)' }}>
+                <div style={{ fontWeight: 800, color: 'var(--navy-dark)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  ⚠️ Customer Cancellation & Refund Policy
+                </div>
+                <div style={{ color: 'var(--navy-light)' }}>
+                  Every customer receives <strong>3 free cancellations</strong> per month. Beyond that, progressive cancellation charges apply based on order progress:
+                </div>
+                <ul style={{ margin: '0 0 0 16px', padding: 0, color: 'var(--navy-light)', listStyleType: 'disc' }}>
+                  <li><strong>Placed (Pending acceptance):</strong> 100% refund, no charge</li>
+                  <li><strong>Partner Accepted:</strong> 85% refund, 15% cancellation charge</li>
+                  <li><strong>Pickup Assigned:</strong> 75% refund, 25% cancellation charge</li>
+                  <li><strong>Rider Arrived for Pickup:</strong> 50% refund, 50% cancellation charge</li>
+                  <li><strong>Picked Up:</strong> 25% refund, 75% cancellation charge</li>
+                  <li><strong>Processing / Out for Delivery / Ready:</strong> 0% refund, 100% charge</li>
+                </ul>
+              </div>
+
               <div style={styles.actionsRow}>
                 <button onClick={() => setStep(2)} className="velora-btn velora-btn-secondary" disabled={loading}>
                   <ArrowLeft size={16} /> Back

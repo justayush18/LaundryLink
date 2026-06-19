@@ -10,6 +10,7 @@ import EmptyState from '../Common/EmptyState';
 export default function CustomerDashboard() {
   const { user } = useAuth();
   const [orders, setOrders] = useState([]);
+  const [profileData, setProfileData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isWizardOpen, setIsWizardOpen] = useState(false);
   const [isReviewOpen, setIsReviewOpen] = useState(false);
@@ -23,6 +24,10 @@ export default function CustomerDashboard() {
     try {
       const myOrders = await api.orders.getMyOrders();
       setOrders(myOrders || []);
+      if (user && user.role) {
+        const profile = await api.users.getProfile(user.role);
+        setProfileData(profile);
+      }
     } catch (err) {
       console.error(err);
       setError(getFriendlyErrorMessage(err));
@@ -166,6 +171,34 @@ export default function CustomerDashboard() {
         />
       </div>
 
+      {/* Cancellation Policy Allowance and Stats */}
+      {profileData && (
+        <div className="velora-card animate-fadeInUp" style={{ marginBottom: '2.5rem', padding: '1.5rem', background: 'linear-gradient(135deg, #FFFFFF 0%, var(--sky-blue-light) 100%)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', borderLeft: '4px solid var(--primary-teal)', borderTopRightRadius: '20px', borderBottomRightRadius: '20px' }}>
+          <div>
+            <h4 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--primary-navy)', fontFamily: 'Outfit, sans-serif', margin: '0 0 4px 0' }}>
+              Free Monthly Cancellation Allowance
+            </h4>
+            <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: '0.9rem' }}>
+              Every customer gets 3 free cancellations per month. After exceeding, progressive progress-based charges apply.
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: '2rem' }}>
+            <div style={{ textAlign: 'center' }}>
+              <span style={{ display: 'block', fontSize: '1.5rem', fontWeight: 800, color: 'var(--primary-navy)', fontFamily: 'Outfit, sans-serif' }}>
+                {profileData.monthlyCancellationsCount} / 3
+              </span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Cancellations Used</span>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <span style={{ display: 'block', fontSize: '1.5rem', fontWeight: 800, color: 'var(--primary-teal)', fontFamily: 'Outfit, sans-serif' }}>
+                {profileData.remainingFreeCancellations}
+              </span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Remaining Free</span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Active Orders List */}
       <div className="velora-card animate-fadeInUp" style={{ marginBottom: '2.5rem', padding: '2rem' }}>
         <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary-navy)', fontFamily: 'Outfit, sans-serif', margin: '0 0 1.5rem 0' }}>
@@ -269,6 +302,50 @@ export default function CustomerDashboard() {
                         <Star size={12} color="var(--primary-teal)" fill="var(--primary-teal)" />
                         Review Service
                       </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Cancellation History Ledger */}
+      <div className="velora-card animate-fadeInUp" style={{ marginTop: '2.5rem', padding: '2rem' }}>
+        <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary-navy)', fontFamily: 'Outfit, sans-serif', margin: '0 0 1.5rem 0' }}>
+          Cancellation History Ledger
+        </h3>
+        
+        {loading ? (
+          <p style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>Loading ledger...</p>
+        ) : orders.filter(o => o.status === 'CANCELLED').length === 0 ? (
+          <p style={{ color: 'var(--text-secondary)', fontSize: '14px', margin: 0, textAlign: 'center', padding: '1.5rem 0' }}>No cancelled orders found.</p>
+        ) : (
+          <div className="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Order ID</th>
+                  <th>Laundry Partner</th>
+                  <th>Cancelled Date</th>
+                  <th>Cancellation Fee</th>
+                  <th>Refund Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {orders.filter(o => o.status === 'CANCELLED').map((order) => (
+                  <tr key={order.orderId}>
+                    <td style={{ fontFamily: 'monospace', fontSize: '12px', fontWeight: 600 }}>{order.orderId.substring(0, 8).toUpperCase()}</td>
+                    <td style={{ fontWeight: 600, color: 'var(--primary-navy)' }}>{order.partnerEmail}</td>
+                    <td style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+                      {new Date(order.updatedAt * 1000).toLocaleString()}
+                    </td>
+                    <td style={{ fontWeight: 700, color: order.cancellationFee > 0 ? 'var(--color-error)' : 'var(--text-secondary)' }}>
+                      ₹{order.cancellationFee != null ? order.cancellationFee.toFixed(2) : '0.00'}
+                    </td>
+                    <td style={{ fontWeight: 700, color: 'var(--color-success)' }}>
+                      ₹{order.refundAmount != null ? order.refundAmount.toFixed(2) : '0.00'}
                     </td>
                   </tr>
                 ))}

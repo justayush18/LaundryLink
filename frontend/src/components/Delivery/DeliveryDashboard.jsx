@@ -198,6 +198,7 @@ export default function DeliveryDashboard() {
       case 'PLACED': return 'Placed';
       case 'ACCEPTED': return 'Accepted';
       case 'PICKUP_ASSIGNED': return 'Pickup Claimed';
+      case 'ARRIVED_AT_PICKUP': return 'Rider at Customer Location';
       case 'PICKED_UP': return 'Picked Up';
       case 'PROCESSING': return 'Processing';
       case 'READY_FOR_DELIVERY': return 'Ready';
@@ -544,13 +545,25 @@ export default function DeliveryDashboard() {
                   )}
 
                   {activeTab === 'pickups' && (
-                    <button
-                      onClick={() => handleUpdateStatus(task.orderId, 'PICKED_UP', 'Laundry picked up by delivery rider.')}
-                      className="velora-btn velora-btn-primary animate-pulse"
-                      style={{ width: '100%', padding: '10px', fontSize: '12px' }}
-                    >
-                      Mark Picked Up
-                    </button>
+                    <div style={{ width: '100%' }}>
+                      {task.status === 'PICKUP_ASSIGNED' ? (
+                        <button
+                          onClick={() => handleUpdateStatus(task.orderId, 'ARRIVED_AT_PICKUP', 'Rider arrived at customer location.')}
+                          className="velora-btn velora-btn-primary animate-pulse"
+                          style={{ width: '100%', padding: '10px', fontSize: '12px' }}
+                        >
+                          Arrived at Pickup
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleUpdateStatus(task.orderId, 'PICKED_UP', 'Laundry picked up by delivery rider.')}
+                          className="velora-btn velora-btn-primary animate-pulse"
+                          style={{ width: '100%', padding: '10px', fontSize: '12px' }}
+                        >
+                          Confirm Picked Up
+                        </button>
+                      )}
+                    </div>
                   )}
 
                   {activeTab === 'active' && (

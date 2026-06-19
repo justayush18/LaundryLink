@@ -32,11 +32,23 @@ export default function CustomerOrders() {
   }, []);
 
   const handleCancelOrder = async (orderId) => {
-    if (!window.confirm('Are you sure you want to cancel this order?')) return;
-    setActionLoading(true);
     try {
+      setActionLoading(true);
+      const estimate = await api.orders.getCancellationEstimate(orderId);
+      
+      const confirmMsg = `${estimate.message}\n\n` +
+                         `Cancellation Fee: ${estimate.cancellationChargePercentage}%\n` +
+                         `Cancellation Charge: ₹${estimate.cancellationFee.toFixed(2)}\n` +
+                         `Refund Amount: ₹${estimate.refundAmount.toFixed(2)}\n\n` +
+                         `Do you want to continue and cancel this order?`;
+                         
+      if (!window.confirm(confirmMsg)) return;
+
       await api.orders.updateStatus(orderId, { status: 'CANCELLED', notes: 'Cancelled by customer' });
       fetchOrders();
+      if (selectedOrder && selectedOrder.orderId === orderId) {
+        setSelectedOrder(prev => ({ ...prev, status: 'CANCELLED' }));
+      }
     } catch (err) {
       alert(err.message || 'Failed to cancel order');
     } finally {
@@ -152,7 +164,7 @@ export default function CustomerOrders() {
                     ID: {selectedOrder.orderId}
                   </span>
                 </div>
-                {selectedOrder.status === 'PLACED' && (
+                {selectedOrder.status !== 'DELIVERED' && selectedOrder.status !== 'CANCELLED' && (
                   <button
                     onClick={() => handleCancelOrder(selectedOrder.orderId)}
                     className="velora-btn velora-btn-danger"

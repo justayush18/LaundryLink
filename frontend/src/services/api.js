@@ -74,6 +74,7 @@ export const api = {
     getHistory: (orderId) => request(`/api/v1/orders/history`), // List of order overview and count
     updateStatus: (orderId, statusUpdate) => request(`/api/v1/orders/${orderId}/status`, { method: 'PUT', body: statusUpdate }),
     assignDelivery: (orderId, assignRequest) => request(`/api/v1/orders/${orderId}/assign-delivery`, { method: 'PUT', body: assignRequest }),
+    getCancellationEstimate: (orderId) => request(`/api/v1/orders/${orderId}/cancellation-estimate`),
   },
 
   // Deliveries
