@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { api } from '../../services/api';
+import { api, getFriendlyErrorMessage } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { ShoppingBag, CreditCard, Star, Clock, CheckCircle2, ArrowRight } from 'lucide-react';
 import PlaceOrderWizard from './PlaceOrderWizard';
@@ -25,7 +25,7 @@ export default function CustomerDashboard() {
       setOrders(myOrders || []);
     } catch (err) {
       console.error(err);
-      setError('Failed to fetch dashboard data');
+      setError(getFriendlyErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -47,7 +47,7 @@ export default function CustomerDashboard() {
       setTimeout(() => setSuccessMsg(''), 5000);
       fetchDashboardData();
     } catch (err) {
-      setError(err.message || 'Payment processing failed');
+      setError(getFriendlyErrorMessage(err));
       setTimeout(() => setError(''), 5000);
     }
   };

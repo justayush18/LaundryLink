@@ -490,6 +490,9 @@ This file is an append-only development diary for Velora. New work must be added
   - Fix: Aligned the test request JSON with the `AuthRegisterRequest` record field name `displayName`.
 - Mistake: Adding the `active` column to `UserEntity` caused all existing users to default to inactive (`\0`), resulting in login failures.
   - Fix: Executed SQL update `UPDATE users SET active = 1;` in MySQL to restore the active state for pre-existing accounts.
+- Mistake: Adding new columns `openingTime` and `closingTime` caused existing partner records to have NULL values, leading to `NullPointerException` during date parsing and API page crashes.
+  - Fix: Added null checks and default fallback values inside `LaundryPartnerService.java`'s `mapToView` method, and implemented an automatic startup data migration (`migrateExistingPartners()`) inside `DemoDataSeeder.java` and `LaundryPartnerService.java` to backfill valid operational parameters for all partners.
+
 
 ### 2026-06-18 - Phase 12 React Frontend / UI-UX Development
 - Date and phase: 2026-06-18, Phase 12.
@@ -586,4 +589,91 @@ This file is an append-only development diary for Velora. New work must be added
 - Important design decisions: Setting all test suites to be `@Transactional` to ensure automatic rollback and prevent database pollution.
 - What I learned from this step: Utilizing Spring Boot MockMvc integration testing allows developers to verify request filters, security context bindings, and parameter validation constraints without launching a real network server.
 - Next planned step: Hand over all codebase assets, tests, frontend client, and documentation as a production-ready application.
+
+### 2026-06-19 - Phase 14 Smart Laundry Partner Selection & Dynamic Operational Metrics
+- Date and phase: 2026-06-19, Phase 14.
+- Goal of the task: Implement dynamic operational metrics (open/closed status, operating hours, service SLA, earliest delivery promise with next-day rollover calculations, and capacity tracking) on laundry partner cards, and enforce a checkout warning modal gating partner selection if closed or next-day delivery is expected.
+- What was implemented:
+  - **Database & Entities**: Added `openingTime`, `closingTime`, `serviceSlaHours`, and `dailyCapacityLimit` columns to `PartnerEntity.java` with defaults.
+  - **REST API Scaffolding**: Expanded the `PartnerProfileView` and `PartnerProfileRequest` record structures to transfer the new variables, and updated the controllers/services to support profile updates for these parameters.
+  - **Rollover & SLA Calculations**: Coded timezone-aware calculations (`Asia/Kolkata`) inside `LaundryPartnerService.java`. The service calculates shop status (OPEN/CLOSED), capacity used (filtering today's non-cancelled orders), a gold trophy banner flag for the fastest partner, and computes the earliest delivery promise (rolling over SLA hours to tomorrow's opening time if remaining today hours are insufficient).
+  - **Seed Data Enhancement**: Seeded varied parameters across the 18 demo partners inside `DemoDataSeeder.java`.
+  - **Wizard UI Redesign**: Rewrote Manual Partner selection cards inside `PlaceOrderWizard.jsx` to render the timings, SLA, earliest delivery promise, capacity workloads, and gold banner.
+  - **Checkout Warning Modal**: Added a blur-backed warning notice modal gating manual partner clicks and auto-match flows if the partner is currently closed or expects a tomorrow delivery promise, presenting two options: *Continue with this Partner* or *View Other Partners*.
+  - **Verification**: Ran `.\mvnw.cmd clean test` resulting in **46/46 tests passing successfully**. Compiled frontend client bundle cleanly using Vite (`npm run build`).
+- Files created: None.
+- Files modified:
+  - [src/main/java/com/laundrylink/laundrylink/persistence/PartnerEntity.java](src/main/java/com/laundrylink/laundrylink/persistence/PartnerEntity.java)
+  - [src/main/java/com/laundrylink/laundrylink/api/PartnerProfileView.java](src/main/java/com/laundrylink/laundrylink/api/PartnerProfileView.java)
+  - [src/main/java/com/laundrylink/laundrylink/api/PartnerProfileRequest.java](src/main/java/com/laundrylink/laundrylink/api/PartnerProfileRequest.java)
+  - [src/main/java/com/laundrylink/laundrylink/api/LaundryPartnerController.java](src/main/java/com/laundrylink/laundrylink/api/LaundryPartnerController.java)
+  - [src/main/java/com/laundrylink/laundrylink/service/LaundryPartnerService.java](src/main/java/com/laundrylink/laundrylink/service/LaundryPartnerService.java)
+  - [src/main/java/com/laundrylink/laundrylink/service/DemoDataSeeder.java](src/main/java/com/laundrylink/laundrylink/service/DemoDataSeeder.java)
+  - [frontend/src/components/Customer/PlaceOrderWizard.jsx](frontend/src/components/Customer/PlaceOrderWizard.jsx)
+- Problems encountered: Classpath resource resolution errors (`FileNotFoundException` for `DemoDataSeeder.class`) during testing due to incremental target cleanups.
+- Errors faced: `FileNotFoundException` during surefire test boots.
+- Root cause of the issue: Incremental Maven builds left some classes in an inconsistent state in the target folder when executing `mvn compile` and `mvn test` in separate non-atomic runs.
+- How the issue was resolved: Executed atomic clean-test sequences `.\mvnw.cmd clean test` to ensure consistent dependency classpath resolution during test boots.
+- Important design decisions: Compute all dynamic time-rollover and capacity counters on the backend inside India Standard Time context to ensure timezone stability and correct SLAs.
+- What I learned from this step: Doing arithmetic operations with LocalTime/ZonedDateTime in a target timezone guarantees that client-side locale settings cannot bypass ordering timelines or SLA commitments.
+
+### 2026-06-19 - Phase 15 Complete Removal of Legacy Slot Selection UI
+- Date and phase: 2026-06-19, Phase 15.
+- Goal of the task: Remove the outdated manual dropdown selectors for Pickup and Delivery slots from the order wizard, replacing them with dynamic estimated schedule displays generated by the backend timings and SLA promise arithmetic.
+- What was implemented:
+  - **Frontend UI Redesign**: Removed Pickup Time Slot and Delivery Time Slot dropdown select elements inside `PlaceOrderWizard.jsx`.
+  - **Dynamic Schedule Integration**: Initialized pickup and delivery slots state variables as blank strings, and dynamically calculated and assigned resolved descriptions (e.g. `"Immediate Pickup (within 1 hour)"` or `"Scheduled: Tomorrow 09:00 AM"`, and the partner's calculated `earliestDeliveryTime` promise) when the laundry partner is selected or auto-matched.
+  - **Fulfillment Step Naming**: Renamed the wizard's Step 3 tab and page headers from `"Slots"` to `"Fulfillment"` to better match the automated workflow.
+  - **Backend Payload Verification**: Standardized order placement payload parameters so the dynamically calculated slot labels are saved as the order's `pickupSlot` and `deliverySlot` fields in the database.
+- Files created: None.
+- Files modified:
+  - [frontend/src/components/Customer/PlaceOrderWizard.jsx](frontend/src/components/Customer/PlaceOrderWizard.jsx)
+- Problems encountered: None.
+- Errors faced: None.
+- Root cause of the issue: None.
+- How the issue was resolved: None.
+- Important design decisions: Align the UI completely with the backend's dynamic scheduling system to eliminate manual input mismatch and assure correct SLA commitments.
+- What I learned from this step: Automating fulfillment slot allocation based on vendor timings and SLA capacity reduces order placement friction for customers.
+
+### 2026-06-19 - Phase 16 Smart Automatic Delivery Assignment
+- Date and phase: 2026-06-19, Phase 16.
+- Goal of the task: Replace manual delivery task claiming with automated workload-balanced rider assignment.
+- What was implemented:
+  - **Auto-assignment logic**: Orders accepted by partners or ready for delivery automatically run `autoAssignRider(order)` to assign online delivery partners with the lowest active workload.
+  - **Daily rejection limit**: Enforced maximum 2 rejections per day for delivery partners. Reaching the limit blocks subsequent cancellations.
+  - **Dynamic reassignment**: Cancelling or rejecting a task automatically re-triggers rider search and reassigns to the next best rider.
+  - **Dashboard separations**: Refactored the rider panel into four distinct modules and computed online metrics dynamically on the backend.
+- Files modified:
+  - `OrderService.java`, `DeliveryController.java`, `api.js`, `DeliveryDashboard.jsx`
+- Problems encountered: Online/offline toggle state synchronization issue.
+- How the issue was resolved: Added database flush (`saveAndFlush`) in availability update, and fixed default initialization mismatch inside `DeliveryDashboard.jsx`.
+
+### 2026-06-19 - Phase 17 Laundry Partner Monthly Cancellation Policy
+- Date and phase: 2026-06-19, Phase 17.
+- Goal of the task: Introduce cancellation rules, tracking, alerts, and configurable penalties for Laundry Partners.
+- What was implemented:
+  - **Allowance & tag filtering**: Free monthly allowance of 10 accepted cancellations. Accepted order cancellations are tagged in order history using prefix `"Cancelled by laundry partner: "`.
+  - **Deduction configuration**: Added configurable penalty per cancellation inside `PartnerEntity`, defaulted to ₹200.0, and enabled admin-side PUT api updates.
+  - **Operational metrics calculation**: Tracked count, percentage, penalty owed, and calendar-grouped history ledger dynamically.
+  - **Dashboard warnings & controls**: Displayed cancellation meters, warning badges, and detailed ledger tables inside the partner dashboard. Exposed cancel buttons inside order lists.
+- Files created:
+  - [src/main/java/com/laundrylink/laundrylink/api/CancellationEvent.java](src/main/java/com/laundrylink/laundrylink/api/CancellationEvent.java)
+- Files modified:
+  - [src/main/java/com/laundrylink/laundrylink/persistence/PartnerEntity.java](src/main/java/com/laundrylink/laundrylink/persistence/PartnerEntity.java)
+  - [src/main/java/com/laundrylink/laundrylink/api/PartnerProfileView.java](src/main/java/com/laundrylink/laundrylink/api/PartnerProfileView.java)
+  - [src/main/java/com/laundrylink/laundrylink/api/AdminPartnerView.java](src/main/java/com/laundrylink/laundrylink/api/AdminPartnerView.java)
+  - [src/main/java/com/laundrylink/laundrylink/service/OrderService.java](src/main/java/com/laundrylink/laundrylink/service/OrderService.java)
+  - [src/main/java/com/laundrylink/laundrylink/service/LaundryPartnerService.java](src/main/java/com/laundrylink/laundrylink/service/LaundryPartnerService.java)
+  - [src/main/java/com/laundrylink/laundrylink/service/AdminService.java](src/main/java/com/laundrylink/laundrylink/service/AdminService.java)
+  - [src/main/java/com/laundrylink/laundrylink/api/AdminController.java](src/main/java/com/laundrylink/laundrylink/api/AdminController.java)
+  - [frontend/src/services/api.js](frontend/src/services/api.js)
+  - [frontend/src/components/Partner/PartnerDashboard.jsx](frontend/src/components/Partner/PartnerDashboard.jsx)
+  - [frontend/src/components/Partner/PartnerOrders.jsx](frontend/src/components/Partner/PartnerOrders.jsx)
+  - [frontend/src/components/Admin/AdminPartners.jsx](frontend/src/components/Admin/AdminPartners.jsx)
+  - [src/test/java/com/laundrylink/laundrylink/service/OrderServiceTest.java](src/test/java/com/laundrylink/laundrylink/service/OrderServiceTest.java)
+- Important design decisions: Prevent cancellation counts from increasing when canceling a `PLACED` order (rejecting), ensuring only cancellations on accepted orders trigger allowance usage.
+- Verification and build testing: All 48 backend integration/unit tests pass cleanly, and the frontend builds successfully with zero bundling warnings.
+
+
+
 

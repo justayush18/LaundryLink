@@ -6,7 +6,9 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -36,6 +38,33 @@ public class DeliveryController {
     public DeliveryTrackingView getTracking(@PathVariable String orderId) {
         AuthenticatedPrincipal principal = currentPrincipal();
         return orderService.getDeliveryTracking(orderId, principal.email(), principal.role());
+    }
+
+    @PutMapping("/availability")
+    public void updateAvailability(@RequestParam boolean online) {
+        AuthenticatedPrincipal principal = currentPrincipal();
+        if (principal.role() != UserRoleType.DELIVERY_PARTNER && principal.role() != UserRoleType.ADMIN) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only Delivery Partners or Admins can update availability");
+        }
+        orderService.updateRiderOnlineStatus(principal.email(), online);
+    }
+
+    @PutMapping("/{orderId}/accept")
+    public OrderView acceptTask(@PathVariable String orderId) {
+        AuthenticatedPrincipal principal = currentPrincipal();
+        if (principal.role() != UserRoleType.DELIVERY_PARTNER && principal.role() != UserRoleType.ADMIN) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only Delivery Partners or Admins can accept tasks");
+        }
+        return orderService.acceptDeliveryTask(orderId, principal.email());
+    }
+
+    @PutMapping("/{orderId}/cancel")
+    public OrderView cancelTask(@PathVariable String orderId) {
+        AuthenticatedPrincipal principal = currentPrincipal();
+        if (principal.role() != UserRoleType.DELIVERY_PARTNER && principal.role() != UserRoleType.ADMIN) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only Delivery Partners or Admins can cancel tasks");
+        }
+        return orderService.cancelDeliveryTask(orderId, principal.email());
     }
 
     private AuthenticatedPrincipal currentPrincipal() {

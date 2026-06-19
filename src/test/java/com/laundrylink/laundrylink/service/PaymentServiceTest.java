@@ -43,7 +43,7 @@ public class PaymentServiceTest {
         OrderView orderView = new OrderView(
                 "order-123", "customer@example.com", "partner@example.com", null, null,
                 OrderStatus.PLACED, List.of(new OrderItemDto("SHIRT", "WASH_AND_FOLD", 2)),
-                100.0, "Pickup", "Slot1", "Delivery", "Slot2", "Notes", 0L, 0L, List.of()
+                100.0, "Pickup", "Slot1", "Delivery", "Slot2", "Notes", 0L, 0L, List.of(), false
         );
 
         when(orderService.getOrder("order-123", "customer@example.com", UserRoleType.CUSTOMER)).thenReturn(orderView);
@@ -62,6 +62,7 @@ public class PaymentServiceTest {
         verify(paymentRepository, times(1)).save(any(PaymentEntity.class));
         verify(orderService, times(1)).linkPaymentToOrder(eq("order-123"), anyString());
         verify(notificationService, times(1)).sendNotification(eq("customer@example.com"), eq(NotificationType.PAYMENT), anyString());
+        verify(notificationService, times(1)).sendNotification(eq("admin@velora.example"), eq(NotificationType.PAYMENT), anyString());
     }
 
     @Test
@@ -71,7 +72,7 @@ public class PaymentServiceTest {
         OrderView orderView = new OrderView(
                 "order-123", "customer@example.com", "partner@example.com", null, null,
                 OrderStatus.PLACED, List.of(new OrderItemDto("SHIRT", "WASH_AND_FOLD", 2)),
-                100.0, "Pickup", "Slot1", "Delivery", "Slot2", "Notes", 0L, 0L, List.of()
+                100.0, "Pickup", "Slot1", "Delivery", "Slot2", "Notes", 0L, 0L, List.of(), false
         );
 
         when(orderService.getOrder("order-123", "customer@example.com", UserRoleType.CUSTOMER)).thenReturn(orderView);
@@ -93,7 +94,7 @@ public class PaymentServiceTest {
         OrderView orderView = new OrderView(
                 "order-123", "customer@example.com", "partner@example.com", null, null,
                 OrderStatus.PLACED, List.of(new OrderItemDto("SHIRT", "WASH_AND_FOLD", 2)),
-                100.0, "Pickup", "Slot1", "Delivery", "Slot2", "Notes", 0L, 0L, List.of()
+                100.0, "Pickup", "Slot1", "Delivery", "Slot2", "Notes", 0L, 0L, List.of(), false
         );
 
         when(paymentRepository.findById("pay-123")).thenReturn(Optional.of(payment));
@@ -116,7 +117,7 @@ public class PaymentServiceTest {
         OrderView orderView = new OrderView(
                 "order-123", "customer@example.com", "partner@example.com", null, null,
                 OrderStatus.PLACED, List.of(),
-                100.0, "Pickup", "Slot1", "Delivery", "Slot2", "Notes", 0L, 0L, List.of()
+                100.0, "Pickup", "Slot1", "Delivery", "Slot2", "Notes", 0L, 0L, List.of(), false
         );
 
         when(paymentRepository.findById("pay-123")).thenReturn(Optional.of(payment));
@@ -140,7 +141,7 @@ public class PaymentServiceTest {
         OrderView orderView = new OrderView(
                 "order-123", "customer@example.com", "partner@example.com", null, null,
                 OrderStatus.PLACED, List.of(),
-                100.0, "Pickup", "Slot1", "Delivery", "Slot2", "Notes", 0L, 0L, List.of()
+                100.0, "Pickup", "Slot1", "Delivery", "Slot2", "Notes", 0L, 0L, List.of(), false
         );
 
         when(orderService.getOrderHistory("order-123", UserRoleType.ADMIN)).thenReturn(List.of(orderView));
@@ -165,7 +166,7 @@ public class PaymentServiceTest {
         OrderView orderView = new OrderView(
                 "order-123", "customer@example.com", "partner@example.com", null, null,
                 OrderStatus.DELIVERED, List.of(),
-                100.0, "Pickup", "Slot1", "Delivery", "Slot2", "Notes", 0L, 0L, List.of()
+                100.0, "Pickup", "Slot1", "Delivery", "Slot2", "Notes", 0L, 0L, List.of(), false
         );
         when(orderService.getOrderHistory("order-123", UserRoleType.ADMIN)).thenReturn(List.of(orderView));
 

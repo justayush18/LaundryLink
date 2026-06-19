@@ -80,6 +80,9 @@ export const api = {
   deliveries: {
     getDashboard: () => request('/api/v1/deliveries/dashboard'),
     getTracking: (orderId) => request(`/api/v1/deliveries/${orderId}/tracking`),
+    updateAvailability: (online) => request(`/api/v1/deliveries/availability?online=${online}`, { method: 'PUT' }),
+    acceptTask: (orderId) => request(`/api/v1/deliveries/${orderId}/accept`, { method: 'PUT' }),
+    cancelTask: (orderId) => request(`/api/v1/deliveries/${orderId}/cancel`, { method: 'PUT' }),
   },
 
   // Payments & Invoices
@@ -125,9 +128,11 @@ export const api = {
     },
     updateUserRole: (email, role) => request(`/api/v1/admin/users/${email}/role?role=${role}`, { method: 'PUT' }),
     updateUserStatus: (email, active) => request(`/api/v1/admin/users/${email}/status?active=${active}`, { method: 'PUT' }),
+    deleteUser: (email) => request(`/api/v1/admin/users/${email}`, { method: 'DELETE' }),
     getPartners: () => request('/api/v1/admin/partners'),
     getPartner: (email) => request(`/api/v1/admin/partners/${email}`),
     updatePartnerStatus: (email, status) => request(`/api/v1/admin/partners/${email}/status?status=${status}`, { method: 'PUT' }),
+    updateCancellationPenalty: (email, penalty) => request(`/api/v1/admin/partners/${email}/cancellation-penalty?penalty=${penalty}`, { method: 'PUT' }),
     verifyDocument: (email, docId, verifyReq) => request(`/api/v1/admin/partners/${email}/documents/${docId}/verify`, { method: 'PUT', body: verifyReq }),
     getOrders: (filters = {}) => {
       const params = new URLSearchParams();
@@ -153,4 +158,46 @@ export const api = {
     getPartnerAnalytics: () => request('/api/v1/admin/analytics/partners'),
     getAnalyticsSummary: () => request('/api/v1/admin/analytics/summary'),
   },
+};
+
+export const getFriendlyErrorMessage = (error) => {
+  const msg = typeof error === 'string' ? error : (error?.message || '');
+  const msgLower = msg.toLowerCase();
+
+  if (msgLower.includes('forbidden') || msgLower.includes('access denied')) {
+    if (msgLower.includes('this order is not assigned to you') || msgLower.includes('not the assigned delivery partner')) {
+      return 'This order appears to be assigned to another partner or rider. Please check your current dashboard ledger.';
+    }
+    return 'You do not have permission to modify this order. Please make sure you are logged into the correct account.';
+  }
+  if (msgLower.includes('conflict')) {
+    return 'This order is currently being updated or has already been claimed by another agent. Please refresh your dashboard.';
+  }
+  if (msgLower.includes('invalid status transition') || msgLower.includes('cannot be transitioned') || msgLower.includes('cannot cancel')) {
+    if (msgLower.includes('placed state')) {
+      return 'This order can only be cancelled before it has been accepted by the laundry partner.';
+    }
+    return 'This action cannot be taken in the order\'s current state. It might have been updated by another user.';
+  }
+  if (msgLower.includes('must be online to claim')) {
+    return 'Please toggle your availability status to "Online" first to claim tasks.';
+  }
+  if (msgLower.includes('delivery partners can only assign themselves')) {
+    return 'You can only assign tasks to your own rider account.';
+  }
+  if (msgLower.includes('only admin or delivery partners')) {
+    return 'Only delivery agents or administrators can claim or assign these tasks.';
+  }
+  if (msgLower.includes('authentication required') || msgLower.includes('unauthorized')) {
+    return 'Your session has expired or is invalid. Please log in again to continue.';
+  }
+  if (msgLower.includes('failed to fetch') || msgLower.includes('network error')) {
+    return 'Unable to reach the server. Please check your internet connection and try again.';
+  }
+  
+  // Return original msg if it's already a clean custom sentence, or fallback to general clean error
+  if (msg && msg.length > 5 && !msg.includes('Http') && !msg.includes('Status') && !msg.includes('Exception') && !msg.includes('500') && !msg.includes('403')) {
+    return msg;
+  }
+  return 'Something went wrong while processing your request. Please try again in a moment.';
 };

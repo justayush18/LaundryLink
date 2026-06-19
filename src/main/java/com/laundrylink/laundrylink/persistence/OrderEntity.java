@@ -170,4 +170,14 @@ public class OrderEntity extends AuditedEntity {
     public void setHistory(List<StatusTransitionEntity> history) {
         this.history = history;
     }
+
+    private boolean acceptedByRider = false;
+
+    public boolean isAcceptedByRider() {
+        return acceptedByRider;
+    }
+
+    public void setAcceptedByRider(boolean acceptedByRider) {
+        this.acceptedByRider = acceptedByRider;
+    }
 }

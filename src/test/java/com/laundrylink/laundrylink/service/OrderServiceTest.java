@@ -96,4 +96,102 @@ public class OrderServiceTest {
             orderService.updateOrderStatus("order-123", "customer@example.com", UserRoleType.CUSTOMER, request);
         });
     }
+
+    @Test
+    public void testAssignDeliveryPartner_SelfClaim_Success() {
+        OrderEntity order = new OrderEntity();
+        order.setOrderId("order-123");
+        order.setCustomerEmail("customer@example.com");
+        order.setPartnerEmail("partner@example.com");
+        order.setStatus(OrderStatus.ACCEPTED);
+        order.setItems(new ArrayList<>());
+        order.setHistory(new ArrayList<>());
+
+        when(orderRepository.findById("order-123")).thenReturn(Optional.of(order));
+        when(orderRepository.saveAndFlush(any(OrderEntity.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        OrderView view = orderService.assignDeliveryPartner("order-123", "rider@example.com", UserRoleType.DELIVERY_PARTNER, null);
+
+        assertNotNull(view);
+        assertEquals("rider@example.com", view.deliveryPartnerEmail());
+        assertEquals(OrderStatus.PICKUP_ASSIGNED, view.status());
+        verify(orderRepository, times(1)).saveAndFlush(order);
+    }
+
+    @Test
+    public void testAssignDeliveryPartner_ForbiddenForOtherRider() {
+        OrderEntity order = new OrderEntity();
+        order.setOrderId("order-123");
+        order.setStatus(OrderStatus.ACCEPTED);
+
+        when(orderRepository.findById("order-123")).thenReturn(Optional.of(order));
+
+        assertThrows(ResponseStatusException.class, () -> {
+            orderService.assignDeliveryPartner("order-123", "rider@example.com", UserRoleType.DELIVERY_PARTNER, "other_rider@example.com");
+        });
+    }
+
+    @Test
+    public void testAssignDeliveryPartner_AdminAssign_Success() {
+        OrderEntity order = new OrderEntity();
+        order.setOrderId("order-123");
+        order.setCustomerEmail("customer@example.com");
+        order.setPartnerEmail("partner@example.com");
+        order.setStatus(OrderStatus.READY_FOR_DELIVERY);
+        order.setItems(new ArrayList<>());
+        order.setHistory(new ArrayList<>());
+
+        when(orderRepository.findById("order-123")).thenReturn(Optional.of(order));
+        when(orderRepository.saveAndFlush(any(OrderEntity.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        OrderView view = orderService.assignDeliveryPartner("order-123", "admin@example.com", UserRoleType.ADMIN, "rider@example.com");
+
+        assertNotNull(view);
+        assertEquals("rider@example.com", view.deliveryPartnerEmail());
+        assertEquals(OrderStatus.DELIVERY_ASSIGNED, view.status());
+        verify(orderRepository, times(1)).saveAndFlush(order);
+    }
+
+    @Test
+    public void testLaundryPartnerCancel_PlacedStatus() {
+        OrderEntity order = new OrderEntity();
+        order.setOrderId("order-123");
+        order.setCustomerEmail("customer@example.com");
+        order.setPartnerEmail("partner@example.com");
+        order.setStatus(OrderStatus.PLACED);
+        order.setItems(new ArrayList<>());
+        order.setHistory(new ArrayList<>());
+
+        when(orderRepository.findById("order-123")).thenReturn(Optional.of(order));
+        when(orderRepository.saveAndFlush(any(OrderEntity.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        OrderStatusUpdateRequest request = new OrderStatusUpdateRequest(OrderStatus.CANCELLED, "Out of stock");
+        OrderView view = orderService.updateOrderStatus("order-123", "partner@example.com", UserRoleType.LAUNDRY_PARTNER, request);
+
+        assertNotNull(view);
+        assertEquals(OrderStatus.CANCELLED, view.status());
+        assertEquals("Out of stock", order.getStatusNotes());
+    }
+
+    @Test
+    public void testLaundryPartnerCancel_AcceptedStatus() {
+        OrderEntity order = new OrderEntity();
+        order.setOrderId("order-123");
+        order.setCustomerEmail("customer@example.com");
+        order.setPartnerEmail("partner@example.com");
+        order.setStatus(OrderStatus.ACCEPTED);
+        order.setItems(new ArrayList<>());
+        order.setHistory(new ArrayList<>());
+
+        when(orderRepository.findById("order-123")).thenReturn(Optional.of(order));
+        when(orderRepository.saveAndFlush(any(OrderEntity.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        OrderStatusUpdateRequest request = new OrderStatusUpdateRequest(OrderStatus.CANCELLED, "Machine broke");
+        OrderView view = orderService.updateOrderStatus("order-123", "partner@example.com", UserRoleType.LAUNDRY_PARTNER, request);
+
+        assertNotNull(view);
+        assertEquals(OrderStatus.CANCELLED, view.status());
+        assertTrue(order.getStatusNotes().startsWith("Cancelled by laundry partner:"));
+        assertTrue(order.getStatusNotes().contains("Machine broke"));
+    }
 }

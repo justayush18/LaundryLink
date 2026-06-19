@@ -53,6 +53,10 @@ public class DemoDataSeeder implements CommandLineRunner {
         if (isRunningTest()) {
             return;
         }
+        
+        // Migrate existing partner profiles if they have missing timings or defaults
+        migrateExistingPartners();
+        
         // Run seeder only if our production dataset is not yet loaded
         if (userRepository.findByEmail("cust100@velora.example").isEmpty()) {
             seedProductionData();
@@ -148,6 +152,11 @@ public class DemoDataSeeder implements CommandLineRunner {
                         "Unit " + i + ", Block C, Industrial Sector, Metro City",
                         status
                 );
+
+                partner.setOpeningTime("09:00");
+                partner.setClosingTime("21:00");
+                partner.setServiceSlaHours(4 + (i % 3) * 2);
+                partner.setDailyCapacityLimit(15 + (i % 3) * 5);
 
                 // Set reputation
                 if (status.equals("ACTIVE")) {
@@ -421,5 +430,36 @@ public class DemoDataSeeder implements CommandLineRunner {
         System.out.println("[SEED] Seeded " + reviewCount + " customer reviews.");
         System.out.println("[SEED] Seeded " + notifCount + " notifications.");
         System.out.println("[SEED] Completed database populating successfully!");
+    }
+
+    private void migrateExistingPartners() {
+        List<PartnerEntity> partners = partnerRepository.findAll();
+        int migratedCount = 0;
+        for (PartnerEntity partner : partners) {
+            boolean updated = false;
+            if (partner.getOpeningTime() == null) {
+                partner.setOpeningTime("09:00");
+                updated = true;
+            }
+            if (partner.getClosingTime() == null) {
+                partner.setClosingTime("21:00");
+                updated = true;
+            }
+            if (partner.getServiceSlaHours() <= 0) {
+                partner.setServiceSlaHours(6);
+                updated = true;
+            }
+            if (partner.getDailyCapacityLimit() <= 0) {
+                partner.setDailyCapacityLimit(20);
+                updated = true;
+            }
+            if (updated) {
+                partnerRepository.save(partner);
+                migratedCount++;
+            }
+        }
+        if (migratedCount > 0) {
+            System.out.println("[MIGRATION] Migrated " + migratedCount + " partner profiles with default operational metrics.");
+        }
     }
 }

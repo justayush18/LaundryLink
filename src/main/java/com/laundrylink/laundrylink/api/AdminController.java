@@ -64,6 +64,13 @@ public class AdminController {
         return adminService.setUserActiveStatus(email, active);
     }
 
+    @DeleteMapping("/users/{email}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteUser(@PathVariable String email) {
+        requireAdmin();
+        adminService.deleteUser(email);
+    }
+
     // ==========================================
     // 3. Partner Management Endpoints
     // ==========================================
@@ -84,6 +91,12 @@ public class AdminController {
     public AdminPartnerView updatePartnerStatus(@PathVariable String email, @RequestParam String status) {
         requireAdmin();
         return adminService.updatePartnerStatus(email, status);
+    }
+
+    @PutMapping("/partners/{email}/cancellation-penalty")
+    public AdminPartnerView updateCancellationPenalty(@PathVariable String email, @RequestParam double penalty) {
+        requireAdmin();
+        return adminService.updateCancellationPenalty(email, penalty);
     }
 
     @PutMapping(value = "/partners/{email}/documents/{documentId}/verify", consumes = MediaType.APPLICATION_JSON_VALUE)

@@ -547,5 +547,118 @@ graph TD
 - Introduce a messaging/event broker (such as Spring Events or RabbitMQ) to decouple business service transitions from notification dispatching, preventing synchronous execution blockages.
 
 
+## Phase 10 Snapshot - Database & Persistence
+
+### Current Controllers
+- All controllers from previous phases.
+
+### Current Services
+- All services from previous phases.
+
+### Current Repositories (NEW)
+- UserRepository
+- PartnerRepository
+- OrderRepository
+- PaymentRepository
+- InvoiceRepository
+- ReviewRepository
+- NotificationRepository
+- NotificationPreferencesRepository
+
+### Database Implementation & Architecture
+- Replaced in-memory data structures with MySQL database storage.
+- Active tables in schema:
+  - `users`: stores customer, partner, rider, and admin account identities.
+  - `partners`: stores partner profiles, ratings, timings, SLAs, and capacity parameters.
+  - `orders` & `order_status_transitions`: stores order details, items, pricing, and historical transitions.
+  - `payments` & `invoices`: stores transactional records, gateway transaction IDs, and invoices.
+  - `reviews`: stores customer ratings and comments.
+  - `notifications` & `notification_preferences`: stores alerts history and dispatching preferences.
+- Standardized audit timelines using `AuditedEntity` `@MappedSuperclass` with automatic `@PrePersist` and `@PreUpdate` timestamp generation.
+
+## Phase 11 Snapshot - Admin Dashboard APIs
+
+### Current Controllers
+- AdminController
+
+### Current Services
+- AdminService
+
+### Administrative Endpoints
+- `GET /api/v1/admin/dashboard` - retrieves summary cards count metrics.
+- `GET /api/v1/admin/reports/revenue` - retrieves daily, weekly, monthly, and total revenues.
+- `GET /api/v1/admin/analytics/partners` - retrieves laundry partner performance logs.
+- `GET /api/v1/admin/users/search` - searches users by email, name, role, and status.
+- `DELETE /api/v1/admin/users/{email}` - deletes user and linked partner profile.
+
+### Security Gates
+- Gated all `/api/v1/admin/**` endpoints with a strict `.hasRole("ADMIN")` check.
+
+## Phase 12 Snapshot - React Frontend
+
+### Architecture Structure
+- Mapped Single Page Application (SPA) using React 19 and Vite.
+- Mapped 18 pages across 16 secure routes:
+  - Mapped Customer dashboards, order creation wizard, history timeline, billing, and ratings views.
+  - Mapped Partner dashboard, document configuration, rates cards, and orders logs.
+  - Mapped Rider availability toggles, tasks collection board, and session timers.
+  - Mapped Admin reports charts, user directory, partner auditing panels, and invoice systems.
+- Handled cross-origin resource sharing (CORS) prevention via local proxy routing in `vite.config.js`.
+
+## Phase 13 Snapshot - Testing & Documentation
+
+### Verification & Testing
+- Configured JUnit 5 testing suites with MockMvc mock environments.
+- Implemented 46 unit and integration test runs spanning order lifecycles, payments checkout, delivery claims, and notifications.
+- Integrated Swagger Web UI support via Springdoc-OpenAPI.
+
+## Phase 14 Snapshot - Smart Laundry Partner Selection & Dynamic Operational Metrics
+
+### Current Entity Fields
+- `PartnerEntity`: Added `openingTime`, `closingTime`, `serviceSlaHours`, and `dailyCapacityLimit` columns.
+
+### Timings & SLA Rollover Logic
+- India Standard Time (`Asia/Kolkata`) context validation.
+- Automatically calculates OPEN/CLOSED status and capacity indicators.
+- Rollover calculation: If `remainingWorkingHours < serviceSlaHours`, the SLA commitment target is rolled over to `openingTime` tomorrow + `remainingSlaHours`.
+
+### Checkout Warnings UI
+- Enforced a warning notice modal in [PlaceOrderWizard.jsx](frontend/src/components/Customer/PlaceOrderWizard.jsx) preventing checkout advancement on closed or tomorrow-delivery partners until explicitly confirmed by the customer.
+
+
+## Phase 15 Snapshot - Legacy Slot Selection UI Removal
+
+### Outdated Manual Slot Removal
+- Removed the old dropdown selection components for Pickup and Delivery slots from the customer order placement wizard.
+- Swapped hardcoded scheduling slots in Step 3 for dynamic, read-only estimated pickup and delivery slots calculated directly using the selected partner's timings and service SLA.
+- Standardized the API transaction payloads to send these estimated descriptions to the backend database.
+
+
+## Phase 16 Snapshot - Smart Automatic Delivery Assignment
+
+### Workload-Balanced Auto-Assignment
+- Implemented `autoAssignRider(OrderEntity order)` inside `OrderService.java`.
+- Auto-assigns orders in `ACCEPTED` or `READY_FOR_DELIVERY` status to online delivery riders with the lowest active workload, excluding riders who previously rejected the task.
+
+### Daily Rider Rejections policy
+- Enforced a hard limit of maximum 2 rejections per day for delivery partners.
+- Cancellations and rejections revert the order status and trigger immediate automated re-queuing to other online riders.
+
+
+## Phase 17 Snapshot - Laundry Partner Cancellation Policy
+
+### Configurable Penalty & Allowance
+- Added `cancellationPenaltyPerOrder` (defaults to ₹200.0) field in `PartnerEntity` to let admins configure financial deductions.
+- Enforced a monthly allowance of 10 free accepted cancellations for laundry partners.
+- History calculations analyze status transition entries chronologically to count cancellations and compute penalties.
+
+### Dashboard Integrations
+- Renders warning states (Healthy, Approaching Limit, Allowance Exceeded) and cancellation ledger history inside the Laundry Partner portal.
+- Exposes a cancellation penalty configuration input under the Admin compliance directory.
+
+
+
+
+
 
 

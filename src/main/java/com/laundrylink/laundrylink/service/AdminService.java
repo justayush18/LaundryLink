@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import org.springframework.transaction.annotation.Transactional;
 import com.laundrylink.laundrylink.api.*;
 import com.laundrylink.laundrylink.persistence.*;
 
@@ -91,9 +92,38 @@ public class AdminService {
     public AdminUserView setUserActiveStatus(String email, boolean active) {
         UserEntity user = userRepository.findByEmail(email.trim().toLowerCase())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+
+        if (!active) {
+            boolean hasActiveOrders = false;
+            if (user.getRole() == UserRoleType.CUSTOMER) {
+                hasActiveOrders = orderRepository.findByCustomerEmail(user.getEmail()).stream()
+                        .anyMatch(o -> o.getStatus() != OrderStatus.DELIVERED && o.getStatus() != OrderStatus.CANCELLED);
+            } else if (user.getRole() == UserRoleType.LAUNDRY_PARTNER) {
+                hasActiveOrders = orderRepository.findByPartnerEmail(user.getEmail()).stream()
+                        .anyMatch(o -> o.getStatus() != OrderStatus.DELIVERED && o.getStatus() != OrderStatus.CANCELLED);
+            } else if (user.getRole() == UserRoleType.DELIVERY_PARTNER) {
+                hasActiveOrders = orderRepository.findByDeliveryPartnerEmail(user.getEmail()).stream()
+                        .anyMatch(o -> o.getStatus() != OrderStatus.DELIVERED && o.getStatus() != OrderStatus.CANCELLED);
+            }
+
+            if (hasActiveOrders) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Cannot block user with ongoing orders or active tasks.");
+            }
+        }
+
         user.setActive(active);
         userRepository.save(user);
         return toAdminUserView(user);
+    }
+
+    @Transactional
+    public void deleteUser(String email) {
+        String normalizedEmail = email.trim().toLowerCase();
+        UserEntity user = userRepository.findByEmail(normalizedEmail)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        partnerRepository.findByEmail(normalizedEmail).ifPresent(partnerRepository::delete);
+        userRepository.delete(user);
     }
 
     private AdminUserView toAdminUserView(UserEntity u) {
@@ -136,6 +166,14 @@ public class AdminService {
         return laundryPartnerService.verifyDocument(email, documentId, status, rejectionReason);
     }
 
+    public AdminPartnerView updateCancellationPenalty(String email, double penalty) {
+        PartnerEntity partner = partnerRepository.findByEmail(email.trim().toLowerCase())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Partner not found"));
+        partner.setCancellationPenaltyPerOrder(penalty);
+        partnerRepository.save(partner);
+        return toAdminPartnerView(partner);
+    }
+
     private AdminPartnerView toAdminPartnerView(PartnerEntity p) {
         List<PartnerDocumentView> docs = p.getDocuments().stream()
                 .map(d -> new PartnerDocumentView(
@@ -146,6 +184,22 @@ public class AdminService {
                         d.getRejectionReason()
                 )).collect(Collectors.toList());
 
+        int cancellationsUsed = laundryPartnerService.getMonthlyCancellationsCount(p.getEmail());
+        double cancellationPercentage = laundryPartnerService.getCancellationPercentage(p.getEmail(), cancellationsUsed);
+        double penaltyPerOrder = p.getCancellationPenaltyPerOrder();
+        List<CancellationEvent> history = laundryPartnerService.getCancellationHistory(p.getEmail(), penaltyPerOrder);
+        double penaltyOwed = 0.0;
+        java.time.ZoneId kolkata = java.time.ZoneId.of("Asia/Kolkata");
+        java.time.ZonedDateTime nowIst = java.time.ZonedDateTime.now(kolkata);
+        java.time.YearMonth currentYm = java.time.YearMonth.from(nowIst.toLocalDate());
+        for (CancellationEvent event : history) {
+            java.time.Instant instant = java.time.Instant.ofEpochSecond(event.cancelledAt());
+            java.time.YearMonth ym = java.time.YearMonth.from(instant.atZone(kolkata).toLocalDate());
+            if (ym.equals(currentYm)) {
+                penaltyOwed += event.penaltyApplied();
+            }
+        }
+
         return new AdminPartnerView(
                 p.getEmail(),
                 p.getBusinessName(),
@@ -154,7 +208,11 @@ public class AdminService {
                 p.getOnboardingStatus(),
                 p.getReputationScore(),
                 p.getTotalReviews(),
-                docs
+                docs,
+                cancellationsUsed,
+                cancellationPercentage,
+                penaltyPerOrder,
+                penaltyOwed
         );
     }
 
@@ -221,7 +279,8 @@ public class AdminService {
                 order.getStatusNotes(),
                 order.getCreatedAt(),
                 order.getUpdatedAt(),
-                historyDto
+                historyDto,
+                order.isAcceptedByRider()
         );
     }
 

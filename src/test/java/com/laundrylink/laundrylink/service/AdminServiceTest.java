@@ -81,18 +81,43 @@ public class AdminServiceTest {
     }
 
     @Test
-    public void testSetUserActiveStatus() {
+    public void testSetUserActiveStatus_Success() {
         UserEntity u = new UserEntity();
         u.setEmail("test@example.com");
+        u.setRole(UserRoleType.CUSTOMER);
         u.setActive(true);
 
         when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(u));
+        when(orderRepository.findByCustomerEmail("test@example.com")).thenReturn(List.of());
 
         AdminUserView result = adminService.setUserActiveStatus("test@example.com", false);
 
         assertNotNull(result);
         assertFalse(result.active());
         verify(userRepository, times(1)).save(u);
+    }
+
+    @Test
+    public void testSetUserActiveStatus_FailsWithActiveOrders() {
+        UserEntity u = new UserEntity();
+        u.setEmail("test@example.com");
+        u.setRole(UserRoleType.CUSTOMER);
+        u.setActive(true);
+
+        OrderEntity activeOrder = new OrderEntity();
+        activeOrder.setStatus(OrderStatus.ACCEPTED);
+
+        when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(u));
+        when(orderRepository.findByCustomerEmail("test@example.com")).thenReturn(List.of(activeOrder));
+
+        org.springframework.web.server.ResponseStatusException ex = assertThrows(
+                org.springframework.web.server.ResponseStatusException.class,
+                () -> adminService.setUserActiveStatus("test@example.com", false)
+        );
+
+        assertEquals(org.springframework.http.HttpStatus.BAD_REQUEST, ex.getStatusCode());
+        assertTrue(ex.getReason().contains("Cannot block user with ongoing orders"));
+        verify(userRepository, never()).save(any(UserEntity.class));
     }
 
     @Test
@@ -126,5 +151,22 @@ public class AdminServiceTest {
         assertEquals(100.0, report.weeklyRevenue());
         assertEquals(100.0, report.monthlyRevenue());
         assertEquals(100.0, report.totalRevenue());
+    }
+
+    @Test
+    public void testDeleteUser() {
+        UserEntity u = new UserEntity();
+        u.setEmail("delete-me@example.com");
+
+        PartnerEntity p = new PartnerEntity();
+        p.setEmail("delete-me@example.com");
+
+        when(userRepository.findByEmail("delete-me@example.com")).thenReturn(Optional.of(u));
+        when(partnerRepository.findByEmail("delete-me@example.com")).thenReturn(Optional.of(p));
+
+        adminService.deleteUser("delete-me@example.com");
+
+        verify(partnerRepository, times(1)).delete(p);
+        verify(userRepository, times(1)).delete(u);
     }
 }

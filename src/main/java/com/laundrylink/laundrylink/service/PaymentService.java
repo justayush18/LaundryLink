@@ -69,6 +69,8 @@ public class PaymentService {
 
         notificationService.sendNotification(customerEmail, NotificationType.PAYMENT,
                 "Payment of " + payment.getAmount() + " initiated for order " + payment.getOrderId() + ". Payment ID: " + payment.getPaymentId());
+        notificationService.sendNotification("admin@velora.example", NotificationType.PAYMENT,
+                "Payment of " + payment.getAmount() + " initiated for order " + payment.getOrderId() + ". Payment ID: " + payment.getPaymentId());
 
         return toPaymentView(payment);
     }
@@ -91,7 +93,7 @@ public class PaymentService {
             
             notificationService.sendNotification(customerEmail, NotificationType.PAYMENT,
                     "Payment of " + payment.getAmount() + " succeeded for order " + payment.getOrderId() + ".");
-            notificationService.sendNotification(order.partnerEmail(), NotificationType.PAYMENT,
+            notificationService.sendNotification("admin@velora.example", NotificationType.PAYMENT,
                     "Payment of " + payment.getAmount() + " succeeded for order " + payment.getOrderId() + ".");
         } else {
             payment.setStatus(PaymentStatus.FAILED);
@@ -99,7 +101,7 @@ public class PaymentService {
             
             notificationService.sendNotification(customerEmail, NotificationType.PAYMENT,
                     "Payment of " + payment.getAmount() + " failed for order " + payment.getOrderId() + ".");
-            notificationService.sendNotification(order.partnerEmail(), NotificationType.PAYMENT,
+            notificationService.sendNotification("admin@velora.example", NotificationType.PAYMENT,
                     "Payment of " + payment.getAmount() + " failed for order " + payment.getOrderId() + ".");
         }
 
@@ -130,7 +132,7 @@ public class PaymentService {
                 
                 notificationService.sendNotification(order.customerEmail(), NotificationType.PAYMENT,
                         "COD Payment of " + codPayment.getAmount() + " was successful for order " + orderId + ".");
-                notificationService.sendNotification(order.partnerEmail(), NotificationType.PAYMENT,
+                notificationService.sendNotification("admin@velora.example", NotificationType.PAYMENT,
                         "COD Payment of " + codPayment.getAmount() + " was successful for order " + orderId + ".");
             }
         }
@@ -160,7 +162,7 @@ public class PaymentService {
         if (order != null) {
             notificationService.sendNotification(order.customerEmail(), NotificationType.PAYMENT,
                     "Payment of " + payment.getAmount() + " has been refunded for order " + payment.getOrderId() + ".");
-            notificationService.sendNotification(order.partnerEmail(), NotificationType.PAYMENT,
+            notificationService.sendNotification(adminEmail, NotificationType.PAYMENT,
                     "Payment of " + payment.getAmount() + " has been refunded for order " + payment.getOrderId() + ".");
         }
 

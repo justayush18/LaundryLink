@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import WaveBackground from '../Common/WaveBackground';
@@ -16,13 +16,23 @@ import {
   TrendingUp,
   MapPin,
   CheckCircle,
-  ThumbsUp
+  ThumbsUp,
+  Star
 } from 'lucide-react';
 import FloatingNav from '../Common/FloatingNav';
 
 export default function Homepage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (user) {
+      if (user.role === 'CUSTOMER') navigate('/customer/dashboard');
+      else if (user.role === 'LAUNDRY_PARTNER') navigate('/partner/dashboard');
+      else if (user.role === 'DELIVERY_PARTNER') navigate('/delivery/dashboard');
+      else if (user.role === 'ADMIN') navigate('/admin/dashboard');
+    }
+  }, [user, navigate]);
 
   const handleCTA = () => {
     if (user) {

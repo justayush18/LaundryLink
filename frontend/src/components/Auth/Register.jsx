@@ -11,6 +11,7 @@ export default function Register() {
   const [displayName, setDisplayName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [role, setRole] = useState('CUSTOMER');
+  const [securityPin, setSecurityPin] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const { register } = useAuth();
@@ -20,6 +21,26 @@ export default function Register() {
     e.preventDefault();
     setError('');
     setSubmitting(true);
+
+    if (!/^[A-Za-z\s]+$/.test(displayName)) {
+      setError('Full Name must only contain letters and spaces.');
+      setSubmitting(false);
+      return;
+    }
+
+    if (phoneNumber.length !== 10 || !/^\d{10}$/.test(phoneNumber)) {
+      setError('Phone Number must be exactly 10 digits.');
+      setSubmitting(false);
+      return;
+    }
+
+    if (role !== 'CUSTOMER') {
+      if (securityPin.length !== 12 || !/^\d{12}$/.test(securityPin)) {
+        setError('Security Authorization PIN must be exactly 12 digits.');
+        setSubmitting(false);
+        return;
+      }
+    }
 
     try {
       const user = await register(email, password, displayName, phoneNumber, role);
@@ -72,7 +93,7 @@ export default function Register() {
                 className="form-control"
                 placeholder="Aarav Mehta"
                 value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
+                onChange={(e) => setDisplayName(e.target.value.replace(/[^A-Za-z\s]/g, ''))}
                 required
                 disabled={submitting}
                 style={styles.input}
@@ -98,9 +119,12 @@ export default function Register() {
               <input
                 type="tel"
                 className="form-control"
-                placeholder="+91 9876543210"
+                placeholder="9876543210"
                 value={phoneNumber}
-                onChange={(e) => setPhoneNumber(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, '');
+                  if (val.length <= 10) setPhoneNumber(val);
+                }}
                 required
                 disabled={submitting}
                 style={styles.input}
@@ -122,7 +146,7 @@ export default function Register() {
             </div>
           </div>
 
-          <div className="form-group" style={{ margin: '1.5rem 0 2rem 0' }}>
+          <div className="form-group" style={{ margin: '1.5rem 0 1.5rem 0' }}>
             <label className="form-label" style={{ ...styles.label, marginBottom: '0.75rem' }}>Join as</label>
             <div style={styles.roleGrid}>
               {roles.map((r) => {
@@ -148,6 +172,30 @@ export default function Register() {
               })}
             </div>
           </div>
+
+          {role !== 'CUSTOMER' && (
+            <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+              <label className="form-label" style={styles.label}>
+                Security Authorization PIN (12-digit PIN)
+              </label>
+              <input
+                type="text"
+                className="form-control"
+                placeholder="Enter 12-digit security code"
+                value={securityPin}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, '');
+                  if (val.length <= 12) setSecurityPin(val);
+                }}
+                required
+                disabled={submitting}
+                style={styles.input}
+              />
+              <small style={{ display: 'block', color: 'var(--text-secondary)', marginTop: '4px', fontSize: '0.75rem' }}>
+                Only authorized Laundry Partners and Riders with a security clearance code can register.
+              </small>
+            </div>
+          )}
 
           <button
             type="submit"

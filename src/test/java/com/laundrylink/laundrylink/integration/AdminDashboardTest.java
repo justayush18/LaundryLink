@@ -79,7 +79,8 @@ public class AdminDashboardTest {
 
     @Test
     public void testAdminUserStatusUpdate() throws Exception {
-        mockMvc.perform(put("/api/v1/admin/users/aarav@example.com/status")
+        UserEntity testUser = userRepository.save(new UserEntity("blockme@example.com", "hash", "Block Me", "1234567890", UserRoleType.CUSTOMER));
+        mockMvc.perform(put("/api/v1/admin/users/blockme@example.com/status")
                 .header(HttpHeaders.AUTHORIZATION, adminToken)
                 .param("active", "false"))
                 .andExpect(status().isOk())

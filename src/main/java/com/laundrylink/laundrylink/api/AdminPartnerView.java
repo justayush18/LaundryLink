@@ -10,6 +10,10 @@ public record AdminPartnerView(
         String onboardingStatus,
         double reputationScore,
         int totalReviews,
-        List<PartnerDocumentView> documents
+        List<PartnerDocumentView> documents,
+        int monthlyCancellationsUsed,
+        double cancellationPercentage,
+        double cancellationPenaltyPerOrder,
+        double cancellationPenaltyOwed
 ) {
 }

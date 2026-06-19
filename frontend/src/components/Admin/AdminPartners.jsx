@@ -11,6 +11,7 @@ export default function AdminPartners() {
   const [rejectionReason, setRejectionReason] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [penaltyVal, setPenaltyVal] = useState(200);
 
   const fetchPartners = async () => {
     setLoading(true);
@@ -38,6 +39,7 @@ export default function AdminPartners() {
     try {
       const detailed = await api.admin.getPartner(email);
       setSelectedPartner(detailed);
+      setPenaltyVal(detailed.cancellationPenaltyPerOrder || 200);
     } catch (err) {
       setError('Failed to fetch partner details');
     } finally {
@@ -212,6 +214,77 @@ export default function AdminPartners() {
                   </span> 
                   • {selectedPartner.totalReviews || 0} reviews
                 </p>
+              </div>
+
+              {/* Cancellation Policy settings */}
+              <div style={{ margin: '1.25rem 0', background: 'var(--bg-secondary)', border: '1px solid var(--sky-blue-light)', borderRadius: '16px', padding: '1.25rem' }}>
+                <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--primary-navy)', margin: '0 0 10px 0', fontFamily: 'Outfit, sans-serif' }}>
+                  Cancellation Audit & Policy
+                </h4>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '12px' }}>
+                  <div>
+                    <strong>Monthly Cancellations:</strong>
+                    <p style={{ margin: '2px 0 0 0', color: 'var(--primary-navy)', fontWeight: 600 }}>
+                      {selectedPartner.monthlyCancellationsUsed} / 10 used
+                    </p>
+                  </div>
+                  <div>
+                    <strong>Cancellation Rate:</strong>
+                    <p style={{ margin: '2px 0 0 0', color: 'var(--primary-navy)', fontWeight: 600 }}>
+                      {selectedPartner.cancellationPercentage ? selectedPartner.cancellationPercentage.toFixed(1) : '0.0'}%
+                    </p>
+                  </div>
+                  <div>
+                    <strong>Deduction Penalty Owed:</strong>
+                    <p style={{ margin: '2px 0 0 0', color: 'var(--color-error)', fontWeight: 700 }}>
+                      ₹{selectedPartner.cancellationPenaltyOwed ? selectedPartner.cancellationPenaltyOwed.toFixed(2) : '0.00'}
+                    </p>
+                  </div>
+                  <div>
+                    <strong>Current Configured Penalty:</strong>
+                    <p style={{ margin: '2px 0 0 0', color: 'var(--primary-navy)', fontWeight: 600 }}>
+                      ₹{selectedPartner.cancellationPenaltyPerOrder ? selectedPartner.cancellationPenaltyPerOrder.toFixed(2) : '200.00'} / excess cancellation
+                    </p>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <label style={{ fontSize: '0.85rem', color: 'var(--primary-navy)', fontWeight: 600, minWidth: '100px' }}>
+                    Set Penalty (₹):
+                  </label>
+                  <input
+                    type="number"
+                    className="velora-input"
+                    value={penaltyVal}
+                    onChange={(e) => setPenaltyVal(e.target.value)}
+                    style={{ width: '80px', padding: '6px 10px', height: '34px', fontSize: '0.85rem' }}
+                  />
+                  <button
+                    onClick={async () => {
+                      const val = parseFloat(penaltyVal);
+                      if (isNaN(val) || val < 0) {
+                        alert('Please enter a valid penalty amount (>= 0).');
+                        return;
+                      }
+                      try {
+                        setError('');
+                        setSuccess('');
+                        await api.admin.updateCancellationPenalty(selectedPartner.email, val);
+                        setSuccess('Cancellation penalty updated successfully!');
+                        setTimeout(() => setSuccess(''), 4000);
+                        // Refresh details
+                        handleInspectPartner(selectedPartner.email);
+                      } catch (err) {
+                        setError('Failed to update penalty: ' + (err.message || err));
+                      }
+                    }}
+                    className="velora-btn velora-btn-primary"
+                    style={{ padding: '0 12px', fontSize: '0.8rem', height: '34px' }}
+                  >
+                    Save Penalty
+                  </button>
+                </div>
               </div>
 
               <div style={styles.divider}></div>

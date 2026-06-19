@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { api } from '../../services/api';
+import { api, getFriendlyErrorMessage } from '../../services/api';
 import { ClipboardList, Navigation, ChevronRight } from 'lucide-react';
 
 export default function DeliveryTasks() {
@@ -20,7 +20,7 @@ export default function DeliveryTasks() {
       const data = await api.deliveries.getDashboard();
       setDashboard(data || { pendingPickups: [], pendingDeliveries: [], assignedTasks: [] });
     } catch (err) {
-      setError('Failed to load tasks database');
+      setError(getFriendlyErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -32,7 +32,7 @@ export default function DeliveryTasks() {
 
   const handleClaim = async (orderId) => {
     if (!isOnline) {
-      setError('You must be online to claim tasks.');
+      setError('To claim tasks, please toggle your availability to "Online" on the dashboard.');
       return;
     }
     setSubmitting(true);
@@ -44,7 +44,7 @@ export default function DeliveryTasks() {
       setTimeout(() => setSuccess(''), 4000);
       fetchTasks();
     } catch (err) {
-      setError(err.message || 'Fulfillment assignment failed');
+      setError(getFriendlyErrorMessage(err));
     } finally {
       setSubmitting(false);
     }

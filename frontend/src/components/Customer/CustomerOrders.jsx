@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../services/api';
 import { ClipboardList, Check, Trash2 } from 'lucide-react';
+import VeloraMascot from '../Common/VeloraMascot';
+import EmptyState from '../Common/EmptyState';
 
 export default function CustomerOrders() {
   const [orders, setOrders] = useState([]);
@@ -94,7 +96,11 @@ export default function CustomerOrders() {
           {loading && orders.length === 0 ? (
             <p style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '2rem' }}>Loading orders...</p>
           ) : orders.length === 0 ? (
-            <p style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '2rem' }}>No orders placed yet.</p>
+            <EmptyState 
+              title="No orders placed yet" 
+              description="Your order history is empty. Go ahead and schedule your first laundry pick up!"
+              mascotState="sleeping"
+            />
           ) : (
             <div style={styles.ordersList}>
               {orders.map((o) => {
@@ -237,7 +243,7 @@ export default function CustomerOrders() {
                   {selectedOrder.history?.map((hist, idx) => (
                     <div key={idx} style={styles.historyLog}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 700 }}>
-                        <span style={{ color: 'var(--primary-teal)' }}>{hist.status}</span>
+                        <span style={{ color: 'var(--primary-teal)' }}>{getStatusLabel(hist.status)}</span>
                         <span style={{ color: 'var(--text-secondary)' }}>
                           {new Date(hist.timestamp * 1000).toLocaleTimeString()}
                         </span>
@@ -252,9 +258,9 @@ export default function CustomerOrders() {
             </div>
           ) : (
             <div style={styles.noSelection}>
-              <ClipboardList size={48} color="var(--primary-teal)" style={{ marginBottom: '1rem', opacity: 0.7 }} />
+              <VeloraMascot state="thinking" size={120} style={{ marginBottom: '1rem' }} />
               <h4 style={{ fontFamily: 'Outfit, sans-serif', color: 'var(--primary-navy)', fontWeight: 700, margin: '0 0 8px 0' }}>No Order Selected</h4>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '13px', maxWidth: '300px', margin: 0 }}>Select an order from the history panel to view live tracking details and status updates.</p>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '13.5px', maxWidth: '300px', margin: 0, lineHeight: 1.5 }}>Select an order from the history panel to view live tracking details and status updates.</p>
             </div>
           )}
         </div>

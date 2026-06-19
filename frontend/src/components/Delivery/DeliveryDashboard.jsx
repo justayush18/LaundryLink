@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { api } from '../../services/api';
+import { api, getFriendlyErrorMessage } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { 
   Truck, CheckCircle2, Clock, MapPin, Navigation, 
@@ -10,27 +10,50 @@ import EmptyState from '../Common/EmptyState';
 
 export default function DeliveryDashboard() {
   const { user } = useAuth();
-  const [dashboard, setDashboard] = useState({ pendingPickups: [], pendingDeliveries: [], assignedTasks: [] });
-  const [history, setHistory] = useState([]);
+  const [dashboard, setDashboard] = useState({ 
+    assignedTasks: [], 
+    activeDeliveries: [], 
+    upcomingPickups: [], 
+    completedDeliveries: [],
+    todayEarnings: 0,
+    weeklyEarnings: 0,
+    monthlyEarnings: 0,
+    totalEarnings: 0,
+    dailyCancellations: 0,
+    online: false
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [activeTab, setActiveTab] = useState('assigned');
   
   const [isOnline, setIsOnline] = useState(() => {
     const saved = localStorage.getItem('rider_online');
-    return saved !== 'false';
+    return saved === 'true';
+  });
+
+  const [sessionSeconds, setSessionSeconds] = useState(0);
+  const [totalOnlineSeconds, setTotalOnlineSeconds] = useState(() => {
+    const saved = localStorage.getItem('rider_total_online_seconds');
+    return saved ? parseInt(saved, 10) : 0;
+  });
+
+  const [sessionCompletions, setSessionCompletions] = useState(() => {
+    const saved = localStorage.getItem('rider_session_completions');
+    return saved ? parseInt(saved, 10) : 0;
   });
 
   const fetchDashboard = async () => {
     setLoading(true);
     try {
       const data = await api.deliveries.getDashboard();
-      setDashboard(data || { pendingPickups: [], pendingDeliveries: [], assignedTasks: [] });
-      
-      const myOrders = await api.orders.getMyOrders();
-      setHistory(myOrders || []);
+      if (data) {
+        setDashboard(data);
+        setIsOnline(data.online);
+        localStorage.setItem('rider_online', data.online ? 'true' : 'false');
+      }
     } catch (err) {
-      setError('Failed to fetch delivery dashboard');
+      setError(getFriendlyErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -40,67 +63,172 @@ export default function DeliveryDashboard() {
     fetchDashboard();
   }, []);
 
+  useEffect(() => {
+    let intervalId;
+    if (isOnline) {
+      let startTimeStr = localStorage.getItem('rider_online_start_time');
+      if (!startTimeStr) {
+        startTimeStr = String(Date.now());
+        localStorage.setItem('rider_online_start_time', startTimeStr);
+      }
+      const startTime = parseInt(startTimeStr, 10);
+
+      const updateTimer = () => {
+        const elapsed = Math.floor((Date.now() - startTime) / 1000);
+        setSessionSeconds(elapsed >= 0 ? elapsed : 0);
+      };
+      updateTimer();
+      intervalId = setInterval(updateTimer, 1000);
+    } else {
+      setSessionSeconds(0);
+    }
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [isOnline]);
+
   const handleUpdateStatus = async (orderId, status, notes) => {
     try {
       setError('');
+      setSuccess('');
       await api.orders.updateStatus(orderId, { status, notes });
-      setSuccess(`Task updated to ${status}!`);
+      setSuccess(`Task successfully updated to ${getStatusLabel(status)}!`);
+      setTimeout(() => setSuccess(''), 4000);
+
+      if (isOnline && (status === 'PICKED_UP' || status === 'DELIVERED')) {
+        const newCompletions = sessionCompletions + 1;
+        setSessionCompletions(newCompletions);
+        localStorage.setItem('rider_session_completions', String(newCompletions));
+      }
+
+      fetchDashboard();
+    } catch (err) {
+      setError(getFriendlyErrorMessage(err));
+    }
+  };
+
+  const handleAcceptTask = async (orderId) => {
+    try {
+      setError('');
+      setSuccess('');
+      await api.deliveries.acceptTask(orderId);
+      setSuccess('Task accepted successfully!');
       setTimeout(() => setSuccess(''), 4000);
       fetchDashboard();
     } catch (err) {
-      setError(err.message || 'Failed to update order status');
+      setError(getFriendlyErrorMessage(err));
     }
   };
 
-  const handleToggleOnline = () => {
-    const newState = !isOnline;
-    setIsOnline(newState);
-    localStorage.setItem('rider_online', String(newState));
-    setSuccess(`Rider availability status set to ${newState ? 'ONLINE' : 'OFFLINE'}`);
-    setTimeout(() => setSuccess(''), 4000);
+  const handleCancelTask = async (orderId) => {
+    try {
+      setError('');
+      setSuccess('');
+      await api.deliveries.cancelTask(orderId);
+      setSuccess('Task cancelled and returned to assignment queue.');
+      setTimeout(() => setSuccess(''), 4000);
+      fetchDashboard();
+    } catch (err) {
+      setError(getFriendlyErrorMessage(err));
+    }
   };
 
-  const getMyActiveTasks = () => {
-    return dashboard.assignedTasks || [];
+  const handleToggleOnline = async () => {
+    try {
+      setError('');
+      setSuccess('');
+      if (isOnline) {
+        if (sessionCompletions < 1) {
+          setError('To go offline, please complete at least one pickup or delivery task first. Thank you for your hard work!');
+          setTimeout(() => setError(''), 5000);
+          return;
+        }
+
+        await api.deliveries.updateAvailability(false);
+        const startTime = localStorage.getItem('rider_online_start_time');
+        let elapsed = 0;
+        if (startTime) {
+          elapsed = Math.floor((Date.now() - parseInt(startTime, 10)) / 1000);
+        }
+        const newTotal = totalOnlineSeconds + elapsed;
+        setTotalOnlineSeconds(newTotal);
+        localStorage.setItem('rider_total_online_seconds', String(newTotal));
+        
+        localStorage.removeItem('rider_online_start_time');
+        localStorage.removeItem('rider_session_completions');
+        setSessionSeconds(0);
+        setSessionCompletions(0);
+
+        setIsOnline(false);
+        localStorage.setItem('rider_online', 'false');
+        setSuccess('Rider availability status set to OFFLINE');
+        setTimeout(() => setSuccess(''), 4000);
+      } else {
+        await api.deliveries.updateAvailability(true);
+        setIsOnline(true);
+        localStorage.setItem('rider_online', 'true');
+        localStorage.setItem('rider_online_start_time', String(Date.now()));
+        localStorage.setItem('rider_session_completions', '0');
+        setSessionSeconds(0);
+        setSessionCompletions(0);
+        setSuccess('Rider availability status set to ONLINE');
+        setTimeout(() => setSuccess(''), 4000);
+      }
+      fetchDashboard();
+    } catch (err) {
+      setError(getFriendlyErrorMessage(err));
+    }
   };
 
-  const completed = history.filter(o => o.status === 'DELIVERED');
-  const totalCompleted = completed.length;
-  
-  const startOfToday = new Date();
-  startOfToday.setHours(0, 0, 0, 0);
-  const startOfTodaySeconds = Math.floor(startOfToday.getTime() / 1000);
-  const completedTodayCount = completed.filter(o => o.updatedAt >= startOfTodaySeconds).length;
-
-  const todayEarnings = completedTodayCount * 60;
-  
-  const nowSeconds = Math.floor(Date.now() / 1000);
-  const startOfWeekSeconds = nowSeconds - 7 * 86400;
-  const completedThisWeekCount = completed.filter(o => o.updatedAt >= startOfWeekSeconds).length;
-  const weeklyEarnings = completedThisWeekCount * 60;
-
-  const startOfMonthSeconds = nowSeconds - 30 * 86400;
-  const completedThisMonthCount = completed.filter(o => o.updatedAt >= startOfMonthSeconds).length;
-  const monthlyEarnings = completedThisMonthCount * 60;
-
-  const totalEarnings = totalCompleted * 60;
-
-  const cancelled = history.filter(o => o.status === 'CANCELLED').length;
-  const successRate = (totalCompleted + cancelled) > 0 
-    ? ((totalCompleted / (totalCompleted + cancelled)) * 100).toFixed(1) 
-    : '100';
-
-  const averageRating = totalCompleted > 0 ? (parseFloat(successRate) > 95 ? '4.9' : '4.7') : '5.0';
-  
-  const activeRunsCount = getMyActiveTasks().length;
+  const formatDuration = (totalSecs) => {
+    const hrs = Math.floor(totalSecs / 3600);
+    const mins = Math.floor((totalSecs % 3600) / 60);
+    const secs = totalSecs % 60;
+    if (hrs > 0) {
+      return `${hrs}h ${mins}m ${secs}s`;
+    }
+    if (mins > 0) {
+      return `${mins}m ${secs}s`;
+    }
+    return `${secs}s`;
+  };
 
   const getStatusLabel = (status) => {
     switch (status) {
+      case 'PLACED': return 'Placed';
+      case 'ACCEPTED': return 'Accepted';
       case 'PICKUP_ASSIGNED': return 'Pickup Claimed';
+      case 'PICKED_UP': return 'Picked Up';
+      case 'PROCESSING': return 'Processing';
+      case 'READY_FOR_DELIVERY': return 'Ready';
       case 'DELIVERY_ASSIGNED': return 'Delivery Claimed';
+      case 'DELIVERED': return 'Delivered';
+      case 'CANCELLED': return 'Cancelled';
       default: return status.replace('_', ' ');
     }
   };
+
+  const getTabList = () => {
+    switch (activeTab) {
+      case 'assigned': return dashboard.assignedTasks || [];
+      case 'pickups': return dashboard.upcomingPickups || [];
+      case 'active': return dashboard.activeDeliveries || [];
+      case 'completed': return dashboard.completedDeliveries || [];
+      default: return [];
+    }
+  };
+
+  const activeRunsCount = (dashboard.activeDeliveries?.length || 0) + (dashboard.upcomingPickups?.length || 0);
+  const totalCompleted = dashboard.completedDeliveries?.length || 0;
+  
+  const todayEarnings = dashboard.todayEarnings || 0;
+  const weeklyEarnings = dashboard.weeklyEarnings || 0;
+  const monthlyEarnings = dashboard.monthlyEarnings || 0;
+  const totalEarnings = dashboard.totalEarnings || 0;
+  const dailyCancellations = dashboard.dailyCancellations || 0;
+
+  const successRate = totalCompleted > 0 ? '97.5' : '100';
+  const averageRating = totalCompleted > 0 ? '4.9' : '5.0';
 
   return (
     <div className="main-content">
@@ -108,20 +236,30 @@ export default function DeliveryDashboard() {
       <div style={styles.welcomeRow}>
         <div>
           <h1 style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--primary-navy)', fontFamily: 'Outfit, sans-serif', margin: '0 0 4px 0' }}>
-            Welcome back, {user.displayName} Run!
+            Welcome back, {user.displayName}!
           </h1>
           <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: '0.95rem' }}>
             Fulfill active customer laundry pickup and delivery runs.
           </p>
         </div>
         <div style={styles.availabilityToggle}>
-          <span style={{ 
-            fontSize: '13px', 
-            fontWeight: '600', 
-            color: isOnline ? '#03543F' : 'var(--text-secondary)' 
-          }}>
-            Availability: {isOnline ? 'Online' : 'Offline'}
-          </span>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px', marginRight: '8px' }}>
+            <span style={{ 
+              fontSize: '13px', 
+              fontWeight: '700', 
+              color: isOnline ? '#03543F' : 'var(--text-secondary)' 
+            }}>
+              Availability: {isOnline ? 'Online' : 'Offline'}
+            </span>
+            {isOnline && (
+              <span style={{ fontSize: '11px', color: 'var(--primary-teal)', fontWeight: 600 }}>
+                Session: {formatDuration(sessionSeconds)}
+              </span>
+            )}
+            <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600 }}>
+              Total Online: {formatDuration(totalOnlineSeconds + (isOnline ? sessionSeconds : 0))}
+            </span>
+          </div>
           <button 
             onClick={handleToggleOnline} 
             className="velora-btn velora-btn-secondary animate-pulse"
@@ -154,28 +292,28 @@ export default function DeliveryDashboard() {
       {/* KPI Row */}
       <div className="grid-cols-4" style={{ marginBottom: '2.5rem', gap: '1.25rem' }}>
         <StatCard
-          title="Active Runs"
-          value={activeRunsCount}
-          icon={Truck}
-          description="Your current claimed tasks"
-        />
-        <StatCard
-          title="Available Pickups"
-          value={dashboard.pendingPickups?.length || 0}
+          title="Assigned Tasks"
+          value={dashboard.assignedTasks?.length || 0}
           icon={Clock}
-          description="Awaiting rider assignment"
+          description="Awaiting acceptance"
         />
         <StatCard
-          title="Available Deliveries"
-          value={dashboard.pendingDeliveries?.length || 0}
+          title="Upcoming Pickups"
+          value={dashboard.upcomingPickups?.length || 0}
           icon={Navigation}
-          description="Ready at laundry hubs"
+          description="Accepted pickup tasks"
         />
         <StatCard
-          title="Completed Today"
-          value={completedTodayCount}
+          title="Active Deliveries"
+          value={dashboard.activeDeliveries?.length || 0}
+          icon={Truck}
+          description="Runs in progress"
+        />
+        <StatCard
+          title="Completed Deliveries"
+          value={dashboard.completedDeliveries?.length || 0}
           icon={CheckCircle2}
-          description="Runs finished today"
+          description="Successfully completed"
         />
       </div>
 
@@ -249,33 +387,97 @@ export default function DeliveryDashboard() {
               </div>
             </div>
             <div style={styles.performanceItem}>
-              <span style={styles.performanceLabel}>Active Assignments</span>
+              <span style={styles.performanceLabel}>Cancellations Today</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
-                <Truck size={14} color="var(--primary-navy)" />
-                <span style={styles.performanceVal}>{activeRunsCount} claimed</span>
+                <Activity size={14} color={dailyCancellations >= 2 ? "#EF4444" : "#D97706"} />
+                <span style={styles.performanceVal}>{dailyCancellations} / 2</span>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* My Active tasks list */}
+      {/* Task Dashboard Container */}
       <div className="velora-card animate-fadeInUp" style={{ padding: '2rem' }}>
         <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary-navy)', fontFamily: 'Outfit, sans-serif', margin: '0 0 1.5rem 0' }}>
-          Active Navigation Route List
+          Delivery Dashboard Navigation
         </h3>
+
+        {/* Tab Selection */}
+        <div style={{ display: 'flex', gap: '12px', borderBottom: '2px solid var(--bg-secondary)', paddingBottom: '12px', marginBottom: '20px', flexWrap: 'wrap' }}>
+          <button 
+            onClick={() => setActiveTab('assigned')}
+            style={{
+              padding: '8px 16px',
+              borderRadius: '12px',
+              border: 'none',
+              background: activeTab === 'assigned' ? 'var(--primary-teal)' : 'transparent',
+              color: activeTab === 'assigned' ? '#FFFFFF' : 'var(--text-secondary)',
+              fontWeight: 700,
+              cursor: 'pointer',
+              transition: 'all 0.2s ease-in-out'
+            }}
+          >
+            Assigned Tasks ({dashboard.assignedTasks?.length || 0})
+          </button>
+          <button 
+            onClick={() => setActiveTab('pickups')}
+            style={{
+              padding: '8px 16px',
+              borderRadius: '12px',
+              border: 'none',
+              background: activeTab === 'pickups' ? 'var(--primary-teal)' : 'transparent',
+              color: activeTab === 'pickups' ? '#FFFFFF' : 'var(--text-secondary)',
+              fontWeight: 700,
+              cursor: 'pointer',
+              transition: 'all 0.2s ease-in-out'
+            }}
+          >
+            Upcoming Pickups ({dashboard.upcomingPickups?.length || 0})
+          </button>
+          <button 
+            onClick={() => setActiveTab('active')}
+            style={{
+              padding: '8px 16px',
+              borderRadius: '12px',
+              border: 'none',
+              background: activeTab === 'active' ? 'var(--primary-teal)' : 'transparent',
+              color: activeTab === 'active' ? '#FFFFFF' : 'var(--text-secondary)',
+              fontWeight: 700,
+              cursor: 'pointer',
+              transition: 'all 0.2s ease-in-out'
+            }}
+          >
+            Active Deliveries ({dashboard.activeDeliveries?.length || 0})
+          </button>
+          <button 
+            onClick={() => setActiveTab('completed')}
+            style={{
+              padding: '8px 16px',
+              borderRadius: '12px',
+              border: 'none',
+              background: activeTab === 'completed' ? 'var(--primary-teal)' : 'transparent',
+              color: activeTab === 'completed' ? '#FFFFFF' : 'var(--text-secondary)',
+              fontWeight: 700,
+              cursor: 'pointer',
+              transition: 'all 0.2s ease-in-out'
+            }}
+          >
+            Completed ({dashboard.completedDeliveries?.length || 0})
+          </button>
+        </div>
 
         {loading ? (
           <p style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>Loading assignments...</p>
-        ) : getMyActiveTasks().length === 0 ? (
+        ) : getTabList().length === 0 ? (
           <EmptyState
-            title="No claimed runs"
-            description="You have no active pickup or delivery assignments right now. Claim runs from the Tasks Board."
+            title={`No ${activeTab} tasks`}
+            description={`You have no tasks in ${activeTab} category right now.`}
             mascotState="thinking"
           />
         ) : (
           <div style={styles.runsContainer}>
-            {getMyActiveTasks().map((task) => (
+            {getTabList().map((task) => (
               <div key={task.orderId} className="velora-card card-hover" style={styles.runCard}>
                 <div style={styles.runHeader}>
                   <div>
@@ -295,41 +497,83 @@ export default function DeliveryDashboard() {
                   <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-start' }}>
                     <MapPin size={16} color="var(--primary-teal)" style={{ marginTop: '2px' }} />
                     <div style={{ fontSize: '12px', color: 'var(--primary-navy)', fontWeight: 600 }}>
-                      <strong>{task.status === 'PICKUP_ASSIGNED' ? 'Pickup Address' : 'Delivery Address'}:</strong>
+                      <strong>{['PICKUP_ASSIGNED', 'PLACED', 'ACCEPTED'].includes(task.status) ? 'Pickup Address' : 'Delivery Address'}:</strong>
                       <p style={{ margin: '4px 0 0 0', fontWeight: 500, color: 'var(--text-secondary)' }}>
-                        {task.status === 'PICKUP_ASSIGNED' ? task.pickupAddress : task.deliveryAddress}
+                        {['PICKUP_ASSIGNED', 'PLACED', 'ACCEPTED'].includes(task.status) ? task.pickupAddress : task.deliveryAddress}
                       </p>
                     </div>
                   </div>
                   <p style={{ fontSize: '11px', color: 'var(--primary-teal)', marginTop: '8px', marginBottom: 0, paddingLeft: '22px', fontWeight: 700 }}>
-                    ⏱ Slot: {task.status === 'PICKUP_ASSIGNED' ? task.pickupSlot : task.deliverySlot}
+                    ⏱ Slot: {['PICKUP_ASSIGNED', 'PLACED', 'ACCEPTED'].includes(task.status) ? task.pickupSlot : task.deliverySlot}
                   </p>
                 </div>
 
                 <div style={styles.actions}>
-                  {task.status === 'PICKUP_ASSIGNED' && (
+                  {activeTab === 'assigned' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
+                      <button
+                        onClick={() => handleAcceptTask(task.orderId)}
+                        className="velora-btn velora-btn-primary animate-pulse"
+                        style={{ width: '100%', padding: '10px', fontSize: '12px' }}
+                      >
+                        Accept Task
+                      </button>
+                      {dailyCancellations >= 2 ? (
+                        <div style={{ 
+                          textAlign: 'center', 
+                          padding: '10px', 
+                          background: '#FDE8E8', 
+                          color: '#EF4444', 
+                          fontSize: '12px', 
+                          fontWeight: 700, 
+                          borderRadius: '12px',
+                          border: '1px solid #F8B4B4'
+                        }}>
+                          Daily cancellation limit reached (2/2).
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => handleCancelTask(task.orderId)}
+                          className="velora-btn velora-btn-secondary"
+                          style={{ width: '100%', padding: '10px', fontSize: '12px', borderColor: '#EF4444', color: '#EF4444' }}
+                        >
+                          Cancel Task
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {activeTab === 'pickups' && (
                     <button
                       onClick={() => handleUpdateStatus(task.orderId, 'PICKED_UP', 'Laundry picked up by delivery rider.')}
                       className="velora-btn velora-btn-primary animate-pulse"
                       style={{ width: '100%', padding: '10px', fontSize: '12px' }}
                     >
-                      Confirm Picked Up
+                      Mark Picked Up
                     </button>
                   )}
 
-                  {task.status === 'DELIVERY_ASSIGNED' && (
-                    <button
-                      onClick={() => handleUpdateStatus(task.orderId, 'DELIVERED', 'Laundry delivered successfully.')}
-                      className="velora-btn velora-btn-primary animate-pulse"
-                      style={{ width: '100%', padding: '10px', fontSize: '12px' }}
-                    >
-                      Confirm Delivered
-                    </button>
+                  {activeTab === 'active' && (
+                    <div style={{ width: '100%' }}>
+                      {task.status === 'DELIVERY_ASSIGNED' ? (
+                        <button
+                          onClick={() => handleUpdateStatus(task.orderId, 'DELIVERED', 'Laundry delivered successfully.')}
+                          className="velora-btn velora-btn-primary animate-pulse"
+                          style={{ width: '100%', padding: '10px', fontSize: '12px' }}
+                        >
+                          Mark Delivered
+                        </button>
+                      ) : (
+                        <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontStyle: 'italic', textAlign: 'center', width: '100%', display: 'block', fontWeight: 600 }}>
+                          Fulfillment in progress at Laundry hub
+                        </span>
+                      )}
+                    </div>
                   )}
 
-                  {task.status === 'PICKED_UP' && (
-                    <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontStyle: 'italic', textAlign: 'center', width: '100%', display: 'block', fontWeight: 600 }}>
-                      Fulfillment in progress at Laundry hub
+                  {activeTab === 'completed' && (
+                    <span style={{ fontSize: '12px', color: 'var(--primary-teal)', fontStyle: 'italic', textAlign: 'center', width: '100%', display: 'block', fontWeight: 600 }}>
+                      Delivered successfully.
                     </span>
                   )}
                 </div>

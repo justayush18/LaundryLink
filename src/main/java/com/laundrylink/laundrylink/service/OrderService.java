@@ -25,6 +25,8 @@ import com.laundrylink.laundrylink.persistence.OrderEntity;
 import com.laundrylink.laundrylink.persistence.OrderItemEntity;
 import com.laundrylink.laundrylink.persistence.OrderRepository;
 import com.laundrylink.laundrylink.persistence.StatusTransitionEntity;
+import com.laundrylink.laundrylink.persistence.UserRepository;
+import com.laundrylink.laundrylink.persistence.UserEntity;
 
 @Service
 public class OrderService {
@@ -33,12 +35,14 @@ public class OrderService {
     private final LaundryPartnerService laundryPartnerService;
     private final PaymentService paymentService;
     private final NotificationService notificationService;
+    private final UserRepository userRepository;
 
-    public OrderService(OrderRepository orderRepository, LaundryPartnerService laundryPartnerService, @Lazy PaymentService paymentService, @Lazy NotificationService notificationService) {
+    public OrderService(OrderRepository orderRepository, LaundryPartnerService laundryPartnerService, @Lazy PaymentService paymentService, @Lazy NotificationService notificationService, UserRepository userRepository) {
         this.orderRepository = orderRepository;
         this.laundryPartnerService = laundryPartnerService;
         this.paymentService = paymentService;
         this.notificationService = notificationService;
+        this.userRepository = userRepository;
     }
 
     public OrderView placeOrder(String customerEmail, PlaceOrderRequest request) {
@@ -135,6 +139,12 @@ public class OrderService {
         OrderStatus newStatus = request.status();
         String notes = request.statusNotes();
 
+        if (role == UserRoleType.LAUNDRY_PARTNER && newStatus == OrderStatus.CANCELLED) {
+            if (order.getStatus() != OrderStatus.PLACED) {
+                notes = "Cancelled by laundry partner: " + (notes != null ? notes : "Accepted order cancelled by laundry partner");
+            }
+        }
+
         switch (role) {
             case CUSTOMER:
                 if (!order.getCustomerEmail().equalsIgnoreCase(email)) {
@@ -182,6 +192,10 @@ public class OrderService {
         
         orderRepository.saveAndFlush(order);
 
+        if (newStatus == OrderStatus.ACCEPTED || newStatus == OrderStatus.READY_FOR_DELIVERY) {
+            autoAssignRider(order);
+        }
+
         if (newStatus == OrderStatus.DELIVERED) {
             paymentService.completeCodPayment(orderId);
             notificationService.sendNotification(order.getCustomerEmail(), NotificationType.ORDER_STATUS, 
@@ -217,61 +231,300 @@ public class OrderService {
         OrderEntity order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
 
+        String targetDeliveryPartnerEmail = deliveryPartnerEmail;
         if (role == UserRoleType.DELIVERY_PARTNER) {
-            if (!email.equalsIgnoreCase(deliveryPartnerEmail)) {
+            if (targetDeliveryPartnerEmail == null || targetDeliveryPartnerEmail.trim().isEmpty()) {
+                targetDeliveryPartnerEmail = email;
+            } else if (!email.equalsIgnoreCase(targetDeliveryPartnerEmail)) {
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Delivery partners can only assign themselves");
             }
         } else if (role != UserRoleType.ADMIN) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only Admin or Delivery Partners can assign delivery tasks");
+        } else {
+            if (targetDeliveryPartnerEmail == null || targetDeliveryPartnerEmail.trim().isEmpty()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Delivery partner email is required");
+            }
         }
 
-        order.setDeliveryPartnerEmail(deliveryPartnerEmail);
+        order.setDeliveryPartnerEmail(targetDeliveryPartnerEmail);
 
         long now = System.currentTimeMillis() / 1000L;
         // Auto state transition on assignment
         if (order.getStatus() == OrderStatus.ACCEPTED) {
             order.setStatus(OrderStatus.PICKUP_ASSIGNED);
-            order.setStatusNotes("Delivery partner assigned for pickup: " + deliveryPartnerEmail);
-            order.getHistory().add(new StatusTransitionEntity(OrderStatus.PICKUP_ASSIGNED, now, "Delivery partner assigned for pickup: " + deliveryPartnerEmail));
+            order.setStatusNotes("Delivery partner assigned for pickup: " + targetDeliveryPartnerEmail);
+            order.getHistory().add(new StatusTransitionEntity(OrderStatus.PICKUP_ASSIGNED, now, "Delivery partner assigned for pickup: " + targetDeliveryPartnerEmail));
         } else if (order.getStatus() == OrderStatus.READY_FOR_DELIVERY) {
             order.setStatus(OrderStatus.DELIVERY_ASSIGNED);
-            order.setStatusNotes("Delivery partner assigned for delivery: " + deliveryPartnerEmail);
-            order.getHistory().add(new StatusTransitionEntity(OrderStatus.DELIVERY_ASSIGNED, now, "Delivery partner assigned for delivery: " + deliveryPartnerEmail));
+            order.setStatusNotes("Delivery partner assigned for delivery: " + targetDeliveryPartnerEmail);
+            order.getHistory().add(new StatusTransitionEntity(OrderStatus.DELIVERY_ASSIGNED, now, "Delivery partner assigned for delivery: " + targetDeliveryPartnerEmail));
         }
 
         orderRepository.saveAndFlush(order);
 
         notificationService.sendNotification(order.getCustomerEmail(), NotificationType.DELIVERY, 
-                "Delivery partner " + deliveryPartnerEmail + " has been assigned to order " + orderId);
-        notificationService.sendNotification(deliveryPartnerEmail, NotificationType.DELIVERY, 
+                "Delivery partner " + targetDeliveryPartnerEmail + " has been assigned to order " + orderId);
+        notificationService.sendNotification(targetDeliveryPartnerEmail, NotificationType.DELIVERY, 
                 "You have been assigned to order " + orderId);
         notificationService.sendNotification(order.getPartnerEmail(), NotificationType.DELIVERY, 
-                "Delivery partner " + deliveryPartnerEmail + " assigned for order " + orderId);
+                "Delivery partner " + targetDeliveryPartnerEmail + " assigned for order " + orderId);
 
         return toView(order);
     }
 
     public DeliveryDashboardView getDeliveryDashboard(String deliveryPartnerEmail) {
-        List<OrderView> pendingPickups = orderRepository.findAll().stream()
-                .filter(order -> order.getStatus() == OrderStatus.ACCEPTED)
+        List<OrderEntity> allOrders = orderRepository.findAll();
+        
+        List<OrderEntity> riderOrders = allOrders.stream()
+                .filter(o -> o.getDeliveryPartnerEmail() != null 
+                        && o.getDeliveryPartnerEmail().equalsIgnoreCase(deliveryPartnerEmail))
+                .collect(Collectors.toList());
+
+        List<OrderView> assignedTasks = riderOrders.stream()
+                .filter(o -> !o.isAcceptedByRider() 
+                        && (o.getStatus() == OrderStatus.PICKUP_ASSIGNED 
+                            || o.getStatus() == OrderStatus.DELIVERY_ASSIGNED))
                 .map(this::toView)
                 .collect(Collectors.toList());
 
-        List<OrderView> pendingDeliveries = orderRepository.findAll().stream()
-                .filter(order -> order.getStatus() == OrderStatus.READY_FOR_DELIVERY)
+        List<OrderView> upcomingPickups = riderOrders.stream()
+                .filter(o -> o.isAcceptedByRider() 
+                        && o.getStatus() == OrderStatus.PICKUP_ASSIGNED)
                 .map(this::toView)
                 .collect(Collectors.toList());
 
-        List<OrderView> assignedTasks = orderRepository.findAll().stream()
-                .filter(order -> order.getDeliveryPartnerEmail() != null
-                        && order.getDeliveryPartnerEmail().equalsIgnoreCase(deliveryPartnerEmail)
-                        && (order.getStatus() == OrderStatus.PICKUP_ASSIGNED
-                                || order.getStatus() == OrderStatus.PICKED_UP
-                                || order.getStatus() == OrderStatus.DELIVERY_ASSIGNED))
+        List<OrderView> activeDeliveries = riderOrders.stream()
+                .filter(o -> o.isAcceptedByRider() 
+                        && (o.getStatus() == OrderStatus.PICKED_UP 
+                            || o.getStatus() == OrderStatus.DELIVERY_ASSIGNED))
                 .map(this::toView)
                 .collect(Collectors.toList());
 
-        return new DeliveryDashboardView(pendingPickups, pendingDeliveries, assignedTasks);
+        List<OrderView> completedDeliveries = riderOrders.stream()
+                .filter(o -> o.getStatus() == OrderStatus.DELIVERED)
+                .map(this::toView)
+                .collect(Collectors.toList());
+
+        java.time.ZoneId kolkata = java.time.ZoneId.of("Asia/Kolkata");
+        java.time.ZonedDateTime nowIst = java.time.ZonedDateTime.now(kolkata);
+        long startOfToday = nowIst.toLocalDate().atStartOfDay(kolkata).toEpochSecond();
+
+        long completedTodayCount = riderOrders.stream()
+                .filter(o -> o.getStatus() == OrderStatus.DELIVERED && o.getUpdatedAt() >= startOfToday)
+                .count();
+        double todayEarnings = completedTodayCount * 60.0;
+
+        long nowSeconds = System.currentTimeMillis() / 1000L;
+        long startOfWeek = nowSeconds - 7 * 86400;
+        long completedThisWeekCount = riderOrders.stream()
+                .filter(o -> o.getStatus() == OrderStatus.DELIVERED && o.getUpdatedAt() >= startOfWeek)
+                .count();
+        double weeklyEarnings = completedThisWeekCount * 60.0;
+
+        long startOfMonth = nowSeconds - 30 * 86400;
+        long completedThisMonthCount = riderOrders.stream()
+                .filter(o -> o.getStatus() == OrderStatus.DELIVERED && o.getUpdatedAt() >= startOfMonth)
+                .count();
+        double monthlyEarnings = completedThisMonthCount * 60.0;
+
+        long totalCompleted = riderOrders.stream()
+                .filter(o -> o.getStatus() == OrderStatus.DELIVERED)
+                .count();
+        double totalEarnings = totalCompleted * 60.0;
+
+        int dailyCancellations = getDailyCancellationCount(deliveryPartnerEmail);
+
+        boolean online = userRepository.findByEmail(deliveryPartnerEmail)
+                .map(UserEntity::isOnline)
+                .orElse(false);
+
+        return new DeliveryDashboardView(
+                assignedTasks,
+                activeDeliveries,
+                upcomingPickups,
+                completedDeliveries,
+                todayEarnings,
+                weeklyEarnings,
+                monthlyEarnings,
+                totalEarnings,
+                dailyCancellations,
+                online
+        );
+    }
+
+    public void autoAssignRider(OrderEntity order) {
+        if (order.getStatus() != OrderStatus.ACCEPTED && order.getStatus() != OrderStatus.READY_FOR_DELIVERY) {
+            return;
+        }
+
+        // Find active and online delivery partners
+        java.util.List<UserEntity> eligibleRiders = userRepository.findAll().stream()
+                .filter(u -> u.getRole() == UserRoleType.DELIVERY_PARTNER && u.isActive() && u.isOnline())
+                .collect(Collectors.toList());
+
+        if (eligibleRiders.isEmpty()) {
+            return;
+        }
+
+        // Get riders who previously cancelled this order
+        java.util.Set<String> excludedRiders = new java.util.HashSet<>();
+        if (order.getHistory() != null) {
+            for (StatusTransitionEntity transition : order.getHistory()) {
+                if (transition.getNotes() != null && transition.getNotes().toLowerCase().startsWith("task rejected by rider: ")) {
+                    String cancelledEmail = transition.getNotes().substring("task rejected by rider: ".length()).trim();
+                    excludedRiders.add(cancelledEmail.toLowerCase());
+                }
+            }
+        }
+
+        // Filter out excluded riders
+        eligibleRiders = eligibleRiders.stream()
+                .filter(u -> !excludedRiders.contains(u.getEmail().toLowerCase()))
+                .collect(Collectors.toList());
+
+        if (eligibleRiders.isEmpty()) {
+            return;
+        }
+
+        // Pick the rider with the minimum count of active assignments
+        UserEntity bestRider = null;
+        long minActiveCount = Long.MAX_VALUE;
+
+        for (UserEntity rider : eligibleRiders) {
+            long activeCount = orderRepository.findAll().stream()
+                    .filter(o -> o.getDeliveryPartnerEmail() != null
+                            && o.getDeliveryPartnerEmail().equalsIgnoreCase(rider.getEmail())
+                            && (o.getStatus() == OrderStatus.PICKUP_ASSIGNED
+                                    || o.getStatus() == OrderStatus.DELIVERY_ASSIGNED
+                                    || o.getStatus() == OrderStatus.PICKED_UP))
+                    .count();
+
+            if (activeCount < minActiveCount) {
+                minActiveCount = activeCount;
+                bestRider = rider;
+            }
+        }
+
+        if (bestRider != null) {
+            order.setDeliveryPartnerEmail(bestRider.getEmail());
+            order.setAcceptedByRider(false);
+            long now = System.currentTimeMillis() / 1000L;
+
+            if (order.getStatus() == OrderStatus.ACCEPTED) {
+                order.setStatus(OrderStatus.PICKUP_ASSIGNED);
+                order.setStatusNotes("Delivery partner assigned for pickup: " + bestRider.getEmail());
+                order.getHistory().add(new StatusTransitionEntity(OrderStatus.PICKUP_ASSIGNED, now, "Delivery partner assigned for pickup: " + bestRider.getEmail()));
+            } else if (order.getStatus() == OrderStatus.READY_FOR_DELIVERY) {
+                order.setStatus(OrderStatus.DELIVERY_ASSIGNED);
+                order.setStatusNotes("Delivery partner assigned for delivery: " + bestRider.getEmail());
+                order.getHistory().add(new StatusTransitionEntity(OrderStatus.DELIVERY_ASSIGNED, now, "Delivery partner assigned for delivery: " + bestRider.getEmail()));
+            }
+
+            orderRepository.saveAndFlush(order);
+
+            notificationService.sendNotification(order.getCustomerEmail(), NotificationType.DELIVERY,
+                    "Delivery partner " + bestRider.getEmail() + " has been assigned to order " + order.getOrderId());
+            notificationService.sendNotification(bestRider.getEmail(), NotificationType.DELIVERY,
+                    "You have been assigned to order " + order.getOrderId());
+            notificationService.sendNotification(order.getPartnerEmail(), NotificationType.DELIVERY,
+                    "Delivery partner " + bestRider.getEmail() + " assigned for order " + order.getOrderId());
+        }
+    }
+
+    public void triggerPendingAssignments() {
+        List<OrderEntity> pendingOrders = orderRepository.findAll().stream()
+                .filter(order -> (order.getStatus() == OrderStatus.ACCEPTED || order.getStatus() == OrderStatus.READY_FOR_DELIVERY)
+                        && order.getDeliveryPartnerEmail() == null)
+                .collect(Collectors.toList());
+        for (OrderEntity order : pendingOrders) {
+            autoAssignRider(order);
+        }
+    }
+
+    public int getDailyCancellationCount(String email) {
+        java.time.ZoneId kolkata = java.time.ZoneId.of("Asia/Kolkata");
+        java.time.ZonedDateTime nowIst = java.time.ZonedDateTime.now(kolkata);
+        java.time.ZonedDateTime startOfDayIst = nowIst.toLocalDate().atStartOfDay(kolkata);
+        long startOfDayEpochSecond = startOfDayIst.toEpochSecond();
+
+        String expectedNote = "Task rejected by rider: " + email;
+        int count = 0;
+        List<OrderEntity> orders = orderRepository.findAll();
+        for (OrderEntity o : orders) {
+            if (o.getHistory() != null) {
+                for (StatusTransitionEntity transition : o.getHistory()) {
+                    if (transition.getTimestamp() >= startOfDayEpochSecond
+                            && transition.getNotes() != null
+                            && transition.getNotes().trim().equalsIgnoreCase(expectedNote.trim())) {
+                        count++;
+                    }
+                }
+            }
+        }
+        return count;
+    }
+
+    public OrderView acceptDeliveryTask(String orderId, String email) {
+        OrderEntity order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
+
+        if (order.getDeliveryPartnerEmail() == null || !order.getDeliveryPartnerEmail().equalsIgnoreCase(email)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied: You are not the assigned delivery partner");
+        }
+
+        if (order.getStatus() != OrderStatus.PICKUP_ASSIGNED && order.getStatus() != OrderStatus.DELIVERY_ASSIGNED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Order cannot be accepted in the current state");
+        }
+
+        order.setAcceptedByRider(true);
+        orderRepository.saveAndFlush(order);
+
+        return toView(order);
+    }
+
+    public OrderView cancelDeliveryTask(String orderId, String email) {
+        OrderEntity order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
+
+        if (order.getDeliveryPartnerEmail() == null || !order.getDeliveryPartnerEmail().equalsIgnoreCase(email)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied: You are not the assigned delivery partner");
+        }
+
+        if (order.getStatus() != OrderStatus.PICKUP_ASSIGNED && order.getStatus() != OrderStatus.DELIVERY_ASSIGNED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Order cannot be cancelled/rejected in the current state");
+        }
+
+        int cancelsToday = getDailyCancellationCount(email);
+        if (cancelsToday >= 2) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Daily cancellation limit reached (2/2).");
+        }
+
+        long now = System.currentTimeMillis() / 1000L;
+        OrderStatus oldStatus = order.getStatus();
+        OrderStatus revertedStatus = (oldStatus == OrderStatus.PICKUP_ASSIGNED) ? OrderStatus.ACCEPTED : OrderStatus.READY_FOR_DELIVERY;
+
+        order.setStatus(revertedStatus);
+        order.setDeliveryPartnerEmail(null);
+        order.setAcceptedByRider(false);
+        order.setStatusNotes("Task rejected by rider: " + email);
+        order.getHistory().add(new StatusTransitionEntity(revertedStatus, now, "Task rejected by rider: " + email));
+
+        orderRepository.saveAndFlush(order);
+
+        // Auto trigger reassignment for this order
+        autoAssignRider(order);
+
+        return toView(order);
+    }
+
+    public void updateRiderOnlineStatus(String email, boolean online) {
+        UserEntity user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        user.setOnline(online);
+        userRepository.saveAndFlush(user);
+        if (online) {
+            triggerPendingAssignments();
+        }
     }
 
     public DeliveryTrackingView getDeliveryTracking(String orderId, String email, UserRoleType role) {
@@ -342,7 +595,8 @@ public class OrderService {
                 order.getStatusNotes(),
                 order.getCreatedAt(),
                 order.getUpdatedAt(),
-                historyDto
+                historyDto,
+                order.isAcceptedByRider()
         );
     }
 }

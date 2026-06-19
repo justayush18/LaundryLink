@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import ProtectedRoute from './components/Common/ProtectedRoute';
@@ -209,11 +209,91 @@ function MainLayout() {
 function RootNavigator() {
   const { user } = useAuth();
 
+  useEffect(() => {
+    if (!user) {
+      document.title = "Velora – Premium Laundry Service";
+    } else {
+      switch (user.role) {
+        case 'CUSTOMER':
+          document.title = "Velora Customer Portal";
+          break;
+        case 'DELIVERY_PARTNER':
+          document.title = "Velora Delivery Dashboard";
+          break;
+        case 'LAUNDRY_PARTNER':
+          document.title = "Velora Partner Dashboard";
+          break;
+        case 'ADMIN':
+          document.title = "Velora Admin Console";
+          break;
+        default:
+          document.title = "Velora – Premium Laundry Service";
+      }
+    }
+  }, [user]);
+
   return (
     <Routes>
-      <Route path="/" element={<Homepage />} />
-      <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
-      <Route path="/register" element={user ? <Navigate to="/" replace /> : <Register />} />
+      <Route
+        path="/"
+        element={
+          user ? (
+            user.role === 'CUSTOMER' ? (
+              <Navigate to="/customer/dashboard" replace />
+            ) : user.role === 'LAUNDRY_PARTNER' ? (
+              <Navigate to="/partner/dashboard" replace />
+            ) : user.role === 'DELIVERY_PARTNER' ? (
+              <Navigate to="/delivery/dashboard" replace />
+            ) : user.role === 'ADMIN' ? (
+              <Navigate to="/admin/dashboard" replace />
+            ) : (
+              <Homepage />
+            )
+          ) : (
+            <Homepage />
+          )
+        }
+      />
+      <Route
+        path="/login"
+        element={
+          user ? (
+            user.role === 'CUSTOMER' ? (
+              <Navigate to="/customer/dashboard" replace />
+            ) : user.role === 'LAUNDRY_PARTNER' ? (
+              <Navigate to="/partner/dashboard" replace />
+            ) : user.role === 'DELIVERY_PARTNER' ? (
+              <Navigate to="/delivery/dashboard" replace />
+            ) : user.role === 'ADMIN' ? (
+              <Navigate to="/admin/dashboard" replace />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          ) : (
+            <Login />
+          )
+        }
+      />
+      <Route
+        path="/register"
+        element={
+          user ? (
+            user.role === 'CUSTOMER' ? (
+              <Navigate to="/customer/dashboard" replace />
+            ) : user.role === 'LAUNDRY_PARTNER' ? (
+              <Navigate to="/partner/dashboard" replace />
+            ) : user.role === 'DELIVERY_PARTNER' ? (
+              <Navigate to="/delivery/dashboard" replace />
+            ) : user.role === 'ADMIN' ? (
+              <Navigate to="/admin/dashboard" replace />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          ) : (
+            <Register />
+          )
+        }
+      />
       <Route path="*" element={<MainLayout />} />
     </Routes>
   );

@@ -49,7 +49,16 @@ public class LaundryPartnerController {
         if (principal.role() != UserRoleType.LAUNDRY_PARTNER) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only Laundry Partners can update their profile");
         }
-        return laundryPartnerService.updateProfile(principal.email(), request.businessName(), request.description(), request.serviceHubAddress());
+        return laundryPartnerService.updateProfile(
+                principal.email(),
+                request.businessName(),
+                request.description(),
+                request.serviceHubAddress(),
+                request.openingTime(),
+                request.closingTime(),
+                request.serviceSlaHours(),
+                request.dailyCapacityLimit()
+        );
     }
 
     @GetMapping("/{email}/profile")

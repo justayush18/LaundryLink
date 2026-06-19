@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { api } from '../../services/api';
 import { FileText, Upload, CheckCircle, AlertTriangle, AlertCircle, X } from 'lucide-react';
 import VeloraMascot from '../Common/VeloraMascot';
+import EmptyState from '../Common/EmptyState';
 
 export default function PartnerDocuments() {
   const [documents, setDocuments] = useState([]);

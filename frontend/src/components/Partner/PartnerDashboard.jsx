@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { api } from '../../services/api';
+import { api, getFriendlyErrorMessage } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { ShoppingBag, Star, CheckCircle, Award } from 'lucide-react';
 import StatCard from '../Common/StatCard';
@@ -22,7 +22,7 @@ export default function PartnerDashboard() {
       const allOrders = await api.orders.getMyOrders(); 
       setOrders(allOrders || []);
     } catch (err) {
-      setError('Failed to fetch partner data');
+      setError(getFriendlyErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -36,11 +36,11 @@ export default function PartnerDashboard() {
     try {
       setError('');
       await api.orders.updateStatus(orderId, { status: newStatus, notes });
-      setSuccess(`Order updated to ${newStatus.replace('_', ' ')}!`);
+      setSuccess(`Order updated to ${getStatusLabel(newStatus)}!`);
       setTimeout(() => setSuccess(''), 4000);
       fetchPartnerDashboard();
     } catch (err) {
-      setError(err.message || 'Status transition failed');
+      setError(getFriendlyErrorMessage(err));
     }
   };
 
@@ -90,6 +90,90 @@ export default function PartnerDashboard() {
 
       {success && <div className="alert alert-success animate-fadeInUp">{success}</div>}
       {error && <div className="alert alert-error animate-fadeInUp">{error}</div>}
+
+      {/* Cancellation Policy Banner/Status */}
+      {profile && (
+        <div className="velora-card animate-fadeInUp" style={{ padding: '1.5rem', marginBottom: '2rem', background: 'var(--bg-secondary)', border: '1px solid var(--sky-blue-light)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+            <div>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--primary-navy)', fontFamily: 'Outfit, sans-serif', margin: '0 0 4px 0' }}>
+                Monthly Cancellation Allowance
+              </h3>
+              <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: '0.85rem' }}>
+                You have a free allowance of 10 cancellations per month. Exceeding this incurs a financial penalty of <strong>₹{profile.cancellationPenaltyPerOrder.toFixed(2)}</strong> per order.
+              </p>
+              <p style={{ color: 'var(--text-secondary)', margin: '4px 0 0 0', fontSize: '0.85rem' }}>
+                Cancellation Rate: <strong style={{ color: 'var(--primary-navy)' }}>{profile.cancellationPercentage.toFixed(1)}%</strong>
+              </p>
+            </div>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ textAlign: 'right' }}>
+                <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--primary-navy)' }}>
+                  {profile.monthlyCancellationsUsed}/10
+                </span>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'block', fontWeight: 600 }}>
+                  Used This Month
+                </span>
+              </div>
+              
+              {/* Warning Badges */}
+              {profile.monthlyCancellationsUsed >= 10 ? (
+                <span className="badge badge-error animate-pulse" style={{ fontSize: '11px', padding: '6px 12px', fontWeight: 700 }}>
+                  Allowance Exceeded (Penalty: ₹{profile.cancellationPenaltyOwed.toFixed(2)} owed)
+                </span>
+              ) : profile.monthlyCancellationsUsed >= 8 ? (
+                <span className="badge badge-warning" style={{ fontSize: '11px', padding: '6px 12px', fontWeight: 700 }}>
+                  Approaching Limit
+                </span>
+              ) : (
+                <span className="badge badge-success" style={{ fontSize: '11px', padding: '6px 12px', fontWeight: 700 }}>
+                  Healthy Status
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Cancellation History Ledger */}
+          {profile.cancellationHistory && profile.cancellationHistory.length > 0 && (
+            <div style={{ marginTop: '1.25rem', borderTop: '1px solid var(--sky-blue-light)', paddingTop: '1.25rem' }}>
+              <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--primary-navy)', margin: '0 0 10px 0' }}>
+                Cancellation History
+              </h4>
+              <div className="table-container" style={{ maxHeight: '180px', overflowY: 'auto' }}>
+                <table style={{ width: '100%', fontSize: '12px' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid var(--sky-blue-light)' }}>
+                      <th style={{ textAlign: 'left', padding: '6px', color: 'var(--primary-navy)' }}>Order ID</th>
+                      <th style={{ textAlign: 'left', padding: '6px', color: 'var(--primary-navy)' }}>Date</th>
+                      <th style={{ textAlign: 'left', padding: '6px', color: 'var(--primary-navy)' }}>Reason</th>
+                      <th style={{ textAlign: 'right', padding: '6px', color: 'var(--primary-navy)' }}>Penalty</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {profile.cancellationHistory.map((item, idx) => (
+                      <tr key={idx} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                        <td style={{ padding: '6px', fontFamily: 'monospace', fontWeight: 600, color: 'var(--primary-navy)' }}>
+                          #{item.orderId.substring(0, 8).toUpperCase()}
+                        </td>
+                        <td style={{ padding: '6px', color: 'var(--text-secondary)' }}>
+                          {new Date(item.cancelledAt * 1000).toLocaleDateString()}
+                        </td>
+                        <td style={{ padding: '6px', color: 'var(--text-secondary)' }}>
+                          {item.reason}
+                        </td>
+                        <td style={{ padding: '6px', textAlign: 'right', fontWeight: 700, color: item.penaltyApplied > 0 ? 'var(--color-error)' : 'var(--color-success)' }}>
+                          {item.penaltyApplied > 0 ? `₹${item.penaltyApplied.toFixed(2)}` : 'Free'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* KPIs Grid */}
       <div className="grid-cols-4" style={{ marginBottom: '2.5rem', gap: '1.25rem' }}>
@@ -205,7 +289,24 @@ export default function PartnerDashboard() {
                         className="velora-btn velora-btn-primary animate-pulse"
                         style={styles.actionBtn}
                       >
-                        Mark Ready
+                        Mark Ready for Pickup
+                      </button>
+                    )}
+
+                    {['ACCEPTED', 'PROCESSING', 'READY_FOR_DELIVERY'].includes(order.status) && (
+                      <button
+                        onClick={() => {
+                          const reason = prompt("Please enter the reason for cancellation:");
+                          if (reason !== null && reason.trim() !== '') {
+                            handleUpdateStatus(order.orderId, 'CANCELLED', reason);
+                          } else if (reason !== null) {
+                            alert("Cancellation reason is required.");
+                          }
+                        }}
+                        className="velora-btn velora-btn-secondary"
+                        style={{ ...styles.actionBtn, marginTop: '8px', borderColor: 'var(--color-error)', color: 'var(--color-error)' }}
+                      >
+                        Cancel Order
                       </button>
                     )}
 

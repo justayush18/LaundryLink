@@ -30,6 +30,12 @@ public class PartnerEntity extends AuditedEntity {
     private double reputationScore = 0.0;
     private int totalReviews = 0;
 
+    private String openingTime = "09:00";
+    private String closingTime = "21:00";
+    private int serviceSlaHours = 6;
+    private int dailyCapacityLimit = 20;
+    private Double cancellationPenaltyPerOrder = 200.0;
+
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "partner_zipcodes", joinColumns = @JoinColumn(name = "partner_id"))
     @Column(name = "zip_code")
@@ -151,5 +157,45 @@ public class PartnerEntity extends AuditedEntity {
 
     public void setPricingRateCard(List<RateCardItemEntity> pricingRateCard) {
         this.pricingRateCard = pricingRateCard;
+    }
+
+    public String getOpeningTime() {
+        return openingTime;
+    }
+
+    public void setOpeningTime(String openingTime) {
+        this.openingTime = openingTime;
+    }
+
+    public String getClosingTime() {
+        return closingTime;
+    }
+
+    public void setClosingTime(String closingTime) {
+        this.closingTime = closingTime;
+    }
+
+    public int getServiceSlaHours() {
+        return serviceSlaHours;
+    }
+
+    public void setServiceSlaHours(int serviceSlaHours) {
+        this.serviceSlaHours = serviceSlaHours;
+    }
+
+    public int getDailyCapacityLimit() {
+        return dailyCapacityLimit;
+    }
+
+    public void setDailyCapacityLimit(int dailyCapacityLimit) {
+        this.dailyCapacityLimit = dailyCapacityLimit;
+    }
+
+    public double getCancellationPenaltyPerOrder() {
+        return cancellationPenaltyPerOrder != null ? cancellationPenaltyPerOrder : 200.0;
+    }
+
+    public void setCancellationPenaltyPerOrder(double cancellationPenaltyPerOrder) {
+        this.cancellationPenaltyPerOrder = cancellationPenaltyPerOrder;
     }
 }

@@ -19,6 +19,7 @@ import {
   X
 } from 'lucide-react';
 import NotificationCenter from '../Notifications/NotificationCenter';
+import VeloraMascot from './VeloraMascot';
 
 export default function FloatingNav() {
   const { user, logout } = useAuth();
@@ -27,12 +28,22 @@ export default function FloatingNav() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [profileOpen, setProfileOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const profileDropdownRef = useRef(null);
+  const desktopProfileRef = useRef(null);
+  const mobileProfileRef = useRef(null);
+
+  const handleLogout = () => {
+    logout();
+    setProfileOpen(false);
+    navigate('/login');
+  };
 
   // Close dropdown on click outside
   useEffect(() => {
     function handleClickOutside(event) {
-      if (profileDropdownRef.current && !profileDropdownRef.current.contains(event.target)) {
+      const clickedOutsideDesktop = !desktopProfileRef.current || !desktopProfileRef.current.contains(event.target);
+      const clickedOutsideMobile = !mobileProfileRef.current || !mobileProfileRef.current.contains(event.target);
+      
+      if (clickedOutsideDesktop && clickedOutsideMobile) {
         setProfileOpen(false);
       }
     }
@@ -110,6 +121,7 @@ export default function FloatingNav() {
         <div className="nav-container">
           {/* Logo */}
           <div onClick={handleLogoClick} className="nav-logo" style={{ cursor: 'pointer' }}>
+            <VeloraMascot size={28} state="happy" />
             <span className="logo-text">Velora</span>
             {user && (
               <span className="nav-role-badge">
@@ -117,6 +129,7 @@ export default function FloatingNav() {
               </span>
             )}
           </div>
+
 
           {/* Navigation Links */}
           <nav className="nav-links">
@@ -142,7 +155,7 @@ export default function FloatingNav() {
                 <NotificationCenter unreadCount={unreadCount} setUnreadCount={setUnreadCount} />
                 
                 {/* Profile Dropdown */}
-                <div ref={profileDropdownRef} className="profile-dropdown-container">
+                <div ref={desktopProfileRef} className="profile-dropdown-container">
                   <button onClick={() => setProfileOpen(!profileOpen)} className="profile-trigger">
                     <div className="profile-avatar">
                       <User size={16} />
@@ -158,7 +171,7 @@ export default function FloatingNav() {
                         <span className="dropdown-user-email">{user.email}</span>
                       </div>
                       <div className="dropdown-divider"></div>
-                      <button onClick={logout} className="dropdown-logout-btn">
+                      <button onClick={handleLogout} className="dropdown-logout-btn">
                         <LogOut size={16} />
                         <span>Sign Out</span>
                       </button>
@@ -200,7 +213,7 @@ export default function FloatingNav() {
             })}
             
             {/* More / Profile button for Mobile */}
-            <div ref={profileDropdownRef} style={{ position: 'relative' }}>
+            <div ref={mobileProfileRef} style={{ position: 'relative' }}>
               <button 
                 onClick={() => setProfileOpen(!profileOpen)} 
                 className={`mobile-nav-item ${profileOpen ? 'active' : ''}`}
@@ -222,7 +235,7 @@ export default function FloatingNav() {
                     <NotificationCenter unreadCount={unreadCount} setUnreadCount={setUnreadCount} />
                   </div>
                   <div className="dropdown-divider"></div>
-                  <button onClick={logout} className="dropdown-logout-btn" style={{ width: '100%', textAlign: 'left' }}>
+                  <button onClick={handleLogout} className="dropdown-logout-btn" style={{ width: '100%', textAlign: 'left' }}>
                     <LogOut size={16} />
                     <span>Sign Out</span>
                   </button>
@@ -237,7 +250,10 @@ export default function FloatingNav() {
       {!user && (
         <header className="mobile-public-header">
           <div className="nav-container">
-            <span onClick={handleLogoClick} className="logo-text">Velora</span>
+            <div onClick={handleLogoClick} className="nav-logo" style={{ cursor: 'pointer' }}>
+              <VeloraMascot size={24} state="happy" />
+              <span className="logo-text" style={{ fontSize: '1.25rem' }}>Velora</span>
+            </div>
             <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="menu-toggle">
               {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
             </button>

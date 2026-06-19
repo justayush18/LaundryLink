@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { api } from '../../services/api';
-import { Search, ShieldAlert, Check, UserMinus, UserCheck, RefreshCw } from 'lucide-react';
+import { api, getFriendlyErrorMessage } from '../../services/api';
+import { Search, ShieldAlert, Check, UserMinus, UserCheck, RefreshCw, Trash2 } from 'lucide-react';
 
 export default function AdminUsers() {
   const [users, setUsers] = useState([]);
@@ -16,7 +16,7 @@ export default function AdminUsers() {
       const data = await api.admin.getUsers();
       setUsers(data || []);
     } catch (err) {
-      setError('Failed to fetch system users');
+      setError(getFriendlyErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -37,7 +37,7 @@ export default function AdminUsers() {
       const results = await api.admin.searchUsers({ email: searchTerm, displayName: searchTerm });
       setUsers(results || []);
     } catch (err) {
-      setError('Search query failed');
+      setError(getFriendlyErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -53,7 +53,7 @@ export default function AdminUsers() {
       setTimeout(() => setSuccess(''), 4000);
       fetchUsers();
     } catch (err) {
-      setError(err.message || 'Status update failed');
+      setError(getFriendlyErrorMessage(err));
     } finally {
       setSubmitting(false);
     }
@@ -69,7 +69,26 @@ export default function AdminUsers() {
       setTimeout(() => setSuccess(''), 4000);
       fetchUsers();
     } catch (err) {
-      setError(err.message || 'Role change failed');
+      setError(getFriendlyErrorMessage(err));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeleteUser = async (email, displayName) => {
+    const confirmed = window.confirm(`Are you absolutely sure you want to delete user ${displayName} (${email})? This action is permanent and cannot be undone.`);
+    if (!confirmed) return;
+
+    setSubmitting(true);
+    setError('');
+    setSuccess('');
+    try {
+      await api.admin.deleteUser(email);
+      setSuccess(`User ${displayName} has been successfully deleted.`);
+      setTimeout(() => setSuccess(''), 4000);
+      fetchUsers();
+    } catch (err) {
+      setError(getFriendlyErrorMessage(err));
     } finally {
       setSubmitting(false);
     }
@@ -181,32 +200,53 @@ export default function AdminUsers() {
                     </td>
                     <td>
                       {u.role !== 'ADMIN' && (
-                        <button
-                          onClick={() => handleToggleStatus(u.email, u.active)}
-                          className={`velora-btn ${u.active ? 'velora-btn-secondary' : 'velora-btn-primary'}`}
-                          disabled={submitting}
-                          style={{
-                            padding: '6px 14px',
-                            fontSize: '0.8rem',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            height: 'auto',
-                            borderColor: u.active ? '#F87171' : undefined,
-                            color: u.active ? '#EF4444' : undefined,
-                            background: u.active ? '#FEF2F2' : undefined,
-                          }}
-                        >
-                          {u.active ? (
-                            <>
-                              <UserMinus size={14} /> Block
-                            </>
-                          ) : (
-                            <>
-                              <UserCheck size={14} /> Activate
-                            </>
-                          )}
-                        </button>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button
+                            onClick={() => handleToggleStatus(u.email, u.active)}
+                            className={`velora-btn ${u.active ? 'velora-btn-secondary' : 'velora-btn-primary'}`}
+                            disabled={submitting}
+                            style={{
+                              padding: '6px 14px',
+                              fontSize: '0.8rem',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              height: 'auto',
+                              borderColor: u.active ? '#F87171' : undefined,
+                              color: u.active ? '#EF4444' : undefined,
+                              background: u.active ? '#FEF2F2' : undefined,
+                            }}
+                          >
+                            {u.active ? (
+                              <>
+                                <UserMinus size={14} /> Block
+                              </>
+                            ) : (
+                              <>
+                                <UserCheck size={14} /> Activate
+                              </>
+                            )}
+                          </button>
+                          
+                          <button
+                            onClick={() => handleDeleteUser(u.email, u.displayName)}
+                            className="velora-btn velora-btn-primary"
+                            disabled={submitting}
+                            style={{
+                              padding: '6px 14px',
+                              fontSize: '0.8rem',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              height: 'auto',
+                              borderColor: '#DC2626',
+                              color: '#FFFFFF',
+                              background: '#DC2626',
+                            }}
+                          >
+                            <Trash2 size={14} /> Delete
+                          </button>
+                        </div>
                       )}
                     </td>
                   </tr>

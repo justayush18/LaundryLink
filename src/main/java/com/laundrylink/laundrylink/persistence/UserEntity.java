@@ -96,4 +96,14 @@ public class UserEntity extends AuditedEntity {
     public void setActive(boolean active) {
         this.active = active;
     }
+
+    private boolean online = false;
+
+    public boolean isOnline() {
+        return online;
+    }
+
+    public void setOnline(boolean online) {
+        this.online = online;
+    }
 }

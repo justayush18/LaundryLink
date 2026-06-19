@@ -18,6 +18,7 @@ public record OrderView(
         String statusNotes,
         long createdAt,
         long updatedAt,
-        List<StatusTransition> history
+        List<StatusTransition> history,
+        boolean acceptedByRider
 ) {
 }

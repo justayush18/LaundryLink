@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { api } from '../../services/api';
+import { api, getFriendlyErrorMessage } from '../../services/api';
 import { Search, Eye, Filter, Calendar, ClipboardList } from 'lucide-react';
 import EmptyState from '../Common/EmptyState';
 
@@ -10,6 +10,7 @@ export default function PartnerOrders() {
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   const fetchOrders = async () => {
     setLoading(true);
@@ -17,7 +18,7 @@ export default function PartnerOrders() {
       const data = await api.orders.getMyOrders();
       setOrders(data || []);
     } catch (err) {
-      setError('Failed to fetch orders ledger');
+      setError(getFriendlyErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -26,6 +27,25 @@ export default function PartnerOrders() {
   useEffect(() => {
     fetchOrders();
   }, []);
+
+  const handleUpdateStatus = async (orderId, newStatus, notes) => {
+    try {
+      setError('');
+      setSuccess('');
+      await api.orders.updateStatus(orderId, { status: newStatus, notes });
+      setSuccess(`Order successfully updated to ${getStatusLabel(newStatus)}!`);
+      setTimeout(() => setSuccess(''), 4000);
+      await fetchOrders();
+      try {
+        const detailed = await api.orders.getOrder(orderId);
+        setSelectedOrder(detailed);
+      } catch (e) {
+        setSelectedOrder(prev => prev && prev.orderId === orderId ? { ...prev, status: newStatus } : prev);
+      }
+    } catch (err) {
+      setError(getFriendlyErrorMessage(err));
+    }
+  };
 
   const getFilteredOrders = () => {
     return orders.filter((o) => {
@@ -80,6 +100,7 @@ export default function PartnerOrders() {
         </p>
       </div>
 
+      {success && <div className="alert alert-success animate-fadeInUp">{success}</div>}
       {error && <div className="alert alert-error animate-fadeInUp">{error}</div>}
 
       <div style={styles.grid}>
@@ -188,6 +209,63 @@ export default function PartnerOrders() {
               </div>
 
               <div style={styles.divider}></div>
+
+              {/* Status Update Actions */}
+              {['PLACED', 'PICKED_UP', 'PROCESSING'].includes(selectedOrder.status) && (
+                <div style={{ marginBottom: '16px' }}>
+                  <p style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-secondary)', marginBottom: '10px', textTransform: 'uppercase' }}>
+                    Fulfillment Actions
+                  </p>
+                  
+                  {selectedOrder.status === 'PLACED' && (
+                    <button
+                      onClick={() => handleUpdateStatus(selectedOrder.orderId, 'ACCEPTED', 'Accepted by Laundry Partner.')}
+                      className="velora-btn velora-btn-primary animate-pulse"
+                      style={{ width: '100%', padding: '10px', fontSize: '13px', borderRadius: '12px' }}
+                    >
+                      Accept Order
+                    </button>
+                  )}
+
+                  {selectedOrder.status === 'PICKED_UP' && (
+                    <button
+                      onClick={() => handleUpdateStatus(selectedOrder.orderId, 'PROCESSING', 'Laundry is now processing.')}
+                      className="velora-btn velora-btn-secondary"
+                      style={{ width: '100%', padding: '10px', fontSize: '13px', borderRadius: '12px' }}
+                    >
+                      Start Processing
+                    </button>
+                  )}
+
+                  {selectedOrder.status === 'PROCESSING' && (
+                    <button
+                      onClick={() => handleUpdateStatus(selectedOrder.orderId, 'READY_FOR_DELIVERY', 'Laundry clean & folded. Ready for delivery.')}
+                      className="velora-btn velora-btn-primary animate-pulse"
+                      style={{ width: '100%', padding: '10px', fontSize: '13px', borderRadius: '12px' }}
+                    >
+                      Mark Ready for Pickup
+                    </button>
+                  )}
+
+                  {['ACCEPTED', 'PROCESSING', 'READY_FOR_DELIVERY'].includes(selectedOrder.status) && (
+                    <button
+                      onClick={() => {
+                        const reason = prompt("Please enter the reason for cancellation:");
+                        if (reason !== null && reason.trim() !== '') {
+                          handleUpdateStatus(selectedOrder.orderId, 'CANCELLED', reason);
+                        } else if (reason !== null) {
+                          alert("Cancellation reason is required.");
+                        }
+                      }}
+                      className="velora-btn velora-btn-secondary"
+                      style={{ width: '100%', padding: '10px', fontSize: '13px', borderRadius: '12px', marginTop: '8px', borderColor: 'var(--color-error)', color: 'var(--color-error)' }}
+                    >
+                      Cancel Order
+                    </button>
+                  )}
+                  <div style={styles.divider}></div>
+                </div>
+              )}
 
               <div>
                 <p style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-secondary)', marginBottom: '12px', textTransform: 'uppercase' }}>TIMELINE LOGS</p>

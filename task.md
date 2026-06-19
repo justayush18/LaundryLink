@@ -34,10 +34,28 @@
 - [x] Redesign `ReviewModal.jsx`
 
 ## Phase 7: Partner Portal
-- [x] Redesign `PartnerDashboard.jsx`
-- [x] Redesign `PartnerOrders.jsx`
-- [x] Redesign `PartnerPricing.jsx`
-- [x] Redesign `PartnerDocuments.jsx`
+- [x] Backend Persistence Layer
+  - [x] Add `cancellationPenaltyPerOrder` to `PartnerEntity.java`
+- [x] Backend API & DTO Layer
+  - [x] Create `CancellationEvent.java` record
+  - [x] Update `PartnerProfileView.java` with new fields
+  - [x] Update `AdminPartnerView.java` with new fields
+- [x] Backend Service Layer
+  - [x] Prepend `"Cancelled by laundry partner: "` to notes in `OrderService.java` when partner cancels accepted order
+  - [x] Implement `getMonthlyCancellationsCount`, `getCancellationPercentage`, `getCancellationHistory` in `LaundryPartnerService.java`
+  - [x] Update `mapToView` in `LaundryPartnerService.java`
+  - [x] Integrate cancellation stats mapping into `AdminService.java`
+  - [x] Implement `updateCancellationPenalty` in `AdminService.java`
+- [x] Backend Controller Layer
+  - [x] Add `PUT /partners/{email}/cancellation-penalty` endpoint to `AdminController.java`
+- [x] Frontend Implementation
+  - [x] Register new endpoint in `api.js`
+  - [x] Integrate cancellation counter, warnings, and history in `PartnerDashboard.jsx`
+  - [x] Add "Cancel Order" action to `PartnerDashboard.jsx` and `PartnerOrders.jsx`
+  - [x] Add cancellation stats display and penalty configuration to `AdminPartners.jsx`
+- [x] Verification & Tests
+  - [x] Run backend tests (`./mvnw.cmd test`)
+  - [x] Run frontend build (`npm run build`)
 
 ## Phase 8: Delivery Portal
 - [x] Redesign `DeliveryDashboard.jsx`
