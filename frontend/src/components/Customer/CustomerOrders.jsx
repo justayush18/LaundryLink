@@ -10,6 +10,7 @@ export default function CustomerOrders() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
+  const [cancelModalData, setCancelModalData] = useState(null); // { orderId, estimate }
 
   const fetchOrders = async () => {
     setLoading(true);
@@ -36,16 +37,21 @@ export default function CustomerOrders() {
     try {
       setActionLoading(true);
       const estimate = await api.orders.getCancellationEstimate(orderId);
-      
-      const confirmMsg = `${estimate.message}\n\n` +
-                         `Cancellation Fee: ${estimate.cancellationChargePercentage}%\n` +
-                         `Cancellation Charge: ₹${estimate.cancellationFee.toFixed(2)}\n` +
-                         `Refund Amount: ₹${estimate.refundAmount.toFixed(2)}\n\n` +
-                         `Do you want to continue and cancel this order?`;
-                         
-      if (!window.confirm(confirmMsg)) return;
+      setCancelModalData({ orderId, estimate });
+    } catch (err) {
+      alert(err.message || 'Failed to calculate cancellation charges');
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
+  const executeCancelOrder = async () => {
+    if (!cancelModalData) return;
+    const { orderId } = cancelModalData;
+    try {
+      setActionLoading(true);
       await api.orders.updateStatus(orderId, { status: 'CANCELLED', notes: 'Cancelled by customer' });
+      setCancelModalData(null);
       fetchOrders();
       if (selectedOrder && selectedOrder.orderId === orderId) {
         setSelectedOrder(prev => ({ ...prev, status: 'CANCELLED' }));
@@ -278,6 +284,87 @@ export default function CustomerOrders() {
           )}
         </div>
       </div>
+
+      {cancelModalData && (
+        <div style={styles.modalOverlay}>
+          <div className="velora-card animate-scaleIn" style={styles.modalContent}>
+            <div style={styles.modalHeader}>
+              <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--primary-navy)', fontFamily: 'Outfit, sans-serif', margin: 0 }}>
+                Cancel Order
+              </h3>
+              <button onClick={() => setCancelModalData(null)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '4px', fontSize: '16px', fontWeight: 'bold' }}>
+                ✕
+              </button>
+            </div>
+            
+            <div style={styles.modalBody}>
+              <div style={{ textAlign: 'center', padding: '10px 0' }}>
+                <VeloraMascot state="thinking" size={90} style={{ marginBottom: '1rem' }} />
+                <p style={{ color: 'var(--text-secondary)', fontSize: '14px', lineHeight: 1.5, marginBottom: '20px', fontWeight: 600 }}>
+                  {cancelModalData.estimate.message}
+                </p>
+                
+                {/* Charges & refund breakdown card */}
+                <div style={{
+                  background: 'var(--bg-primary)',
+                  border: '1px solid var(--sky-blue)',
+                  borderRadius: '16px',
+                  padding: '16px',
+                  marginBottom: '20px',
+                  textAlign: 'left',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                    <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>Cancellation Penalty Rate:</span>
+                    <span style={{ color: 'var(--primary-navy)', fontWeight: 700 }}>
+                      {cancelModalData.estimate.cancellationChargePercentage}%
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                    <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>Penalty Charge Fee:</span>
+                    <span style={{ color: 'var(--color-error)', fontWeight: 800 }}>
+                      ₹{cancelModalData.estimate.cancellationFee.toFixed(2)}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', paddingTop: '8px', borderTop: '1px solid var(--sky-blue-light)' }}>
+                    <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>Refundable Amount:</span>
+                    <span style={{ color: 'var(--color-success)', fontWeight: 800 }}>
+                      ₹{cancelModalData.estimate.refundAmount.toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+
+                <p style={{ color: 'var(--primary-navy)', fontSize: '13px', fontWeight: 800, margin: '0 0 4px 0' }}>
+                  ⚠️ Do you want to continue and cancel this order?
+                </p>
+              </div>
+            </div>
+            
+            <div style={styles.modalFooter}>
+              <button
+                type="button"
+                onClick={() => setCancelModalData(null)}
+                className="velora-btn velora-btn-secondary"
+                disabled={actionLoading}
+                style={{ justifyContent: 'center', minWidth: '100px' }}
+              >
+                Keep Order
+              </button>
+              <button
+                type="button"
+                onClick={executeCancelOrder}
+                className="velora-btn velora-btn-primary"
+                disabled={actionLoading}
+                style={{ background: 'var(--color-error)', borderColor: 'var(--color-error)', color: '#FFFFFF', justifyContent: 'center', minWidth: '120px' }}
+              >
+                {actionLoading ? 'Cancelling...' : 'Cancel Order'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -396,5 +483,49 @@ const styles = {
     justifyContent: 'center',
     padding: '80px 0',
     textAlign: 'center',
+  },
+  modalOverlay: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(47, 65, 86, 0.4)',
+    backdropFilter: 'blur(4px)',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 2000,
+    padding: '20px',
+  },
+  modalContent: {
+    width: '100%',
+    maxWidth: '440px',
+    padding: '2rem',
+    borderRadius: '24px',
+    background: '#FFFFFF',
+    boxShadow: 'var(--shadow-xl)',
+    border: '1px solid var(--sky-blue-light)',
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  modalHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderBottom: '2px solid var(--bg-secondary)',
+    paddingBottom: '12px',
+    marginBottom: '16px',
+  },
+  modalBody: {
+    fontSize: '14px',
+    lineHeight: 1.5,
+    color: 'var(--text-secondary)',
+  },
+  modalFooter: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    gap: '12px',
+    marginTop: '24px',
   },
 };
