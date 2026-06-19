@@ -157,7 +157,7 @@ export default function PartnerOrders() {
                 <tbody>
                   {getFilteredOrders().map((o) => (
                     <tr key={o.orderId}>
-                      <td style={{ fontFamily: 'monospace', fontSize: '12px', fontWeight: 600 }}>#{o.orderId.substring(0, 8).toUpperCase()}</td>
+                      <td style={{ fontFamily: 'monospace', fontSize: '12px', fontWeight: 600 }}>#{o.orderId.substring(0, 7).toUpperCase()}</td>
                       <td style={{ fontSize: '13px', fontWeight: 600, color: 'var(--primary-navy)' }}>{o.customerEmail}</td>
                       <td>{getStatusBadge(o.status)}</td>
                       <td>
@@ -186,7 +186,7 @@ export default function PartnerOrders() {
           {selectedOrder ? (
             <div style={styles.inspectCard}>
               <h4 style={{ fontFamily: 'monospace', fontSize: '13px', margin: '0 0 12px 0', color: 'var(--primary-teal)', fontWeight: 800 }}>
-                TICKET: #{selectedOrder.orderId.toUpperCase()}
+                TICKET: #{selectedOrder.orderId.substring(0, 7).toUpperCase()}
               </h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '13px', color: 'var(--primary-navy)', fontWeight: 500 }}>
                 <p style={{ margin: 0 }}><strong>Customer:</strong> {selectedOrder.customerEmail}</p>

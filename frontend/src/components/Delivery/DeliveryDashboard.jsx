@@ -483,7 +483,7 @@ export default function DeliveryDashboard() {
                 <div style={styles.runHeader}>
                   <div>
                     <span style={{ fontSize: '11px', fontWeight: 700, fontFamily: 'monospace', color: 'var(--primary-navy)' }}>
-                      RUN: #{task.orderId.substring(0, 8).toUpperCase()}
+                      RUN: #{task.orderId.substring(0, 7).toUpperCase()}
                     </span>
                     <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: '4px 0 0 0', fontWeight: 600 }}>
                       Client: {task.customerEmail}

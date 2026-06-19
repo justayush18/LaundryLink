@@ -199,7 +199,7 @@ export default function PlaceOrderWizard({ isOpen, onClose, onOrderPlaced }) {
               <span style={step === 2 ? styles.activeStepLabel : {}}>2. Select Items</span>
             </div>
             <div style={{ ...styles.stepIndicator, color: step >= 3 ? 'var(--primary-teal)' : 'var(--text-secondary)' }}>
-              <span style={step === 3 ? styles.activeStepLabel : {}}>3. Fulfillment</span>
+              <span style={step === 3 ? styles.activeStepLabel : {}}>3. Address</span>
             </div>
           </div>
         )}

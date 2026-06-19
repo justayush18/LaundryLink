@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../services/api';
 import { CreditCard, FileText, CheckCircle2, Clock, XCircle } from 'lucide-react';
+import CheckoutModal from './CheckoutModal';
 
 export default function CustomerPayments() {
   const [orders, setOrders] = useState([]);
@@ -10,11 +11,16 @@ export default function CustomerPayments() {
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [checkoutOrderId, setCheckoutOrderId] = useState('');
+  const [checkoutTotalCost, setCheckoutTotalCost] = useState(0);
+
   const fetchPaymentData = async () => {
     setLoading(true);
     try {
       const data = await api.orders.getMyOrders();
-      setOrders(data || []);
+      const sortedData = (data || []).sort((a, b) => b.createdAt - a.createdAt);
+      setOrders(sortedData);
     } catch (err) {
       setError('Failed to load transaction data');
     } finally {
@@ -26,22 +32,10 @@ export default function CustomerPayments() {
     fetchPaymentData();
   }, []);
 
-  const handlePayNow = async (orderId, totalCost) => {
-    try {
-      setError('');
-      const initReq = { orderId, paymentMethod: 'RAZORPAY' };
-      const payment = await api.payments.initiate(initReq);
-      
-      const processReq = { transactionId: 'TXN_' + Math.random().toString(36).substr(2, 9).toUpperCase(), simulateSuccess: true };
-      await api.payments.process(payment.paymentId, processReq);
-      
-      setSuccessMsg(`Payment of ₹${totalCost} successful!`);
-      setTimeout(() => setSuccessMsg(''), 4000);
-      fetchPaymentData();
-      setSelectedInvoice(null);
-    } catch (err) {
-      setError(err.message || 'Payment failed');
-    }
+  const handlePayNow = (orderId, totalCost) => {
+    setCheckoutOrderId(orderId);
+    setCheckoutTotalCost(totalCost);
+    setCheckoutOpen(true);
   };
 
   const handleViewInvoice = async (orderId) => {
@@ -97,7 +91,7 @@ export default function CustomerPayments() {
                 <tbody>
                   {orders.map((o) => (
                     <tr key={o.orderId}>
-                      <td style={{ fontFamily: 'monospace', fontSize: '12px', fontWeight: 600 }}>#{o.orderId.substring(0, 8).toUpperCase()}</td>
+                      <td style={{ fontFamily: 'monospace', fontSize: '12px', fontWeight: 600 }}>#{o.orderId.substring(0, 7).toUpperCase()}</td>
                       <td style={{ fontWeight: 700 }}>₹{o.totalCost}</td>
                       <td>
                         {o.paymentId ? (
@@ -162,10 +156,10 @@ export default function CustomerPayments() {
               </div>
 
               <div style={styles.invoiceMetadata}>
-                <p><strong>Invoice ID:</strong> {selectedInvoice.id}</p>
-                <p><strong>Order ID:</strong> <span style={{ fontFamily: 'monospace' }}>{selectedInvoice.orderId}</span></p>
-                <p><strong>Payment ID:</strong> <span style={{ fontFamily: 'monospace' }}>{selectedInvoice.paymentId}</span></p>
-                <p><strong>Billing Date:</strong> {new Date(selectedInvoice.generatedAt * 1000).toLocaleString()}</p>
+                <p><strong>Invoice ID:</strong> #{selectedInvoice.invoiceId ? selectedInvoice.invoiceId.substring(0, 7).toUpperCase() : 'N/A'}</p>
+                <p><strong>Order ID:</strong> <span style={{ fontFamily: 'monospace' }}>#{selectedInvoice.orderId ? selectedInvoice.orderId.substring(0, 7).toUpperCase() : 'N/A'}</span></p>
+                <p><strong>Payment ID:</strong> <span style={{ fontFamily: 'monospace' }}>#{selectedInvoice.paymentId ? selectedInvoice.paymentId.substring(0, 7).toUpperCase() : 'N/A'}</span></p>
+                <p><strong>Billing Date:</strong> {selectedInvoice.generatedAt ? new Date(selectedInvoice.generatedAt * 1000).toLocaleString() : 'N/A'}</p>
               </div>
 
               <div style={styles.invoiceDivider}></div>
@@ -202,6 +196,17 @@ export default function CustomerPayments() {
           )}
         </div>
       </div>
+
+      <CheckoutModal
+        isOpen={checkoutOpen}
+        onClose={() => setCheckoutOpen(false)}
+        orderId={checkoutOrderId}
+        totalCost={checkoutTotalCost}
+        onPaymentComplete={() => {
+          fetchPaymentData();
+          setSelectedInvoice(null);
+        }}
+      />
     </div>
   );
 }

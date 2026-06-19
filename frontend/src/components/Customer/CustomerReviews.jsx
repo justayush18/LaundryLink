@@ -75,7 +75,7 @@ export default function CustomerReviews() {
                       To: {r.partnerEmail}
                     </h4>
                     <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontFamily: 'monospace', fontWeight: 600 }}>
-                      Order Ref: #{r.orderId.substring(0, 8).toUpperCase()}
+                      Order Ref: #{r.orderId.substring(0, 7).toUpperCase()}
                     </span>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>

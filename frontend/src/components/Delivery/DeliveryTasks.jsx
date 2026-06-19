@@ -94,7 +94,7 @@ export default function DeliveryTasks() {
                 dashboard.pendingPickups.map((p) => (
                   <div key={p.orderId} className="velora-card card-hover" style={styles.taskCard}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                      <span style={styles.ref}>REF: #{p.orderId.substring(0, 8).toUpperCase()}</span>
+                      <span style={styles.ref}>REF: #{p.orderId.substring(0, 7).toUpperCase()}</span>
                       <span style={{ fontSize: '12px', color: 'var(--primary-teal)', fontWeight: 800 }}>Payout: ₹{p.totalCost}</span>
                     </div>
                     <p style={styles.address}><strong>From:</strong> {p.pickupAddress}</p>
@@ -133,7 +133,7 @@ export default function DeliveryTasks() {
                 dashboard.pendingDeliveries.map((d) => (
                   <div key={d.orderId} className="velora-card card-hover" style={styles.taskCard}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                      <span style={styles.ref}>REF: #{d.orderId.substring(0, 8).toUpperCase()}</span>
+                      <span style={styles.ref}>REF: #{d.orderId.substring(0, 7).toUpperCase()}</span>
                       <span style={{ fontSize: '12px', color: 'var(--primary-teal)', fontWeight: 800 }}>Payout: ₹{d.totalCost}</span>
                     </div>
                     <p style={styles.address}><strong>To:</strong> {d.deliveryAddress}</p>

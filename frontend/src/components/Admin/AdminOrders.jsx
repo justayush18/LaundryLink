@@ -163,7 +163,7 @@ export default function AdminOrders() {
                   {orders.map((o) => (
                     <tr key={o.orderId}>
                       <td style={{ fontFamily: 'monospace', fontSize: '0.8rem', color: 'var(--primary-navy)', fontWeight: 600 }}>
-                        #{o.orderId.substring(0, 8)}
+                        #{o.orderId.substring(0, 7).toUpperCase()}
                       </td>
                       <td style={{ fontSize: '0.85rem', color: 'var(--text-primary)' }}>{o.customerEmail}</td>
                       <td style={{ fontSize: '0.85rem', color: 'var(--text-primary)' }}>{o.partnerEmail}</td>
@@ -194,7 +194,7 @@ export default function AdminOrders() {
           {selectedOrder ? (
             <div className="velora-card" style={styles.inspectCard}>
               <h4 style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.95rem', color: 'var(--primary-teal)', margin: '0 0 12px 0', fontWeight: 700 }}>
-                Audit Ref: #{selectedOrder.orderId}
+                Audit Ref: #{selectedOrder.orderId.substring(0, 7).toUpperCase()}
               </h4>
               <div style={{ margin: '14px 0', fontSize: '0.85rem', display: 'flex', flexDirection: 'column', gap: '8px', color: 'var(--text-secondary)' }}>
                 <p style={{ margin: 0 }}><strong style={{ color: 'var(--primary-navy)' }}>Customer:</strong> {selectedOrder.customerEmail}</p>

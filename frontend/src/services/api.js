@@ -29,6 +29,11 @@ async function request(endpoint, { method = 'GET', body = null, headers = {} } =
   const data = await response.json().catch(() => null);
 
   if (!response.ok) {
+    if (response.status === 401 && !endpoint.includes('/auth/login') && !endpoint.includes('/auth/register')) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/login';
+    }
     const errorMsg = (data && data.message) || response.statusText || 'An error occurred';
     throw new Error(errorMsg);
   }
@@ -72,7 +77,13 @@ export const api = {
     getOrder: (orderId) => request(`/api/v1/orders/${orderId}`),
     getMyOrders: () => request('/api/v1/orders/history'),
     getHistory: (orderId) => request(`/api/v1/orders/history`), // List of order overview and count
-    updateStatus: (orderId, statusUpdate) => request(`/api/v1/orders/${orderId}/status`, { method: 'PUT', body: statusUpdate }),
+    updateStatus: (orderId, statusUpdate) => {
+      const payload = {
+        status: statusUpdate.status,
+        statusNotes: statusUpdate.statusNotes || statusUpdate.notes || ''
+      };
+      return request(`/api/v1/orders/${orderId}/status`, { method: 'PUT', body: payload });
+    },
     assignDelivery: (orderId, assignRequest) => request(`/api/v1/orders/${orderId}/assign-delivery`, { method: 'PUT', body: assignRequest }),
     getCancellationEstimate: (orderId) => request(`/api/v1/orders/${orderId}/cancellation-estimate`),
   },

@@ -154,7 +154,7 @@ export default function PartnerDashboard() {
                     {profile.cancellationHistory.map((item, idx) => (
                       <tr key={idx} style={{ borderBottom: '1px solid var(--border-color)' }}>
                         <td style={{ padding: '6px', fontFamily: 'monospace', fontWeight: 600, color: 'var(--primary-navy)' }}>
-                          #{item.orderId.substring(0, 8).toUpperCase()}
+                          #{item.orderId.substring(0, 7).toUpperCase()}
                         </td>
                         <td style={{ padding: '6px', color: 'var(--text-secondary)' }}>
                           {new Date(item.cancelledAt * 1000).toLocaleDateString()}
@@ -223,7 +223,7 @@ export default function PartnerDashboard() {
               <div key={order.orderId} className="velora-card card-hover" style={styles.orderCard}>
                 <div style={styles.cardHeader}>
                   <span style={{ fontSize: '12px', fontWeight: 700, fontFamily: 'monospace', color: 'var(--primary-navy)' }}>
-                    #{order.orderId.substring(0, 8).toUpperCase()}
+                    #{order.orderId.substring(0, 7).toUpperCase()}
                   </span>
                   <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600 }}>
                     {new Date(order.createdAt * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

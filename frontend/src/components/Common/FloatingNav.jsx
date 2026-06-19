@@ -72,6 +72,7 @@ export default function FloatingNav() {
         return [
           { to: '/customer/dashboard', label: 'Dashboard', icon: LayoutDashboard },
           { to: '/customer/orders', label: 'Orders', icon: ShoppingBag },
+          { to: '/customer/order-history', label: 'Order History', icon: ClipboardList },
           { to: '/customer/payments', label: 'Payments', icon: CreditCard },
           { to: '/customer/reviews', label: 'Reviews', icon: Star },
         ];
@@ -197,7 +198,7 @@ export default function FloatingNav() {
       {user && (
         <nav className="floating-nav-mobile animate-slideIn">
           <div className="mobile-nav-container">
-            {links.slice(0, 4).map((link) => {
+            {links.slice(0, 5).map((link) => {
               const Icon = link.icon;
               const isActive = location.pathname === link.to;
               return (

@@ -26,6 +26,7 @@ export default function Sidebar() {
         return [
           { to: '/customer/dashboard', label: 'Dashboard', icon: LayoutDashboard },
           { to: '/customer/orders', label: 'My Orders', icon: ShoppingBag },
+          { to: '/customer/order-history', label: 'Order History', icon: ClipboardList },
           { to: '/customer/payments', label: 'My Payments', icon: CreditCard },
           { to: '/customer/reviews', label: 'Reviews', icon: Star },
         ];

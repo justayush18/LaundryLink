@@ -15,9 +15,10 @@ export default function CustomerOrders() {
     setLoading(true);
     try {
       const data = await api.orders.getMyOrders();
-      setOrders(data || []);
+      const sortedData = (data || []).sort((a, b) => b.createdAt - a.createdAt);
+      setOrders(sortedData);
       if (selectedOrder) {
-        const updated = data.find(o => o.orderId === selectedOrder.orderId);
+        const updated = sortedData.find(o => o.orderId === selectedOrder.orderId);
         if (updated) setSelectedOrder(updated);
       }
     } catch (err) {
@@ -129,7 +130,7 @@ export default function CustomerOrders() {
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                       <span style={{ fontSize: '13px', fontWeight: 700, fontFamily: 'monospace', color: 'var(--primary-navy)' }}>
-                        #{o.orderId.substring(0, 8).toUpperCase()}
+                        #{o.orderId.substring(0, 7).toUpperCase()}
                       </span>
                       <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600 }}>
                         {new Date(o.createdAt * 1000).toLocaleDateString()}
@@ -161,7 +162,7 @@ export default function CustomerOrders() {
                     Order Details
                   </h3>
                   <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontFamily: 'monospace', fontWeight: 600 }}>
-                    ID: {selectedOrder.orderId}
+                    ID: #{selectedOrder.orderId.substring(0, 7).toUpperCase()}
                   </span>
                 </div>
                 {selectedOrder.status !== 'DELIVERED' && selectedOrder.status !== 'CANCELLED' && (

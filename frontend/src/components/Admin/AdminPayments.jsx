@@ -126,10 +126,10 @@ export default function AdminPayments() {
                 {payments.map((p) => (
                   <tr key={p.paymentId}>
                     <td style={{ fontFamily: 'monospace', fontSize: '0.8rem', color: 'var(--primary-navy)', fontWeight: 600 }}>
-                      #{p.paymentId.substring(0, 8)}
+                      #{p.paymentId.substring(0, 7).toUpperCase()}
                     </td>
                     <td style={{ fontFamily: 'monospace', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                      #{p.orderId.substring(0, 8)}
+                      #{p.orderId.substring(0, 7).toUpperCase()}
                     </td>
                     <td><strong style={{ color: 'var(--primary-navy)' }}>₹{p.amount}</strong></td>
                     <td style={{ fontSize: '0.85rem', color: 'var(--text-primary)' }}>{p.paymentMethod}</td>

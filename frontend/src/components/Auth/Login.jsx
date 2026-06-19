@@ -33,7 +33,17 @@ export default function Login() {
         navigate('/');
       }
     } catch (err) {
-      setError(err.message || 'Invalid credentials');
+      setError(
+        <span>
+          Unauthorized. !Don't have an account?{' '}
+          <Link to="/register" style={{ color: '#9B1C1C', textDecoration: 'underline', fontWeight: 800 }}>
+            Create an account
+          </Link>
+        </span>
+      );
+      setTimeout(() => {
+        navigate('/register');
+      }, 2500);
     } finally {
       setSubmitting(false);
     }
@@ -63,7 +73,7 @@ export default function Login() {
             <input
               type="email"
               className="form-control"
-              placeholder="name@example.com"
+              placeholder="name123@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -77,7 +87,7 @@ export default function Login() {
             <input
               type="password"
               className="form-control"
-              placeholder="••••••••"
+              placeholder="*********"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required

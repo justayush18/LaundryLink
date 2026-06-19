@@ -12,6 +12,7 @@ import Register from './components/Auth/Register';
 // Customer Pages
 import CustomerDashboard from './components/Customer/CustomerDashboard';
 import CustomerOrders from './components/Customer/CustomerOrders';
+import CustomerOrderHistory from './components/Customer/CustomerOrderHistory';
 import CustomerPayments from './components/Customer/CustomerPayments';
 import CustomerReviews from './components/Customer/CustomerReviews';
 
@@ -57,6 +58,14 @@ function MainLayout() {
             element={
               <ProtectedRoute allowedRoles={['CUSTOMER']}>
                 <CustomerOrders />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/customer/order-history"
+            element={
+              <ProtectedRoute allowedRoles={['CUSTOMER']}>
+                <CustomerOrderHistory />
               </ProtectedRoute>
             }
           />

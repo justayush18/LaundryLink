@@ -3,7 +3,7 @@ import { api, getFriendlyErrorMessage } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { ShoppingBag, CreditCard, Star, Clock, CheckCircle2, ArrowRight } from 'lucide-react';
 import PlaceOrderWizard from './PlaceOrderWizard';
-import ReviewModal from './ReviewModal';
+import CheckoutModal from './CheckoutModal';
 import StatCard from '../Common/StatCard';
 import EmptyState from '../Common/EmptyState';
 
@@ -13,17 +13,19 @@ export default function CustomerDashboard() {
   const [profileData, setProfileData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isWizardOpen, setIsWizardOpen] = useState(false);
-  const [isReviewOpen, setIsReviewOpen] = useState(false);
-  const [reviewOrderId, setReviewOrderId] = useState('');
-  const [reviewPartnerEmail, setReviewPartnerEmail] = useState('');
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [checkoutOrderId, setCheckoutOrderId] = useState('');
+  const [checkoutTotalCost, setCheckoutTotalCost] = useState(0);
 
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
       const myOrders = await api.orders.getMyOrders();
-      setOrders(myOrders || []);
+      const sortedOrders = (myOrders || []).sort((a, b) => b.createdAt - a.createdAt);
+      setOrders(sortedOrders);
       if (user && user.role) {
         const profile = await api.users.getProfile(user.role);
         setProfileData(profile);
@@ -40,28 +42,13 @@ export default function CustomerDashboard() {
     fetchDashboardData();
   }, []);
 
-  const handlePayNow = async (orderId, totalCost) => {
-    try {
-      const initReq = { orderId, paymentMethod: 'RAZORPAY' };
-      const payment = await api.payments.initiate(initReq);
-      
-      const processReq = { transactionId: 'TXN_' + Math.random().toString(36).substr(2, 9).toUpperCase(), simulateSuccess: true };
-      await api.payments.process(payment.paymentId, processReq);
-      
-      setSuccessMsg(`Payment of ₹${totalCost} processed successfully! Invoice generated.`);
-      setTimeout(() => setSuccessMsg(''), 5000);
-      fetchDashboardData();
-    } catch (err) {
-      setError(getFriendlyErrorMessage(err));
-      setTimeout(() => setError(''), 5000);
-    }
+  const handlePayNow = (orderId, totalCost) => {
+    setCheckoutOrderId(orderId);
+    setCheckoutTotalCost(totalCost);
+    setCheckoutOpen(true);
   };
 
-  const handleOpenReview = (orderId, partnerEmail) => {
-    setReviewOrderId(orderId);
-    setReviewPartnerEmail(partnerEmail);
-    setIsReviewOpen(true);
-  };
+
 
   const getActiveOrders = () => {
     return orders.filter(o => o.status !== 'DELIVERED' && o.status !== 'CANCELLED');
@@ -171,7 +158,7 @@ export default function CustomerDashboard() {
         />
       </div>
 
-      {/* Cancellation Policy Allowance and Stats */}
+      {/* Cancellation Policy Allowance and Stats 
       {profileData && (
         <div className="velora-card animate-fadeInUp" style={{ marginBottom: '2.5rem', padding: '1.5rem', background: 'linear-gradient(135deg, #FFFFFF 0%, var(--sky-blue-light) 100%)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', borderLeft: '4px solid var(--primary-teal)', borderTopRightRadius: '20px', borderBottomRightRadius: '20px' }}>
           <div>
@@ -197,7 +184,7 @@ export default function CustomerDashboard() {
             </div>
           </div>
         </div>
-      )}
+      )}*/}
 
       {/* Active Orders List */}
       <div className="velora-card animate-fadeInUp" style={{ marginBottom: '2.5rem', padding: '2rem' }}>
@@ -211,7 +198,7 @@ export default function CustomerDashboard() {
           <EmptyState
             title="No active orders"
             description="Your wardrobe looks dry. Schedule a fresh pickup to clean your clothes."
-            actionLabel="Place Your First Order"
+            actionLabel="Place Your Order"
             onAction={() => setIsWizardOpen(true)}
             mascotState="thinking"
           />
@@ -231,7 +218,7 @@ export default function CustomerDashboard() {
               <tbody>
                 {getActiveOrders().map((order) => (
                   <tr key={order.orderId}>
-                    <td style={{ fontFamily: 'monospace', fontSize: '12px', fontWeight: 600 }}>{order.orderId.substring(0, 8).toUpperCase()}</td>
+                    <td style={{ fontFamily: 'monospace', fontSize: '12px', fontWeight: 600 }}>#{order.orderId.substring(0, 7).toUpperCase()}</td>
                     <td style={{ fontWeight: 600, color: 'var(--primary-navy)' }}>{order.partnerEmail}</td>
                     <td style={{ fontWeight: 700 }}>₹{order.totalCost}</td>
                     <td>{getStatusBadge(order.status)}</td>
@@ -262,99 +249,6 @@ export default function CustomerDashboard() {
         )}
       </div>
 
-      {/* Recently Completed Orders */}
-      <div className="velora-card animate-fadeInUp" style={{ padding: '2rem' }}>
-        <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary-navy)', fontFamily: 'Outfit, sans-serif', margin: '0 0 1.5rem 0' }}>
-          Recently Completed
-        </h3>
-        
-        {loading ? (
-          <p style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>Loading...</p>
-        ) : getCompletedOrders().length === 0 ? (
-          <p style={{ color: 'var(--text-secondary)', fontSize: '14px', margin: 0, textAlign: 'center', padding: '1.5rem 0' }}>No completed orders found.</p>
-        ) : (
-          <div className="table-container">
-            <table>
-              <thead>
-                <tr>
-                  <th>Order ID</th>
-                  <th>Laundry Partner</th>
-                  <th>Total Cost</th>
-                  <th>Delivered Time</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {getCompletedOrders().slice(0, 5).map((order) => (
-                  <tr key={order.orderId}>
-                    <td style={{ fontFamily: 'monospace', fontSize: '12px', fontWeight: 600 }}>{order.orderId.substring(0, 8).toUpperCase()}</td>
-                    <td style={{ fontWeight: 600, color: 'var(--primary-navy)' }}>{order.partnerEmail}</td>
-                    <td style={{ fontWeight: 700 }}>₹{order.totalCost}</td>
-                    <td style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-                      {new Date(order.updatedAt * 1000).toLocaleString()}
-                    </td>
-                    <td>
-                      <button
-                        onClick={() => handleOpenReview(order.orderId, order.partnerEmail)}
-                        className="velora-btn velora-btn-secondary"
-                        style={{ padding: '6px 12px', fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
-                      >
-                        <Star size={12} color="var(--primary-teal)" fill="var(--primary-teal)" />
-                        Review Service
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      {/* Cancellation History Ledger */}
-      <div className="velora-card animate-fadeInUp" style={{ marginTop: '2.5rem', padding: '2rem' }}>
-        <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary-navy)', fontFamily: 'Outfit, sans-serif', margin: '0 0 1.5rem 0' }}>
-          Cancellation History Ledger
-        </h3>
-        
-        {loading ? (
-          <p style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>Loading ledger...</p>
-        ) : orders.filter(o => o.status === 'CANCELLED').length === 0 ? (
-          <p style={{ color: 'var(--text-secondary)', fontSize: '14px', margin: 0, textAlign: 'center', padding: '1.5rem 0' }}>No cancelled orders found.</p>
-        ) : (
-          <div className="table-container">
-            <table>
-              <thead>
-                <tr>
-                  <th>Order ID</th>
-                  <th>Laundry Partner</th>
-                  <th>Cancelled Date</th>
-                  <th>Cancellation Fee</th>
-                  <th>Refund Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                {orders.filter(o => o.status === 'CANCELLED').map((order) => (
-                  <tr key={order.orderId}>
-                    <td style={{ fontFamily: 'monospace', fontSize: '12px', fontWeight: 600 }}>{order.orderId.substring(0, 8).toUpperCase()}</td>
-                    <td style={{ fontWeight: 600, color: 'var(--primary-navy)' }}>{order.partnerEmail}</td>
-                    <td style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-                      {new Date(order.updatedAt * 1000).toLocaleString()}
-                    </td>
-                    <td style={{ fontWeight: 700, color: order.cancellationFee > 0 ? 'var(--color-error)' : 'var(--text-secondary)' }}>
-                      ₹{order.cancellationFee != null ? order.cancellationFee.toFixed(2) : '0.00'}
-                    </td>
-                    <td style={{ fontWeight: 700, color: 'var(--color-success)' }}>
-                      ₹{order.refundAmount != null ? order.refundAmount.toFixed(2) : '0.00'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
       {/* Place Order Modal */}
       <PlaceOrderWizard
         isOpen={isWizardOpen}
@@ -365,14 +259,14 @@ export default function CustomerDashboard() {
         }}
       />
 
-      {/* Review Modal */}
-      <ReviewModal
-        isOpen={isReviewOpen}
-        onClose={() => setIsReviewOpen(false)}
-        orderId={reviewOrderId}
-        partnerEmail={reviewPartnerEmail}
-        onReviewSubmitted={() => {
-          setSuccessMsg('Thank you! Review submitted successfully.');
+      {/* Checkout Payment Modal */}
+      <CheckoutModal
+        isOpen={checkoutOpen}
+        onClose={() => setCheckoutOpen(false)}
+        orderId={checkoutOrderId}
+        totalCost={checkoutTotalCost}
+        onPaymentComplete={() => {
+          setSuccessMsg('Fulfillment payment request successfully updated.');
           setTimeout(() => setSuccessMsg(''), 5000);
           fetchDashboardData();
         }}
