@@ -870,3 +870,21 @@ This file is an append-only development diary for Velora. New work must be added
   - **Register.jsx**: Removed background shade overlay for a clean background video look.
     - Added `autoComplete="off"` and `autoComplete="new-password"` attributes to the form and fields to prevent browser autofill/autocomplete of existing user/admin credentials on the Create Account page.
 - Verification: All 50/50 JUnit/integration tests executed successfully, and Vite production bundle compiles cleanly.
+
+## Follow-up Update - Phase 26: Rider Workflow, Separate Operations & Auto-Assignment Simulation
+- Goal of the task:
+  - Fix the rider assignment engine so that when a rider goes online, they immediately receive pending tasks.
+  - Automatically reassign unaccepted tasks to online riders if the currently assigned rider is offline (prevents orders from getting stuck).
+  - Separate pickup and delivery stages by assigning different riders for delivery if multiple riders are available.
+  - Implement a background simulation scheduler to automate laundry processing transitions (`PLACED` -> `ACCEPTED` -> `PICKUP_ASSIGNED` -> `ARRIVED_AT_PICKUP` -> `PICKED_UP` -> `PROCESSING` -> `READY_FOR_DELIVERY` -> `DELIVERY_ASSIGNED`) so faculty members can easily observe complete operational lifecycles without manual partner interaction.
+- What was implemented:
+  - **LaundrylinkApplication.java**: Added `@EnableScheduling` to activate Spring Boot scheduling.
+  - **OrderService.java**:
+    - **`triggerPendingAssignments()`**: Updated to include unaccepted tasks assigned to offline riders. These are freed up and reassigned to active online riders immediately.
+    - **`autoAssignRider()`**: Added logic to filter out the pickup rider during delivery assignment if other online riders are available, separating operational stages.
+    - **`runDemoSimulation()`**: Implemented background scheduler running every 5 seconds (disabled in test mode) to auto-transition:
+      - `PLACED` -> `ACCEPTED` (and auto-assign pickup) after 5 seconds.
+      - `PICKED_UP` -> `PROCESSING` (laundry receiving) after 15 seconds.
+      - `PROCESSING` -> `READY_FOR_DELIVERY` (laundry washing complete, auto-assign delivery) after 20 seconds.
+  - **OrderServiceTest.java**: Added mocks for `UserRepository` and `PaymentRepository` so that `OrderService` mock tests compile and pass.
+- Verification: Spring Boot JUnit test suite (all 50/50 tests) and Vite production bundle build run and compile successfully with zero errors.

@@ -42,8 +42,16 @@ export default function Register() {
 
     try {
       await register(email, password, displayName, phoneNumber, role);
-      sessionStorage.setItem('pendingEmail', email);
-      navigate('/verify-email');
+      if (role === 'CUSTOMER') {
+        sessionStorage.setItem('pendingEmail', email);
+        navigate('/verify-email');
+      } else if (role === 'LAUNDRY_PARTNER') {
+        navigate('/partner/dashboard');
+      } else if (role === 'DELIVERY_PARTNER') {
+        navigate('/delivery/dashboard');
+      } else {
+        navigate('/');
+      }
     } catch (err) {
       setError(err.message || 'Registration failed');
     } finally {

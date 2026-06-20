@@ -83,6 +83,7 @@ export const api = {
     updateStatus: (orderId, statusUpdate) => {
       const payload = {
         status: statusUpdate.status,
+        notes: statusUpdate.statusNotes || statusUpdate.notes || '',
         statusNotes: statusUpdate.statusNotes || statusUpdate.notes || ''
       };
       return request(`/api/v1/orders/${orderId}/status`, { method: 'PUT', body: payload });

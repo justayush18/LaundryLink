@@ -51,16 +51,27 @@ public class AuthService {
                 request.phoneNumber(),
                 request.role());
         
-        // Generate and configure OTP verification
-        String otp = generateOtp();
-        account.setOtpCode(otp);
-        account.setOtpExpiryTime(java.time.Instant.now().getEpochSecond() + 300); // 5 minutes
-        account.setOtpResendCount(0);
-        account.setOtpInvalidAttempts(0);
-        account.setEmailVerified(false);
+        if (request.role() == UserRoleType.CUSTOMER) {
+            // Generate and configure OTP verification
+            String otp = generateOtp();
+            account.setOtpCode(otp);
+            account.setOtpExpiryTime(java.time.Instant.now().getEpochSecond() + 300); // 5 minutes
+            account.setOtpResendCount(0);
+            account.setOtpInvalidAttempts(0);
+            account.setEmailVerified(false);
 
-        userRepository.save(account);
-        sendOtpEmail(account.getEmail(), otp);
+            userRepository.save(account);
+            sendOtpEmail(account.getEmail(), otp);
+        } else {
+            // Delivery and Laundry partners do not need OTP verification
+            account.setOtpCode(null);
+            account.setOtpExpiryTime(null);
+            account.setOtpResendCount(0);
+            account.setOtpInvalidAttempts(0);
+            account.setEmailVerified(true);
+
+            userRepository.save(account);
+        }
 
         return buildResponse(account);
     }

@@ -25,7 +25,9 @@ export default function DeliveryDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [activeTab, setActiveTab] = useState('assigned');
+  const [activeTab, setActiveTab] = useState('pickups');
+  const [submittingOrderId, setSubmittingOrderId] = useState(null);
+  const [togglingOnline, setTogglingOnline] = useState(false);
   
   const [isOnline, setIsOnline] = useState(() => {
     const saved = localStorage.getItem('rider_online');
@@ -43,8 +45,8 @@ export default function DeliveryDashboard() {
     return saved ? parseInt(saved, 10) : 0;
   });
 
-  const fetchDashboard = async () => {
-    setLoading(true);
+  const fetchDashboard = async (showLoading = false) => {
+    if (showLoading) setLoading(true);
     try {
       const data = await api.deliveries.getDashboard();
       if (data) {
@@ -55,12 +57,19 @@ export default function DeliveryDashboard() {
     } catch (err) {
       setError(getFriendlyErrorMessage(err));
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchDashboard();
+    fetchDashboard(true);
+
+    // Setup background polling interval every 4 seconds
+    const pollInterval = setInterval(() => {
+      fetchDashboard(false);
+    }, 4000);
+
+    return () => clearInterval(pollInterval);
   }, []);
 
   useEffect(() => {
@@ -88,6 +97,7 @@ export default function DeliveryDashboard() {
   }, [isOnline]);
 
   const handleUpdateStatus = async (orderId, status, notes) => {
+    setSubmittingOrderId(orderId);
     try {
       setError('');
       setSuccess('');
@@ -101,39 +111,48 @@ export default function DeliveryDashboard() {
         localStorage.setItem('rider_session_completions', String(newCompletions));
       }
 
-      fetchDashboard();
+      await fetchDashboard(false);
     } catch (err) {
       setError(getFriendlyErrorMessage(err));
+    } finally {
+      setSubmittingOrderId(null);
     }
   };
 
   const handleAcceptTask = async (orderId) => {
+    setSubmittingOrderId(orderId);
     try {
       setError('');
       setSuccess('');
       await api.deliveries.acceptTask(orderId);
       setSuccess('Task accepted successfully!');
       setTimeout(() => setSuccess(''), 4000);
-      fetchDashboard();
+      await fetchDashboard(false);
     } catch (err) {
       setError(getFriendlyErrorMessage(err));
+    } finally {
+      setSubmittingOrderId(null);
     }
   };
 
   const handleCancelTask = async (orderId) => {
+    setSubmittingOrderId(orderId);
     try {
       setError('');
       setSuccess('');
       await api.deliveries.cancelTask(orderId);
       setSuccess('Task cancelled and returned to assignment queue.');
       setTimeout(() => setSuccess(''), 4000);
-      fetchDashboard();
+      await fetchDashboard(false);
     } catch (err) {
       setError(getFriendlyErrorMessage(err));
+    } finally {
+      setSubmittingOrderId(null);
     }
   };
 
   const handleToggleOnline = async () => {
+    setTogglingOnline(true);
     try {
       setError('');
       setSuccess('');
@@ -174,9 +193,11 @@ export default function DeliveryDashboard() {
         setSuccess('Rider availability status set to ONLINE');
         setTimeout(() => setSuccess(''), 4000);
       }
-      fetchDashboard();
+      await fetchDashboard(false);
     } catch (err) {
       setError(getFriendlyErrorMessage(err));
+    } finally {
+      setTogglingOnline(false);
     }
   };
 
@@ -264,6 +285,7 @@ export default function DeliveryDashboard() {
           <button 
             onClick={handleToggleOnline} 
             className="velora-btn velora-btn-secondary animate-pulse"
+            disabled={togglingOnline}
             style={{ 
               display: 'flex', 
               alignItems: 'center', 
@@ -282,7 +304,7 @@ export default function DeliveryDashboard() {
               borderRadius: '50%', 
               background: isOnline ? '#31C78D' : 'var(--text-secondary)' 
             }} />
-            {isOnline ? 'Go Offline' : 'Go Online'}
+            {togglingOnline ? 'Updating...' : (isOnline ? 'Go Offline' : 'Go Online')}
           </button>
         </div>
       </div>
@@ -293,15 +315,15 @@ export default function DeliveryDashboard() {
       {/* KPI Row */}
       <div className="grid-cols-4" style={{ marginBottom: '2.5rem', gap: '1.25rem' }}>
         <StatCard
-          title="Assigned Tasks"
-          value={dashboard.assignedTasks?.length || 0}
-          icon={Clock}
-          description="Awaiting acceptance"
-        />
-        <StatCard
           title="Upcoming Pickups"
           value={dashboard.upcomingPickups?.length || 0}
           icon={Navigation}
+          description="Awaiting acceptance"
+        />
+        <StatCard
+          title="Assigned Tasks"
+          value={dashboard.assignedTasks?.length || 0}
+          icon={Clock}
           description="Accepted pickup tasks"
         />
         <StatCard
@@ -407,21 +429,6 @@ export default function DeliveryDashboard() {
         {/* Tab Selection */}
         <div style={{ display: 'flex', gap: '12px', borderBottom: '2px solid var(--bg-secondary)', paddingBottom: '12px', marginBottom: '20px', flexWrap: 'wrap' }}>
           <button 
-            onClick={() => setActiveTab('assigned')}
-            style={{
-              padding: '8px 16px',
-              borderRadius: '12px',
-              border: 'none',
-              background: activeTab === 'assigned' ? 'var(--primary-teal)' : 'transparent',
-              color: activeTab === 'assigned' ? '#FFFFFF' : 'var(--text-secondary)',
-              fontWeight: 700,
-              cursor: 'pointer',
-              transition: 'all 0.2s ease-in-out'
-            }}
-          >
-            Assigned Tasks ({dashboard.assignedTasks?.length || 0})
-          </button>
-          <button 
             onClick={() => setActiveTab('pickups')}
             style={{
               padding: '8px 16px',
@@ -435,6 +442,21 @@ export default function DeliveryDashboard() {
             }}
           >
             Upcoming Pickups ({dashboard.upcomingPickups?.length || 0})
+          </button>
+          <button 
+            onClick={() => setActiveTab('assigned')}
+            style={{
+              padding: '8px 16px',
+              borderRadius: '12px',
+              border: 'none',
+              background: activeTab === 'assigned' ? 'var(--primary-teal)' : 'transparent',
+              color: activeTab === 'assigned' ? '#FFFFFF' : 'var(--text-secondary)',
+              fontWeight: 700,
+              cursor: 'pointer',
+              transition: 'all 0.2s ease-in-out'
+            }}
+          >
+            Assigned Tasks ({dashboard.assignedTasks?.length || 0})
           </button>
           <button 
             onClick={() => setActiveTab('active')}
@@ -510,14 +532,15 @@ export default function DeliveryDashboard() {
                 </div>
 
                 <div style={styles.actions}>
-                  {activeTab === 'assigned' && (
+                  {activeTab === 'pickups' && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
                       <button
                         onClick={() => handleAcceptTask(task.orderId)}
                         className="velora-btn velora-btn-primary animate-pulse"
                         style={{ width: '100%', padding: '10px', fontSize: '12px' }}
+                        disabled={submittingOrderId !== null}
                       >
-                        Accept Task
+                        {submittingOrderId === task.orderId ? 'Accepting...' : 'Accept Task'}
                       </button>
                       {dailyCancellations >= 2 ? (
                         <div style={{ 
@@ -537,30 +560,33 @@ export default function DeliveryDashboard() {
                           onClick={() => handleCancelTask(task.orderId)}
                           className="velora-btn velora-btn-secondary"
                           style={{ width: '100%', padding: '10px', fontSize: '12px', borderColor: '#EF4444', color: '#EF4444' }}
+                          disabled={submittingOrderId !== null}
                         >
-                          Cancel Task
+                          {submittingOrderId === task.orderId ? 'Cancelling...' : 'Cancel Task'}
                         </button>
                       )}
                     </div>
                   )}
 
-                  {activeTab === 'pickups' && (
+                  {activeTab === 'assigned' && (
                     <div style={{ width: '100%' }}>
                       {task.status === 'PICKUP_ASSIGNED' ? (
                         <button
                           onClick={() => handleUpdateStatus(task.orderId, 'ARRIVED_AT_PICKUP', 'Rider arrived at customer location.')}
                           className="velora-btn velora-btn-primary animate-pulse"
                           style={{ width: '100%', padding: '10px', fontSize: '12px' }}
+                          disabled={submittingOrderId !== null}
                         >
-                          Arrived at Pickup
+                          {submittingOrderId === task.orderId ? 'Updating...' : 'Arrived at Pickup'}
                         </button>
                       ) : (
                         <button
                           onClick={() => handleUpdateStatus(task.orderId, 'PICKED_UP', 'Laundry picked up by delivery rider.')}
                           className="velora-btn velora-btn-primary animate-pulse"
                           style={{ width: '100%', padding: '10px', fontSize: '12px' }}
+                          disabled={submittingOrderId !== null}
                         >
-                          Confirm Picked Up
+                          {submittingOrderId === task.orderId ? 'Updating...' : 'Confirm Picked Up'}
                         </button>
                       )}
                     </div>
@@ -568,18 +594,49 @@ export default function DeliveryDashboard() {
 
                   {activeTab === 'active' && (
                     <div style={{ width: '100%' }}>
-                      {task.status === 'DELIVERY_ASSIGNED' ? (
+                      {!task.isAcceptedByRider ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
+                          <button
+                            onClick={() => handleAcceptTask(task.orderId)}
+                            className="velora-btn velora-btn-primary animate-pulse"
+                            style={{ width: '100%', padding: '10px', fontSize: '12px' }}
+                            disabled={submittingOrderId !== null}
+                          >
+                            {submittingOrderId === task.orderId ? 'Accepting...' : 'Accept Task'}
+                          </button>
+                          {dailyCancellations >= 2 ? (
+                            <div style={{ 
+                              textAlign: 'center', 
+                              padding: '10px', 
+                              background: '#FDE8E8', 
+                              color: '#EF4444', 
+                              fontSize: '12px', 
+                              fontWeight: 700, 
+                              borderRadius: '12px',
+                              border: '1px solid #F8B4B4'
+                            }}>
+                              Daily cancellation limit reached (2/2).
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => handleCancelTask(task.orderId)}
+                              className="velora-btn velora-btn-secondary"
+                              style={{ width: '100%', padding: '10px', fontSize: '12px', borderColor: '#EF4444', color: '#EF4444' }}
+                              disabled={submittingOrderId !== null}
+                            >
+                              {submittingOrderId === task.orderId ? 'Cancelling...' : 'Cancel Task'}
+                            </button>
+                          )}
+                        </div>
+                      ) : (
                         <button
                           onClick={() => handleUpdateStatus(task.orderId, 'DELIVERED', 'Laundry delivered successfully.')}
                           className="velora-btn velora-btn-primary animate-pulse"
                           style={{ width: '100%', padding: '10px', fontSize: '12px' }}
+                          disabled={submittingOrderId !== null}
                         >
-                          Mark Delivered
+                          {submittingOrderId === task.orderId ? 'Updating...' : 'Mark Delivered'}
                         </button>
-                      ) : (
-                        <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontStyle: 'italic', textAlign: 'center', width: '100%', display: 'block', fontWeight: 600 }}>
-                          Fulfillment in progress at Laundry hub
-                        </span>
                       )}
                     </div>
                   )}

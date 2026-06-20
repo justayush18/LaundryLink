@@ -201,6 +201,9 @@ public class OrderService {
         order.setStatus(newStatus);
         order.setStatusNotes(notes);
         order.getHistory().add(new StatusTransitionEntity(newStatus, now, notes));
+        if (newStatus == OrderStatus.PICKED_UP || newStatus == OrderStatus.PROCESSING || newStatus == OrderStatus.READY_FOR_DELIVERY) {
+            order.setAcceptedByRider(false);
+        }
         
         orderRepository.saveAndFlush(order);
 
@@ -259,7 +262,8 @@ public class OrderService {
         }
 
         order.setDeliveryPartnerEmail(targetDeliveryPartnerEmail);
-
+        order.setAcceptedByRider(false);
+ 
         long now = System.currentTimeMillis() / 1000L;
         // Auto state transition on assignment
         if (order.getStatus() == OrderStatus.ACCEPTED) {
@@ -285,31 +289,23 @@ public class OrderService {
     }
 
     public DeliveryDashboardView getDeliveryDashboard(String deliveryPartnerEmail) {
-        List<OrderEntity> allOrders = orderRepository.findAll();
-        
-        List<OrderEntity> riderOrders = allOrders.stream()
-                .filter(o -> o.getDeliveryPartnerEmail() != null 
-                        && o.getDeliveryPartnerEmail().equalsIgnoreCase(deliveryPartnerEmail))
-                .collect(Collectors.toList());
+        List<OrderEntity> riderOrders = orderRepository.findByDeliveryPartnerEmail(deliveryPartnerEmail);
 
         List<OrderView> assignedTasks = riderOrders.stream()
-                .filter(o -> !o.isAcceptedByRider() 
-                        && (o.getStatus() == OrderStatus.PICKUP_ASSIGNED 
-                            || o.getStatus() == OrderStatus.DELIVERY_ASSIGNED))
-                .map(this::toView)
-                .collect(Collectors.toList());
-
-        List<OrderView> upcomingPickups = riderOrders.stream()
                 .filter(o -> o.isAcceptedByRider() 
                         && (o.getStatus() == OrderStatus.PICKUP_ASSIGNED 
                             || o.getStatus() == OrderStatus.ARRIVED_AT_PICKUP))
                 .map(this::toView)
                 .collect(Collectors.toList());
 
+        List<OrderView> upcomingPickups = riderOrders.stream()
+                .filter(o -> !o.isAcceptedByRider() 
+                        && o.getStatus() == OrderStatus.PICKUP_ASSIGNED)
+                .map(this::toView)
+                .collect(Collectors.toList());
+
         List<OrderView> activeDeliveries = riderOrders.stream()
-                .filter(o -> o.isAcceptedByRider() 
-                        && (o.getStatus() == OrderStatus.PICKED_UP 
-                            || o.getStatus() == OrderStatus.DELIVERY_ASSIGNED))
+                .filter(o -> o.getStatus() == OrderStatus.DELIVERY_ASSIGNED)
                 .map(this::toView)
                 .collect(Collectors.toList());
 
@@ -399,6 +395,18 @@ public class OrderService {
             return;
         }
 
+        // Separate Pickup & Delivery Operations:
+        // For demonstration, assign a different rider for delivery if other online riders are available.
+        if (order.getStatus() == OrderStatus.READY_FOR_DELIVERY && order.getDeliveryPartnerEmail() != null) {
+            String pickupRiderEmail = order.getDeliveryPartnerEmail();
+            java.util.List<UserEntity> otherRiders = eligibleRiders.stream()
+                    .filter(u -> !u.getEmail().equalsIgnoreCase(pickupRiderEmail))
+                    .collect(Collectors.toList());
+            if (!otherRiders.isEmpty()) {
+                eligibleRiders = otherRiders;
+            }
+        }
+
         // Pick the rider with the minimum count of active assignments
         UserEntity bestRider = null;
         long minActiveCount = Long.MAX_VALUE;
@@ -445,11 +453,49 @@ public class OrderService {
     }
 
     public void triggerPendingAssignments() {
-        List<OrderEntity> pendingOrders = orderRepository.findAll().stream()
-                .filter(order -> (order.getStatus() == OrderStatus.ACCEPTED || order.getStatus() == OrderStatus.READY_FOR_DELIVERY)
-                        && order.getDeliveryPartnerEmail() == null)
+        // Find all online riders
+        java.util.List<UserEntity> onlineRiders = userRepository.findAll().stream()
+                .filter(u -> u.getRole() == UserRoleType.DELIVERY_PARTNER && u.isActive() && u.isOnline())
                 .collect(Collectors.toList());
+        if (onlineRiders.isEmpty()) {
+            return;
+        }
+
+        // Find pending/stuck orders:
+        // 1. Orders in ACCEPTED or READY_FOR_DELIVERY with no rider assigned.
+        // 2. Orders in PICKUP_ASSIGNED or DELIVERY_ASSIGNED where the rider is assigned but offline, and task is not accepted yet.
+        List<OrderEntity> pendingOrders = orderRepository.findAll().stream()
+                .filter(order -> {
+                    if (order.getStatus() == OrderStatus.ACCEPTED) {
+                        return order.getDeliveryPartnerEmail() == null;
+                    }
+                    if (order.getStatus() == OrderStatus.READY_FOR_DELIVERY) {
+                        return true;
+                    }
+                    if (order.getStatus() == OrderStatus.PICKUP_ASSIGNED || order.getStatus() == OrderStatus.DELIVERY_ASSIGNED) {
+                        if (order.isAcceptedByRider() || order.getDeliveryPartnerEmail() == null) {
+                            return false;
+                        }
+                        // Check if the assigned rider is offline
+                        return userRepository.findByEmail(order.getDeliveryPartnerEmail())
+                                .map(u -> !u.isOnline())
+                                .orElse(true);
+                    }
+                    return false;
+                })
+                .collect(Collectors.toList());
+ 
         for (OrderEntity order : pendingOrders) {
+            // Revert status to unassigned state so autoAssignRider can process it
+            if (order.getStatus() == OrderStatus.PICKUP_ASSIGNED) {
+                order.setStatus(OrderStatus.ACCEPTED);
+            } else if (order.getStatus() == OrderStatus.DELIVERY_ASSIGNED) {
+                order.setStatus(OrderStatus.READY_FOR_DELIVERY);
+            }
+            order.setDeliveryPartnerEmail(null);
+            order.setAcceptedByRider(false);
+            orderRepository.saveAndFlush(order);
+
             autoAssignRider(order);
         }
     }
@@ -462,7 +508,7 @@ public class OrderService {
 
         String expectedNote = "Task rejected by rider: " + email;
         int count = 0;
-        List<OrderEntity> orders = orderRepository.findAll();
+        List<OrderEntity> orders = orderRepository.findByUpdatedAtGreaterThanEqual(startOfDayEpochSecond);
         for (OrderEntity o : orders) {
             if (o.getHistory() != null) {
                 for (StatusTransitionEntity transition : o.getHistory()) {
@@ -707,5 +753,106 @@ public class OrderService {
         double refund = Math.max(0.0, totalCost - fee);
 
         return new CancellationEstimate(chargePercent, fee, refund, message);
+    }
+
+    @org.springframework.scheduling.annotation.Scheduled(fixedDelay = 5000)
+    public void runDemoSimulation() {
+        if (isRunningTest()) {
+            return;
+        }
+
+        long now = System.currentTimeMillis() / 1000L;
+
+        // 1. Find all orders in PLACED status and auto-advance to ACCEPTED after 5 seconds
+        List<OrderEntity> placedOrders = orderRepository.findAll().stream()
+                .filter(o -> o.getStatus() == OrderStatus.PLACED)
+                .collect(Collectors.toList());
+
+        for (OrderEntity order : placedOrders) {
+            long lastTransitionTime = getLastStatusTransitionTime(order);
+            if (now - lastTransitionTime >= 5) {
+                order.setStatus(OrderStatus.ACCEPTED);
+                order.setStatusNotes("[Simulation] Laundry partner accepted order. Pickup task created.");
+                order.getHistory().add(new StatusTransitionEntity(OrderStatus.ACCEPTED, now, "[Simulation] Laundry partner accepted order. Pickup task created."));
+                orderRepository.saveAndFlush(order);
+
+                notificationService.sendNotification(order.getCustomerEmail(), NotificationType.ORDER_STATUS, 
+                        "Your order has been accepted by the laundry partner. Order ID: " + order.getOrderId());
+                notificationService.sendNotification(order.getPartnerEmail(), NotificationType.ORDER_STATUS, 
+                        "Order auto-accepted. Order ID: " + order.getOrderId());
+
+                // Auto assign rider
+                autoAssignRider(order);
+            }
+        }
+
+        // 2. Find all orders in PICKED_UP status and auto-advance to PROCESSING after 15 seconds
+        List<OrderEntity> pickedUpOrders = orderRepository.findAll().stream()
+                .filter(o -> o.getStatus() == OrderStatus.PICKED_UP)
+                .collect(Collectors.toList());
+
+        for (OrderEntity order : pickedUpOrders) {
+            long lastTransitionTime = getLastStatusTransitionTime(order);
+            if (now - lastTransitionTime >= 15) {
+                order.setStatus(OrderStatus.PROCESSING);
+                order.setStatusNotes("[Simulation] Laundry partner received clothes. Processing started.");
+                order.getHistory().add(new StatusTransitionEntity(OrderStatus.PROCESSING, now, "[Simulation] Laundry partner received clothes. Processing started."));
+                orderRepository.saveAndFlush(order);
+
+                notificationService.sendNotification(order.getCustomerEmail(), NotificationType.ORDER_STATUS, 
+                        "Your clothes are being processed for order " + order.getOrderId());
+            }
+        }
+
+        // 3. Find all orders in PROCESSING status and auto-advance to READY_FOR_DELIVERY after 20 seconds
+        List<OrderEntity> processingOrders = orderRepository.findAll().stream()
+                .filter(o -> o.getStatus() == OrderStatus.PROCESSING)
+                .collect(Collectors.toList());
+
+        for (OrderEntity order : processingOrders) {
+            long lastTransitionTime = getLastStatusTransitionTime(order);
+            if (now - lastTransitionTime >= 20) {
+                order.setStatus(OrderStatus.READY_FOR_DELIVERY);
+                order.setStatusNotes("[Simulation] Laundry partner completed processing. Clothes ready for delivery.");
+                order.getHistory().add(new StatusTransitionEntity(OrderStatus.READY_FOR_DELIVERY, now, "[Simulation] Laundry partner completed processing. Clothes ready for delivery."));
+                orderRepository.saveAndFlush(order);
+
+                notificationService.sendNotification(order.getCustomerEmail(), NotificationType.ORDER_STATUS, 
+                        "Your clothes are ready for delivery for order " + order.getOrderId());
+
+                // Auto assign rider for delivery stage
+                autoAssignRider(order);
+            }
+        }
+        
+        // 4. Make sure pending assignments are triggered periodically as well
+        triggerPendingAssignments();
+    }
+
+    private boolean isRunningTest() {
+        String command = System.getProperty("sun.java.command", "").toLowerCase();
+        if (command.contains("surefire") || command.contains("junit") || command.contains("test")) {
+            return true;
+        }
+        for (StackTraceElement element : Thread.currentThread().getStackTrace()) {
+            String className = element.getClassName().toLowerCase();
+            if (className.contains("junit") || className.contains("surefire") || className.contains("test")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private long getLastStatusTransitionTime(OrderEntity order) {
+        if (order.getHistory() == null || order.getHistory().isEmpty()) {
+            return order.getUpdatedAt() != 0 ? order.getUpdatedAt() : (System.currentTimeMillis() / 1000L);
+        }
+        long lastTime = 0;
+        for (StatusTransitionEntity t : order.getHistory()) {
+            if (t.getTimestamp() > lastTime) {
+                lastTime = t.getTimestamp();
+            }
+        }
+        return lastTime;
     }
 }

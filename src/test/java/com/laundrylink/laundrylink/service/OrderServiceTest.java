@@ -30,6 +30,12 @@ public class OrderServiceTest {
     @Mock
     private NotificationService notificationService;
 
+    @Mock
+    private UserRepository userRepository;
+
+    @Mock
+    private PaymentRepository paymentRepository;
+
     @InjectMocks
     private OrderService orderService;
 

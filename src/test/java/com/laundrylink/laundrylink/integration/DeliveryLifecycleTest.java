@@ -79,7 +79,7 @@ public class DeliveryLifecycleTest {
         mockMvc.perform(get("/api/v1/deliveries/dashboard")
                 .header(HttpHeaders.AUTHORIZATION, deliveryToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.assignedTasks").isNotEmpty());
+                .andExpect(jsonPath("$.upcomingPickups").isNotEmpty());
 
         // 2. Fetch tracking details
         mockMvc.perform(get("/api/v1/deliveries/order-del-123/tracking")
@@ -88,7 +88,16 @@ public class DeliveryLifecycleTest {
                 .andExpect(jsonPath("$.orderId").value("order-del-123"))
                 .andExpect(jsonPath("$.status").value("PICKUP_ASSIGNED"));
 
-        // 3. Update status to PICKED_UP
+        // 3. Update status to ARRIVED_AT_PICKUP
+        OrderStatusUpdateRequest arrivedReq = new OrderStatusUpdateRequest(OrderStatus.ARRIVED_AT_PICKUP, "Rider arrived at customer location");
+        mockMvc.perform(put("/api/v1/orders/order-del-123/status")
+                .header(HttpHeaders.AUTHORIZATION, deliveryToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(arrivedReq)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("ARRIVED_AT_PICKUP"));
+
+        // 4. Update status to PICKED_UP
         OrderStatusUpdateRequest updateReq = new OrderStatusUpdateRequest(OrderStatus.PICKED_UP, "Picked up from customer");
         mockMvc.perform(put("/api/v1/orders/order-del-123/status")
                 .header(HttpHeaders.AUTHORIZATION, deliveryToken)
