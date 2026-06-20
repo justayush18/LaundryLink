@@ -868,4 +868,5 @@ This file is an append-only development diary for Velora. New work must be added
     - Replaced the generic unauthorized warning with actual backend error messages (`err.message || 'Invalid email or password'`).
     - Removed background shade overlay for a clean background video look.
   - **Register.jsx**: Removed background shade overlay for a clean background video look.
+    - Added `autoComplete="off"` and `autoComplete="new-password"` attributes to the form and fields to prevent browser autofill/autocomplete of existing user/admin credentials on the Create Account page.
 - Verification: All 50/50 JUnit/integration tests executed successfully, and Vite production bundle compiles cleanly.
