@@ -94,7 +94,7 @@ export default function CustomerPayments() {
                       <td style={{ fontFamily: 'monospace', fontSize: '12px', fontWeight: 600 }}>#{o.orderId.substring(0, 7).toUpperCase()}</td>
                       <td style={{ fontWeight: 700 }}>₹{o.totalCost}</td>
                       <td>
-                        {o.paymentId ? (
+                        {o.paymentStatus === 'SUCCESS' ? (
                           <span style={{ color: '#03543F', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '13px', fontWeight: 600 }}>
                             <CheckCircle2 size={14} /> Success
                           </span>
@@ -110,7 +110,7 @@ export default function CustomerPayments() {
                       </td>
                       <td>
                         <div style={{ display: 'flex', gap: '8px' }}>
-                          {!o.paymentId && o.status !== 'CANCELLED' && (
+                          {o.paymentStatus !== 'SUCCESS' && o.status !== 'CANCELLED' && o.paymentMethod !== 'COD' && (
                             <button
                               onClick={() => handlePayNow(o.orderId, o.totalCost)}
                               className="velora-btn velora-btn-primary"
@@ -119,7 +119,7 @@ export default function CustomerPayments() {
                               Pay Now
                             </button>
                           )}
-                          {o.paymentId && (
+                          {o.paymentStatus === 'SUCCESS' && (
                             <button
                               onClick={() => handleViewInvoice(o.orderId)}
                               className="velora-btn velora-btn-secondary"

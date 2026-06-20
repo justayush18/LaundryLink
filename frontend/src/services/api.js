@@ -46,12 +46,15 @@ export const api = {
   auth: {
     login: (credentials) => request('/api/v1/auth/login', { method: 'POST', body: credentials }),
     register: (details) => request('/api/v1/auth/register', { method: 'POST', body: details }),
+    verifyOtp: (email, otpCode) => request('/api/v1/auth/verify-otp', { method: 'POST', body: { email, otpCode } }),
+    resendOtp: (email) => request('/api/v1/auth/resend-otp', { method: 'POST', body: { email } }),
   },
 
   // User Management
   users: {
     getProfile: (role) => request(`/api/v1/users/${role}/profile`),
     getAddresses: (role) => request(`/api/v1/users/${role}/addresses`),
+    acceptTerms: (acceptedVersion) => request('/api/v1/users/accept-terms', { method: 'POST', body: { acceptedVersion } }),
   },
 
   // Partners

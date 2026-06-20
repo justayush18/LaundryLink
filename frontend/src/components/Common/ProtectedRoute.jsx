@@ -21,6 +21,14 @@ export default function ProtectedRoute({ children, allowedRoles }) {
     return <Navigate to="/login" replace />;
   }
 
+  if (!user.emailVerified) {
+    return <Navigate to="/verify-email" replace />;
+  }
+
+  if (user.role !== 'ADMIN' && !user.termsAccepted) {
+    return <Navigate to="/onboarding" replace />;
+  }
+
   if (allowedRoles && !allowedRoles.includes(user.role)) {
     if (user.role === 'CUSTOMER') return <Navigate to="/customer/dashboard" replace />;
     if (user.role === 'LAUNDRY_PARTNER') return <Navigate to="/partner/dashboard" replace />;

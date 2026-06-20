@@ -3,6 +3,7 @@ import { api } from '../../services/api';
 import { FileText, Upload, CheckCircle, AlertTriangle, AlertCircle, X } from 'lucide-react';
 import VeloraMascot from '../Common/VeloraMascot';
 import EmptyState from '../Common/EmptyState';
+import CustomSelect from '../Common/CustomSelect';
 
 export default function PartnerDocuments() {
   const [documents, setDocuments] = useState([]);
@@ -165,7 +166,7 @@ export default function PartnerDocuments() {
           <form onSubmit={handleUpload}>
             <div className="form-group">
               <label className="form-label" style={{ color: 'var(--primary-navy)', fontWeight: 600 }}>Document Type</label>
-              <select
+              <CustomSelect
                 className="form-control"
                 value={documentType}
                 onChange={(e) => setDocumentType(e.target.value)}
@@ -175,7 +176,7 @@ export default function PartnerDocuments() {
                 <option value="GSTIN">GSTIN Tax Certificate</option>
                 <option value="BUSINESS_LICENSE">Business Registration License</option>
                 <option value="IDENTITY_PROOF">Owner Identity Proof (Aadhaar/PAN)</option>
-              </select>
+              </CustomSelect>
             </div>
 
             <div className="form-group" style={{ marginBottom: '24px' }}>

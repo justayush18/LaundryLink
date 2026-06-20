@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../services/api';
 import { Search, Filter, Eye, RefreshCw, AlertCircle, ShoppingBag, Clock } from 'lucide-react';
+import CustomSelect from '../Common/CustomSelect';
 
 export default function AdminOrders() {
   const [orders, setOrders] = useState([]);
@@ -89,7 +90,7 @@ export default function AdminOrders() {
           <div style={styles.filterGrid}>
             <div className="form-group">
               <label className="form-label" style={{ fontWeight: 600, color: 'var(--primary-navy)', fontSize: '0.85rem' }}>Order Status</label>
-              <select
+              <CustomSelect
                 className="velora-input"
                 value={status}
                 onChange={(e) => setStatus(e.target.value)}
@@ -103,7 +104,7 @@ export default function AdminOrders() {
                 <option value="READY_FOR_DELIVERY">Ready for Delivery</option>
                 <option value="DELIVERED">Delivered</option>
                 <option value="CANCELLED">Cancelled</option>
-              </select>
+              </CustomSelect>
             </div>
 
             <div className="form-group">

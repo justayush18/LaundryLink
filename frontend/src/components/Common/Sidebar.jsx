@@ -29,6 +29,7 @@ export default function Sidebar() {
           { to: '/customer/order-history', label: 'Order History', icon: ClipboardList },
           { to: '/customer/payments', label: 'My Payments', icon: CreditCard },
           { to: '/customer/reviews', label: 'Reviews', icon: Star },
+          { to: '/terms', label: 'Terms & Policies', icon: FileText },
         ];
       case 'LAUNDRY_PARTNER':
         return [
@@ -36,11 +37,13 @@ export default function Sidebar() {
           { to: '/partner/orders', label: 'Orders', icon: ShoppingBag },
           { to: '/partner/pricing', label: 'Pricing & Rates', icon: DollarSign },
           { to: '/partner/documents', label: 'Documents', icon: FileText },
+          { to: '/terms', label: 'Terms & Policies', icon: FileText },
         ];
       case 'DELIVERY_PARTNER':
         return [
           { to: '/delivery/dashboard', label: 'Dashboard', icon: LayoutDashboard },
           { to: '/delivery/tasks', label: 'Tasks Board', icon: ClipboardList },
+          { to: '/terms', label: 'Terms & Policies', icon: FileText },
         ];
       case 'ADMIN':
         return [
@@ -49,7 +52,8 @@ export default function Sidebar() {
           { to: '/admin/partners', label: 'Partners', icon: Building2 },
           { to: '/admin/orders', label: 'Orders', icon: ClipboardList },
           { to: '/admin/payments', label: 'Payments', icon: CreditCard },
-          { to: '/admin/reports', label: 'Reports', icon: TrendingUp },
+          { to: '/admin/reports', label: 'Reports & Intel', icon: TrendingUp },
+          { to: '/terms', label: 'Terms & Policies', icon: FileText },
         ];
       default:
         return [];

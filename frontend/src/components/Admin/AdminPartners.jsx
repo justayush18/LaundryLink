@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../services/api';
 import { Search, Eye, CheckCircle2, AlertTriangle, XCircle, RefreshCw, Star } from 'lucide-react';
+import CustomSelect from '../Common/CustomSelect';
 
 export default function AdminPartners() {
   const [partners, setPartners] = useState([]);
@@ -182,7 +183,7 @@ export default function AdminPartners() {
                 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Hub State:</label>
-                  <select
+                  <CustomSelect
                     className="velora-input"
                     value={selectedPartner.onboardingStatus}
                     onChange={(e) => handleUpdateStatus(selectedPartner.email, e.target.value)}
@@ -198,9 +199,10 @@ export default function AdminPartners() {
                     }}
                   >
                     <option value="ACTIVE">Active</option>
-                    <option value="INACTIVE">Inactive</option>
-                    <option value="PENDING">Pending</option>
-                  </select>
+                    <option value="SUSPENDED">Suspended</option>
+                    <option value="ONBOARDING">Onboarding</option>
+                    <option value="REJECTED">Rejected</option>
+                  </CustomSelect>
                 </div>
               </div>
 

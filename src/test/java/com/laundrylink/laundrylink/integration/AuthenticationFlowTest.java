@@ -19,6 +19,8 @@ import com.laundrylink.laundrylink.api.AuthLoginRequest;
 import com.laundrylink.laundrylink.api.AuthRegisterRequest;
 import com.laundrylink.laundrylink.api.UserRoleType;
 import com.laundrylink.laundrylink.security.JwtAuthenticationFilter;
+import com.laundrylink.laundrylink.persistence.UserRepository;
+import com.laundrylink.laundrylink.persistence.UserEntity;
 
 @SpringBootTest
 @Transactional
@@ -29,6 +31,9 @@ public class AuthenticationFlowTest {
 
     @Autowired
     private JwtAuthenticationFilter jwtAuthenticationFilter;
+
+    @Autowired
+    private UserRepository userRepository;
 
     private MockMvc mockMvc;
 
@@ -57,6 +62,26 @@ public class AuthenticationFlowTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accessToken").isNotEmpty())
                 .andExpect(jsonPath("$.user.displayName").value("Integration Customer"));
+
+        // Retrieve generated OTP code from the database
+        UserEntity user = userRepository.findByEmail("integration.customer@example.com")
+                .orElseThrow(() -> new AssertionError("Registered user not found in database"));
+        
+        String otpCode = user.getOtpCode();
+        org.junit.jupiter.api.Assertions.assertNotNull(otpCode);
+
+        // Perform OTP verification call
+        com.laundrylink.laundrylink.api.VerifyOtpRequest verifyReq = new com.laundrylink.laundrylink.api.VerifyOtpRequest(
+                "integration.customer@example.com",
+                otpCode
+        );
+
+        mockMvc.perform(post("/api/v1/auth/verify-otp")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(verifyReq)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessToken").isNotEmpty())
+                .andExpect(jsonPath("$.user.emailVerified").value(true));
 
         AuthLoginRequest loginReq = new AuthLoginRequest(
                 "integration.customer@example.com",

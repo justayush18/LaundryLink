@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import WaveBackground from '../Common/WaveBackground';
-import FloatingBubbles from '../Common/FloatingBubbles';
 import VeloraMascot from '../Common/VeloraMascot';
 
 export default function Register() {
@@ -43,16 +41,9 @@ export default function Register() {
     }
 
     try {
-      const user = await register(email, password, displayName, phoneNumber, role);
-      if (user.role === 'CUSTOMER') {
-        navigate('/customer/dashboard');
-      } else if (user.role === 'LAUNDRY_PARTNER') {
-        navigate('/partner/dashboard');
-      } else if (user.role === 'DELIVERY_PARTNER') {
-        navigate('/delivery/dashboard');
-      } else {
-        navigate('/');
-      }
+      await register(email, password, displayName, phoneNumber, role);
+      sessionStorage.setItem('pendingEmail', email);
+      navigate('/verify-email');
     } catch (err) {
       setError(err.message || 'Registration failed');
     } finally {
@@ -68,10 +59,20 @@ export default function Register() {
 
   return (
     <div style={styles.container}>
-      <WaveBackground variant="hero" />
-      <FloatingBubbles count={12} />
-      
-      <div className="velora-card animate-fadeInUp" style={styles.card}>
+      {/* Full-screen background video */}
+      <video
+        autoPlay
+        muted
+        loop
+        playsInline
+        className="auth-video-bg"
+        style={styles.videoBg}
+        aria-hidden="true"
+      >
+        <source src="/videos/auth-bg.mp4" type="video/mp4" />
+      </video>
+
+      <div className="animate-fadeInUp" style={styles.card}>
         <div style={styles.header}>
           <VeloraMascot state={error ? 'thinking' : submitting ? 'loading' : 'celebrating'} size={80} />
           <h1 style={styles.brand}>Velora</h1>
@@ -84,19 +85,20 @@ export default function Register() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} autoComplete="off">
           <div style={styles.formGrid}>
             <div className="form-group">
               <label className="form-label" style={styles.label}>Full Name</label>
               <input
                 type="text"
-                className="form-control"
+                className="form-control auth-dark-input"
                 placeholder="Aarav Mehta"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value.replace(/[^A-Za-z\s]/g, ''))}
                 required
                 disabled={submitting}
                 style={styles.input}
+                autoComplete="off"
               />
             </div>
 
@@ -104,13 +106,14 @@ export default function Register() {
               <label className="form-label" style={styles.label}>Email Address</label>
               <input
                 type="email"
-                className="form-control"
+                className="form-control auth-dark-input"
                 placeholder="name@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 disabled={submitting}
                 style={styles.input}
+                autoComplete="off"
               />
             </div>
 
@@ -118,7 +121,7 @@ export default function Register() {
               <label className="form-label" style={styles.label}>Phone Number</label>
               <input
                 type="tel"
-                className="form-control"
+                className="form-control auth-dark-input"
                 placeholder="9876543210"
                 value={phoneNumber}
                 onChange={(e) => {
@@ -128,6 +131,7 @@ export default function Register() {
                 required
                 disabled={submitting}
                 style={styles.input}
+                autoComplete="off"
               />
             </div>
 
@@ -135,13 +139,14 @@ export default function Register() {
               <label className="form-label" style={styles.label}>Password</label>
               <input
                 type="password"
-                className="form-control"
+                className="form-control auth-dark-input"
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 disabled={submitting}
                 style={styles.input}
+                autoComplete="new-password"
               />
             </div>
           </div>
@@ -159,14 +164,14 @@ export default function Register() {
                     disabled={submitting}
                     style={{
                       ...styles.roleCard,
-                      borderColor: isSelected ? 'var(--primary-teal)' : 'var(--sky-blue)',
-                      background: isSelected ? 'var(--sky-blue-light)' : '#FFFFFF',
-                      boxShadow: isSelected ? '0 4px 12px rgba(86, 124, 141, 0.15)' : 'none',
+                      borderColor: isSelected ? '#67e8f9' : 'rgba(255,255,255,0.22)',
+                      background: isSelected ? 'rgba(103, 232, 249, 0.18)' : 'rgba(255,255,255,0.08)',
+                      boxShadow: isSelected ? '0 4px 20px rgba(103,232,249,0.25)' : 'none',
                     }}
                   >
                     <span style={{ fontSize: '24px', marginBottom: '4px' }}>{r.emoji}</span>
-                    <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--primary-navy)' }}>{r.title}</span>
-                    <span style={{ fontSize: '10px', color: 'var(--text-secondary)', textAlign: 'center' }}>{r.desc}</span>
+                    <span style={{ fontSize: '13px', fontWeight: 700, color: '#FFFFFF' }}>{r.title}</span>
+                    <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.65)', textAlign: 'center' }}>{r.desc}</span>
                   </button>
                 );
               })}
@@ -208,9 +213,9 @@ export default function Register() {
         </form>
 
         <div style={styles.footer}>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '14px', margin: 0 }}>
+          <p style={{ color: 'rgba(255,255,255,0.65)', fontSize: '14px', margin: 0 }}>
             Already have an account?{' '}
-            <Link to="/login" style={{ color: 'var(--primary-teal)', fontWeight: 700, textDecoration: 'none' }}>
+            <Link to="/login" style={{ color: '#67e8f9', fontWeight: 700, textDecoration: 'none' }}>
               Sign In
             </Link>
           </p>
@@ -226,20 +231,36 @@ const styles = {
     justifyContent: 'center',
     alignItems: 'center',
     minHeight: '100vh',
-    background: 'var(--bg-primary)',
     padding: '40px 20px',
     position: 'relative',
     overflow: 'hidden',
+    /* Fallback gradient for mobile / no-video */
+    background: 'linear-gradient(135deg, #0f1f3d 0%, #1a3a5c 50%, #0d4f5c 100%)',
+  },
+  videoBg: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
+    objectFit: 'cover',
+    zIndex: 0,
+    pointerEvents: 'none',
+  },
+  overlay: {
+    display: 'none',
   },
   card: {
     width: '100%',
     maxWidth: '520px',
     padding: '3rem 2.5rem',
-    background: '#FFFFFF',
-    boxShadow: 'var(--shadow-lg)',
+    background: 'rgba(255, 255, 255, 0.10)',
+    backdropFilter: 'blur(24px)',
+    WebkitBackdropFilter: 'blur(24px)',
+    boxShadow: '0 8px 48px rgba(0,0,0,0.40), 0 1.5px 0 rgba(255,255,255,0.12) inset',
     borderRadius: '32px',
     zIndex: 2,
-    border: '1px solid var(--sky-blue-light)',
+    border: '1.5px solid rgba(255, 255, 255, 0.18)',
   },
   header: {
     textAlign: 'center',
@@ -251,12 +272,13 @@ const styles = {
   brand: {
     fontSize: '2rem',
     fontWeight: 800,
-    color: 'var(--primary-navy)',
+    color: '#FFFFFF',
     fontFamily: 'Outfit, sans-serif',
     margin: '0.5rem 0 0.25rem 0',
+    textShadow: '0 2px 12px rgba(0,0,0,0.3)',
   },
   subtitle: {
-    color: 'var(--text-secondary)',
+    color: 'rgba(255,255,255,0.72)',
     fontSize: '14px',
     margin: 0,
   },
@@ -266,6 +288,9 @@ const styles = {
     fontSize: '13px',
     borderRadius: '16px',
     textAlign: 'center',
+    background: 'rgba(220,38,38,0.18)',
+    border: '1px solid rgba(220,38,38,0.35)',
+    color: '#FCA5A5',
   },
   formGrid: {
     display: 'grid',
@@ -273,16 +298,18 @@ const styles = {
     gap: '1rem',
   },
   label: {
-    color: 'var(--primary-navy)',
+    color: 'rgba(255,255,255,0.88)',
     fontWeight: 600,
   },
   input: {
     borderRadius: '16px',
-    border: '2px solid var(--sky-blue)',
-    background: 'var(--bg-secondary)',
+    border: '1.5px solid rgba(255,255,255,0.22)',
+    background: 'rgba(255,255,255,0.10)',
     padding: '10px 14px',
     fontSize: '14px',
-    color: 'var(--primary-navy)',
+    color: '#FFFFFF',
+    outline: 'none',
+    backdropFilter: 'blur(8px)',
   },
   roleGrid: {
     display: 'grid',
@@ -295,9 +322,11 @@ const styles = {
     alignItems: 'center',
     padding: '12px 8px',
     borderRadius: '20px',
-    border: '2px solid',
+    border: '1.5px solid rgba(255,255,255,0.22)',
     cursor: 'pointer',
     transition: 'all 0.2s ease',
+    background: 'rgba(255,255,255,0.08)',
+    color: '#FFFFFF',
   },
   footer: {
     textAlign: 'center',

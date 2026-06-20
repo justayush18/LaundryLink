@@ -72,9 +72,10 @@ export default function FloatingNav() {
         return [
           { to: '/customer/dashboard', label: 'Dashboard', icon: LayoutDashboard },
           { to: '/customer/orders', label: 'Orders', icon: ShoppingBag },
-          { to: '/customer/order-history', label: 'Order History', icon: ClipboardList },
+          { to: '/customer/order-history', label: 'History', icon: ClipboardList },
           { to: '/customer/payments', label: 'Payments', icon: CreditCard },
           { to: '/customer/reviews', label: 'Reviews', icon: Star },
+          { to: '/terms', label: 'Policies', icon: FileText },
         ];
       case 'LAUNDRY_PARTNER':
         return [
@@ -82,11 +83,13 @@ export default function FloatingNav() {
           { to: '/partner/orders', label: 'Orders', icon: ShoppingBag },
           { to: '/partner/pricing', label: 'Rates', icon: DollarSign },
           { to: '/partner/documents', label: 'Documents', icon: FileText },
+          { to: '/terms', label: 'Policies', icon: FileText },
         ];
       case 'DELIVERY_PARTNER':
         return [
           { to: '/delivery/dashboard', label: 'Dashboard', icon: LayoutDashboard },
           { to: '/delivery/tasks', label: 'Tasks', icon: ClipboardList },
+          { to: '/terms', label: 'Policies', icon: FileText },
         ];
       case 'ADMIN':
         return [
@@ -96,6 +99,7 @@ export default function FloatingNav() {
           { to: '/admin/orders', label: 'Orders', icon: ClipboardList },
           { to: '/admin/payments', label: 'Payments', icon: CreditCard },
           { to: '/admin/reports', label: 'Reports', icon: TrendingUp },
+          { to: '/terms', label: 'Policies', icon: FileText },
         ];
       default:
         return [];

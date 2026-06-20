@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api, getFriendlyErrorMessage } from '../../services/api';
 import { Search, ShieldAlert, Check, UserMinus, UserCheck, RefreshCw, Trash2 } from 'lucide-react';
+import CustomSelect from '../Common/CustomSelect';
 
 export default function AdminUsers() {
   const [users, setUsers] = useState([]);
@@ -164,7 +165,7 @@ export default function AdminUsers() {
                     </td>
                     <td style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{u.email}</td>
                     <td>
-                      <select
+                      <CustomSelect
                         className="velora-input"
                         value={u.role}
                         onChange={(e) => handleChangeRole(u.email, e.target.value)}
@@ -185,7 +186,7 @@ export default function AdminUsers() {
                         <option value="LAUNDRY_PARTNER">Laundry Partner</option>
                         <option value="DELIVERY_PARTNER">Delivery Partner</option>
                         <option value="ADMIN" disabled>Admin</option>
-                      </select>
+                      </CustomSelect>
                     </td>
                     <td>
                       {u.active ? (

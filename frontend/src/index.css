@@ -1328,3 +1328,16 @@ tr:hover td {
   background: var(--color-success-light);
   color: var(--color-success);
 }
+
+/* ── Auth Page – Background Video ── */
+/* On mobile: hide video for performance, gradient fallback is used */
+@media (max-width: 768px) {
+  .auth-video-bg {
+    display: none;
+  }
+}
+
+/* Input placeholder color for dark auth pages */
+.auth-dark-input::placeholder {
+  color: rgba(255, 255, 255, 0.40);
+}

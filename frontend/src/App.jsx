@@ -33,6 +33,9 @@ import AdminPartners from './components/Admin/AdminPartners';
 import AdminOrders from './components/Admin/AdminOrders';
 import AdminPayments from './components/Admin/AdminPayments';
 import AdminReports from './components/Admin/AdminReports';
+import OnboardingTerms from './components/Auth/OnboardingTerms';
+import TermsAndPolicies from './components/Common/TermsAndPolicies';
+import VerifyOtp from './components/Auth/VerifyOtp';
 
 import './App.css';
 
@@ -187,6 +190,15 @@ function MainLayout() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/terms"
+            element={
+              <ProtectedRoute>
+                <TermsAndPolicies />
+              </ProtectedRoute>
+            }
+          />
+
 
           {/* Fallback to user home based on active role */}
           <Route
@@ -247,7 +259,9 @@ function RootNavigator() {
         path="/"
         element={
           user ? (
-            user.role === 'CUSTOMER' ? (
+            !user.emailVerified ? (
+              <Navigate to="/verify-email" replace />
+            ) : user.role === 'CUSTOMER' ? (
               <Navigate to="/customer/dashboard" replace />
             ) : user.role === 'LAUNDRY_PARTNER' ? (
               <Navigate to="/partner/dashboard" replace />
@@ -267,7 +281,9 @@ function RootNavigator() {
         path="/login"
         element={
           user ? (
-            user.role === 'CUSTOMER' ? (
+            !user.emailVerified ? (
+              <Navigate to="/verify-email" replace />
+            ) : user.role === 'CUSTOMER' ? (
               <Navigate to="/customer/dashboard" replace />
             ) : user.role === 'LAUNDRY_PARTNER' ? (
               <Navigate to="/partner/dashboard" replace />
@@ -287,7 +303,9 @@ function RootNavigator() {
         path="/register"
         element={
           user ? (
-            user.role === 'CUSTOMER' ? (
+            !user.emailVerified ? (
+              <Navigate to="/verify-email" replace />
+            ) : user.role === 'CUSTOMER' ? (
               <Navigate to="/customer/dashboard" replace />
             ) : user.role === 'LAUNDRY_PARTNER' ? (
               <Navigate to="/partner/dashboard" replace />
@@ -302,6 +320,14 @@ function RootNavigator() {
             <Register />
           )
         }
+      />
+      <Route
+        path="/onboarding"
+        element={<OnboardingTerms />}
+      />
+      <Route
+        path="/verify-email"
+        element={<VerifyOtp />}
       />
       <Route path="*" element={<MainLayout />} />
     </Routes>

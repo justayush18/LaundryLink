@@ -8,6 +8,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -45,6 +47,15 @@ public class UserManagementController {
     public List<AddressView> addresses(@PathVariable UserRoleType role) {
         requireAdminOrCurrentRole(role);
         return userManagementService.addresses(role);
+    }
+
+    @PostMapping(value = "/accept-terms", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public AuthenticatedUserView acceptTerms(@RequestBody AcceptTermsRequest request) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !(authentication.getPrincipal() instanceof com.laundrylink.laundrylink.security.AuthenticatedPrincipal principal)) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication required");
+        }
+        return userManagementService.acceptTerms(principal.email(), request.acceptedVersion());
     }
 
     private void requireAdmin() {

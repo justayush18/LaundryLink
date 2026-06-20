@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, CreditCard, Smartphone, Truck, ShieldCheck, Loader2, CheckCircle2, ChevronRight, ArrowLeft } from 'lucide-react';
 import { api, getFriendlyErrorMessage } from '../../services/api';
+import VeloraMascot from '../Common/VeloraMascot';
 
 export default function CheckoutModal({ isOpen, onClose, orderId, totalCost, onPaymentComplete }) {
   const [method, setMethod] = useState(''); // 'UPI' | 'RAZORPAY' | 'COD'
@@ -17,7 +18,8 @@ export default function CheckoutModal({ isOpen, onClose, orderId, totalCost, onP
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [activePayment, setActivePayment] = useState(null);
-  const [timeLeft, setTimeLeft] = useState(60);
+  const [timeLeft, setTimeLeft] = useState(420);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -34,13 +36,14 @@ export default function CheckoutModal({ isOpen, onClose, orderId, totalCost, onP
       setError('');
       setSubmitting(false);
       setActivePayment(null);
-      setTimeLeft(60);
+      setTimeLeft(420);
+      setShowCancelConfirm(false);
     }
   }, [isOpen]);
 
   useEffect(() => {
     if (isOpen && step === 1) {
-      setTimeLeft(60);
+      setTimeLeft(420);
     }
   }, [isOpen, step]);
 
@@ -60,6 +63,10 @@ export default function CheckoutModal({ isOpen, onClose, orderId, totalCost, onP
               api.payments.process(activePayment.paymentId, { simulateSuccess: false })
                 .catch(err => console.error("Failed to mark payment as failed on timeout:", err));
             }
+            if (orderId) {
+              api.orders.updateStatus(orderId, { status: 'CANCELLED', notes: 'Payment timed out during checkout' })
+                .catch(err => console.error("Failed to cancel order on timeout:", err));
+            }
             return 0;
           }
           return prev - 1;
@@ -67,19 +74,33 @@ export default function CheckoutModal({ isOpen, onClose, orderId, totalCost, onP
       }, 1000);
     }
     return () => clearInterval(timer);
-  }, [isOpen, step, activePayment]);
+  }, [isOpen, step, activePayment, orderId]);
 
-  const handleCancelPayment = async () => {
-    if (window.confirm("Are you sure you want to cancel the payment? Your order has been placed and will remain unpaid. You can complete the payment later from your dashboard.")) {
-      if (activePayment) {
-        try {
-          await api.payments.process(activePayment.paymentId, { simulateSuccess: false });
-        } catch (err) {
-          console.error("Failed to cancel payment in backend:", err);
-        }
+  const handleCancelPayment = () => {
+    setShowCancelConfirm(true);
+  };
+
+  const handleCloseAndCancel = async (reason = 'Payment aborted by customer during checkout') => {
+    if (activePayment) {
+      try {
+        await api.payments.process(activePayment.paymentId, { simulateSuccess: false });
+      } catch (err) {
+        console.error("Failed to cancel payment in backend:", err);
       }
-      onClose();
     }
+    if (orderId) {
+      try {
+        await api.orders.updateStatus(orderId, { status: 'CANCELLED', notes: reason });
+      } catch (err) {
+        console.error("Failed to cancel order in backend:", err);
+      }
+    }
+    setShowCancelConfirm(false);
+    onClose();
+  };
+
+  const executeCancelPayment = async () => {
+    await handleCloseAndCancel('Payment cancelled by customer during checkout');
   };
 
   if (!isOpen) return null;
@@ -207,7 +228,16 @@ export default function CheckoutModal({ isOpen, onClose, orderId, totalCost, onP
             </h2>
           </div>
           {step !== 3 && step !== 5 && step !== 6 && (
-            <button onClick={onClose} style={styles.closeBtn}>
+            <button
+              onClick={() => {
+                if (step === 1 || step === 2 || step === 4) {
+                  setShowCancelConfirm(true);
+                } else {
+                  onClose();
+                }
+              }}
+              style={styles.closeBtn}
+            >
               <X size={20} />
             </button>
           )}
@@ -219,13 +249,45 @@ export default function CheckoutModal({ isOpen, onClose, orderId, totalCost, onP
           </div>
         )}
 
-        {step < 5 && (
+        {showCancelConfirm ?
+          <div style={{ textAlign: 'center', padding: '1.5rem 0' }}>
+            <VeloraMascot mood="thinking" size={100} style={{ marginBottom: '14px' }} />
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--primary-navy)', fontFamily: 'Outfit, sans-serif', margin: '0 0 10px 0' }}>
+              Cancel Payment?
+            </h3>
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.5', marginBottom: '20px' }}>
+              Cancelling payment will cancel your order. Are you sure you want to cancel?
+            </p>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <button
+                type="button"
+                onClick={executeCancelPayment}
+                className="velora-btn velora-btn-primary"
+                style={{ width: '100%', padding: '12px', background: 'var(--color-error)', border: 'none', color: '#FFFFFF', justifyContent: 'center' }}
+              >
+                Yes, Cancel Payment
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowCancelConfirm(false)}
+                className="velora-btn velora-btn-secondary"
+                style={{ width: '100%', padding: '12px', justifyContent: 'center' }}
+              >
+                No, Go Back to Checkout
+              </button>
+            </div>
+          </div>
+        :
+          <>
+            {step < 5 && (
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--color-warning-light)', padding: '10px 14px', borderRadius: '14px', marginBottom: '14px', border: '1px solid var(--color-warning)' }}>
             <span style={{ fontSize: '12px', color: 'var(--primary-navy)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
               ⏱️ Payment session expires in:
             </span>
             <span style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: '14px', color: timeLeft <= 15 ? 'var(--color-error)' : 'var(--primary-navy)' }} className={timeLeft <= 15 ? 'animate-pulse' : ''}>
-              {timeLeft}s
+              {Math.floor(timeLeft / 60)}:
+{(timeLeft % 60).toString().padStart(2, '0')}
             </span>
           </div>
         )}
@@ -637,7 +699,7 @@ export default function CheckoutModal({ isOpen, onClose, orderId, totalCost, onP
                 Retry Payment
               </button>
               <button
-                onClick={onClose}
+                onClick={() => handleCloseAndCancel('Payment failed or customer chose to pay later')}
                 className="velora-btn velora-btn-secondary"
                 style={{ flex: 1, maxWidth: '160px', justifyContent: 'center' }}
               >
@@ -646,6 +708,8 @@ export default function CheckoutModal({ isOpen, onClose, orderId, totalCost, onP
             </div>
           </div>
         )}
+          </>
+        }
       </div>
     </div>
   );

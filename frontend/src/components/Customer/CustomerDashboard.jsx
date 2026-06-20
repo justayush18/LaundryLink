@@ -137,7 +137,17 @@ export default function CustomerDashboard() {
 
 
   const getActiveOrders = () => {
-    return orders.filter(o => o.status !== 'DELIVERED' && o.status !== 'CANCELLED');
+    return orders.filter(o => {
+      if (o.status === 'DELIVERED' || o.status === 'CANCELLED') return false;
+      // Filter out unpaid online orders:
+      // 1. If payment is not initiated yet
+      if (!o.paymentId) return false;
+      // 2. If it is online payment (not COD) and status is not SUCCESS
+      if (o.paymentMethod && o.paymentMethod !== 'COD' && o.paymentStatus !== 'SUCCESS') {
+        return false;
+      }
+      return true;
+    });
   };
 
   const getCompletedOrders = () => {

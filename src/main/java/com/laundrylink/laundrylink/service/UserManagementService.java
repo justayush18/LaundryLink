@@ -2,6 +2,7 @@ package com.laundrylink.laundrylink.service;
 
 import java.util.List;
 import java.util.stream.Collectors;
+import java.time.Instant;
 
 import org.springframework.stereotype.Service;
 import org.springframework.context.annotation.Lazy;
@@ -10,6 +11,7 @@ import com.laundrylink.laundrylink.api.AddressView;
 import com.laundrylink.laundrylink.api.UserProfileView;
 import com.laundrylink.laundrylink.api.UserRoleSummary;
 import com.laundrylink.laundrylink.api.UserRoleType;
+import com.laundrylink.laundrylink.api.AuthenticatedUserView;
 import com.laundrylink.laundrylink.persistence.UserRepository;
 import com.laundrylink.laundrylink.persistence.UserEntity;
 
@@ -99,5 +101,25 @@ public class UserManagementService {
                     "Review reports",
                     "Handle disputes");
         };
+    }
+
+    public AuthenticatedUserView acceptTerms(String email, String acceptedVersion) {
+        UserEntity user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "User not found"));
+        user.setTermsAccepted(true);
+        user.setTermsAcceptanceTimestamp(Instant.now().getEpochSecond());
+        user.setTermsAcceptedVersion(acceptedVersion);
+        userRepository.saveAndFlush(user);
+        return new AuthenticatedUserView(
+                user.getDisplayName(),
+                user.getEmail(),
+                user.getPhoneNumber(),
+                user.getRole(),
+                user.isTermsAccepted(),
+                user.getTermsAcceptanceTimestamp(),
+                user.getTermsAcceptedVersion(),
+                user.isEmailVerified()
+        );
     }
 }

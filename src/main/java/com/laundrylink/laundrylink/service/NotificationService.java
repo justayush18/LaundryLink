@@ -15,16 +15,31 @@ import com.laundrylink.laundrylink.persistence.NotificationEntity;
 import com.laundrylink.laundrylink.persistence.NotificationPreferencesEntity;
 import com.laundrylink.laundrylink.persistence.NotificationPreferencesRepository;
 import com.laundrylink.laundrylink.persistence.NotificationRepository;
+import com.laundrylink.laundrylink.persistence.UserRepository;
+import com.laundrylink.laundrylink.api.UserRoleType;
 
 @Service
 public class NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final NotificationPreferencesRepository preferencesRepository;
+    private final UserRepository userRepository;
+    private final org.springframework.mail.javamail.JavaMailSender mailSender;
 
     public NotificationService(NotificationRepository notificationRepository, NotificationPreferencesRepository preferencesRepository) {
+        this(notificationRepository, preferencesRepository, null, null);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public NotificationService(
+            NotificationRepository notificationRepository, 
+            NotificationPreferencesRepository preferencesRepository,
+            UserRepository userRepository,
+            @org.springframework.beans.factory.annotation.Autowired(required = false) org.springframework.mail.javamail.JavaMailSender mailSender) {
         this.notificationRepository = notificationRepository;
         this.preferencesRepository = preferencesRepository;
+        this.userRepository = userRepository;
+        this.mailSender = mailSender;
     }
 
     public void sendNotification(String recipientEmail, NotificationType type, String message) {
@@ -53,6 +68,38 @@ public class NotificationService {
 
         notificationRepository.save(notification);
         System.out.println("[SIMULATION] Email sent to " + recipientEmail + " | Subject: " + type + " Alert | Message: " + message);
+
+        // Check if recipient is CUSTOMER to send a real email copy
+        boolean isCustomer = false;
+        if (userRepository != null) {
+            isCustomer = userRepository.findByEmail(normalizedEmail)
+                    .map(u -> u.getRole() == UserRoleType.CUSTOMER)
+                    .orElse(false);
+        }
+
+        if (isCustomer) {
+            sendRealNotificationEmail(normalizedEmail, type, message);
+        }
+    }
+
+    private void sendRealNotificationEmail(String toEmail, NotificationType type, String messageText) {
+        String subject = "Velora Update: " + type.name().replace('_', ' ');
+        String body = "Hello,\n\nYou have a new update on your Velora laundry order:\n\n" + messageText + "\n\nThank you,\nVelora Team";
+        
+        System.out.println("[NOTIFICATION EMAIL SIMULATION] Sending notification email to: " + toEmail + " | Type: " + type + " | Msg: " + messageText);
+        
+        if (mailSender != null) {
+            try {
+                org.springframework.mail.SimpleMailMessage message = new org.springframework.mail.SimpleMailMessage();
+                message.setTo(toEmail);
+                message.setSubject(subject);
+                message.setText(body);
+                mailSender.send(message);
+                System.out.println("[SMTP] Notification email successfully sent to customer: " + toEmail);
+            } catch (Exception e) {
+                System.err.println("[SMTP ERROR] Failed to send notification email to customer: " + toEmail + ". Error: " + e.getMessage());
+            }
+        }
     }
 
     public NotificationHistoryResponse getHistoryResponse(String email) {

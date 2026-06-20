@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { api, getFriendlyErrorMessage } from '../../services/api';
 import { Search, Eye, Filter, Calendar, ClipboardList } from 'lucide-react';
 import EmptyState from '../Common/EmptyState';
+import CustomSelect from '../Common/CustomSelect';
 
 export default function PartnerOrders() {
   const [orders, setOrders] = useState([]);
@@ -121,11 +122,12 @@ export default function PartnerOrders() {
 
             <div style={styles.filterBox}>
               <Filter size={16} color="var(--primary-teal)" style={{ marginRight: '6px' }} />
-              <select
+              <CustomSelect
                 className="form-control"
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
                 style={{ padding: '8px 10px', border: 'none', background: 'transparent', cursor: 'pointer', fontSize: '13px', color: 'var(--primary-navy)', fontWeight: 600 }}
+                variant="borderless"
               >
                 <option value="ALL">All Statuses</option>
                 <option value="PLACED">Placed</option>
@@ -135,7 +137,7 @@ export default function PartnerOrders() {
                 <option value="READY_FOR_DELIVERY">Ready for Delivery</option>
                 <option value="DELIVERED">Delivered</option>
                 <option value="CANCELLED">Cancelled</option>
-              </select>
+              </CustomSelect>
             </div>
           </div>
 

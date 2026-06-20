@@ -30,6 +30,24 @@ public class UserEntity extends AuditedEntity {
     @Column(nullable = false)
     private boolean active = true;
 
+    @Column(nullable = false)
+    private boolean termsAccepted = false;
+
+    private Long termsAcceptanceTimestamp;
+
+    private String termsAcceptedVersion;
+
+    @Column(nullable = false)
+    private boolean emailVerified = true;
+
+    private String otpCode;
+
+    private Long otpExpiryTime;
+
+    private int otpResendCount = 0;
+
+    private int otpInvalidAttempts = 0;
+
     public UserEntity() {}
 
     public UserEntity(String email, String passwordHash, String displayName, String phoneNumber, UserRoleType role) {
@@ -105,5 +123,69 @@ public class UserEntity extends AuditedEntity {
 
     public void setOnline(boolean online) {
         this.online = online;
+    }
+
+    public boolean isTermsAccepted() {
+        return termsAccepted;
+    }
+
+    public void setTermsAccepted(boolean termsAccepted) {
+        this.termsAccepted = termsAccepted;
+    }
+
+    public Long getTermsAcceptanceTimestamp() {
+        return termsAcceptanceTimestamp;
+    }
+
+    public void setTermsAcceptanceTimestamp(Long termsAcceptanceTimestamp) {
+        this.termsAcceptanceTimestamp = termsAcceptanceTimestamp;
+    }
+
+    public String getTermsAcceptedVersion() {
+        return termsAcceptedVersion;
+    }
+
+    public void setTermsAcceptedVersion(String termsAcceptedVersion) {
+        this.termsAcceptedVersion = termsAcceptedVersion;
+    }
+
+    public boolean isEmailVerified() {
+        return emailVerified;
+    }
+
+    public void setEmailVerified(boolean emailVerified) {
+        this.emailVerified = emailVerified;
+    }
+
+    public String getOtpCode() {
+        return otpCode;
+    }
+
+    public void setOtpCode(String otpCode) {
+        this.otpCode = otpCode;
+    }
+
+    public Long getOtpExpiryTime() {
+        return otpExpiryTime;
+    }
+
+    public void setOtpExpiryTime(Long otpExpiryTime) {
+        this.otpExpiryTime = otpExpiryTime;
+    }
+
+    public int getOtpResendCount() {
+        return otpResendCount;
+    }
+
+    public void setOtpResendCount(int otpResendCount) {
+        this.otpResendCount = otpResendCount;
+    }
+
+    public int getOtpInvalidAttempts() {
+        return otpInvalidAttempts;
+    }
+
+    public void setOtpInvalidAttempts(int otpInvalidAttempts) {
+        this.otpInvalidAttempts = otpInvalidAttempts;
     }
 }

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { api, getFriendlyErrorMessage } from '../../services/api';
 import { X, ArrowRight, ArrowLeft, Calendar, MapPin, CheckCircle, Star, CreditCard, Smartphone, Truck, ShieldCheck, Loader2, CheckCircle2, ChevronRight } from 'lucide-react';
 import VeloraMascot from '../Common/VeloraMascot';
+import CustomSelect from '../Common/CustomSelect';
 
 export default function PlaceOrderWizard({ isOpen, onClose, onOrderPlaced }) {
   const [step, setStep] = useState(1);
@@ -36,6 +37,7 @@ export default function PlaceOrderWizard({ isOpen, onClose, onOrderPlaced }) {
   const [submitting, setSubmitting] = useState(false);
   const [activePayment, setActivePayment] = useState(null);
   const [timeLeft, setTimeLeft] = useState(60);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -64,6 +66,7 @@ export default function PlaceOrderWizard({ isOpen, onClose, onOrderPlaced }) {
       setSubmitting(false);
       setActivePayment(null);
       setTimeLeft(60);
+      setShowCancelConfirm(false);
     }
   }, [isOpen]);
 
@@ -95,6 +98,10 @@ export default function PlaceOrderWizard({ isOpen, onClose, onOrderPlaced }) {
               api.payments.process(activePayment.paymentId, { simulateSuccess: false })
                 .catch(err => console.error("Failed to mark payment as failed on timeout:", err));
             }
+            if (orderId) {
+              api.orders.updateStatus(orderId, { status: 'CANCELLED', notes: 'Payment timed out during checkout' })
+                .catch(err => console.error("Failed to cancel order on timeout:", err));
+            }
             return 0;
           }
           return prev - 1;
@@ -102,19 +109,33 @@ export default function PlaceOrderWizard({ isOpen, onClose, onOrderPlaced }) {
       }, 1000);
     }
     return () => clearInterval(timer);
-  }, [isOpen, step, paymentStep, activePayment]);
+  }, [isOpen, step, paymentStep, activePayment, orderId]);
 
-  const handleCancelPayment = async () => {
-    if (window.confirm("Are you sure you want to cancel the payment? Your order has been placed and will remain unpaid. You can complete the payment later from your dashboard.")) {
-      if (activePayment) {
-        try {
-          await api.payments.process(activePayment.paymentId, { simulateSuccess: false });
-        } catch (err) {
-          console.error("Failed to cancel payment in backend:", err);
-        }
+  const handleCancelPayment = () => {
+    setShowCancelConfirm(true);
+  };
+
+  const handleCloseAndCancel = async (reason = 'Payment aborted by customer during checkout') => {
+    if (activePayment) {
+      try {
+        await api.payments.process(activePayment.paymentId, { simulateSuccess: false });
+      } catch (err) {
+        console.error("Failed to cancel payment in backend:", err);
       }
-      handleClose();
     }
+    if (orderId) {
+      try {
+        await api.orders.updateStatus(orderId, { status: 'CANCELLED', notes: reason });
+      } catch (err) {
+        console.error("Failed to cancel order in backend:", err);
+      }
+    }
+    setShowCancelConfirm(false);
+    handleClose();
+  };
+
+  const executeCancelPayment = async () => {
+    await handleCloseAndCancel('Payment cancelled by customer during checkout');
   };
 
   const fetchPartners = async () => {
@@ -407,7 +428,20 @@ export default function PlaceOrderWizard({ isOpen, onClose, onOrderPlaced }) {
             </h2>
           </div>
           {!(step === 4 && paymentStep === 3) && (
-            <button onClick={handleClose} style={styles.closeBtn}>
+            <button
+              onClick={() => {
+                if (step === 4) {
+                  if (paymentStep === 5) {
+                    handleCloseAndCancel('Payment failed or customer chose to pay later');
+                  } else {
+                    setShowCancelConfirm(true);
+                  }
+                } else {
+                  handleClose();
+                }
+              }}
+              style={styles.closeBtn}
+            >
               <X size={20} />
             </button>
           )}
@@ -610,7 +644,7 @@ export default function PlaceOrderWizard({ isOpen, onClose, onOrderPlaced }) {
                 {items.map((item, idx) => (
                   <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '8px', background: 'var(--bg-primary)', padding: '14px', borderRadius: '18px', marginBottom: '12px', border: '1px solid var(--sky-blue-light)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <select
+                      <CustomSelect
                         className="form-control"
                         value={item.itemCategory}
                         onChange={(e) => handleItemChange(idx, 'itemCategory', e.target.value)}
@@ -625,9 +659,9 @@ export default function PlaceOrderWizard({ isOpen, onClose, onOrderPlaced }) {
                         <option value="SAREE">Saree</option>
                         <option value="DRESS">Dress</option>
                         <option value="CUSTOM">Other (Write manually)</option>
-                      </select>
+                      </CustomSelect>
 
-                      <select
+                      <CustomSelect
                         className="form-control"
                         value={item.serviceType}
                         onChange={(e) => handleItemChange(idx, 'serviceType', e.target.value)}
@@ -640,7 +674,7 @@ export default function PlaceOrderWizard({ isOpen, onClose, onOrderPlaced }) {
                         <option value="PREMIUM_DRY_CLEAN">Premium Dry Clean</option>
                         <option value="STAIN_REMOVAL">Stain Removal</option>
                         <option value="CUSTOM">Other (Write manually)</option>
-                      </select>
+                      </CustomSelect>
 
                       <input
                         type="number"
@@ -818,6 +852,37 @@ export default function PlaceOrderWizard({ isOpen, onClose, onOrderPlaced }) {
 
           {step === 4 && (
             <div>
+              {showCancelConfirm ?
+                <div style={{ textAlign: 'center', padding: '1.5rem 0' }}>
+                  <VeloraMascot mood="thinking" size={100} style={{ marginBottom: '14px' }} />
+                  <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--primary-navy)', fontFamily: 'Outfit, sans-serif', margin: '0 0 10px 0' }}>
+                    Cancel Payment?
+                  </h3>
+                  <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.5', marginBottom: '20px' }}>
+                    Cancelling payment will cancel your order. Are you sure you want to cancel?
+                  </p>
+                  
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <button
+                      type="button"
+                      onClick={executeCancelPayment}
+                      className="velora-btn velora-btn-primary"
+                      style={{ width: '100%', padding: '12px', background: 'var(--color-error)', border: 'none', color: '#FFFFFF', justifyContent: 'center' }}
+                    >
+                      Yes, Cancel Payment
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowCancelConfirm(false)}
+                      className="velora-btn velora-btn-secondary"
+                      style={{ width: '100%', padding: '12px', justifyContent: 'center' }}
+                    >
+                      No, Go Back to Checkout
+                    </button>
+                  </div>
+                </div>
+              :
+                <>
               {/* Payment Session Timer */}
               {paymentStep < 5 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--color-warning-light)', padding: '10px 14px', borderRadius: '14px', marginBottom: '14px', border: '1px solid var(--color-warning)' }}>
@@ -1206,7 +1271,7 @@ export default function PlaceOrderWizard({ isOpen, onClose, onOrderPlaced }) {
                       Retry Payment
                     </button>
                     <button
-                      onClick={handleClose}
+                      onClick={() => handleCloseAndCancel('Payment failed or customer chose to pay later')}
                       className="velora-btn velora-btn-secondary"
                       style={{ flex: 1, maxWidth: '160px', justifyContent: 'center' }}
                     >
@@ -1215,8 +1280,10 @@ export default function PlaceOrderWizard({ isOpen, onClose, onOrderPlaced }) {
                   </div>
                 </div>
               )}
-            </div>
-          )}
+            </>
+          }
+        </div>
+      )}
 
           {step === 5 && (
             <div style={{ textAlign: 'center', padding: '1.5rem 0', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>

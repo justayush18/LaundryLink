@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../../services/api';
 import { DollarSign, Save, RefreshCw, Trash2, Plus } from 'lucide-react';
 import VeloraMascot from '../Common/VeloraMascot';
+import CustomSelect from '../Common/CustomSelect';
 
 const STANDARD_CATEGORIES = ['SHIRT', 'PANTS', 'SUIT', 'JACKET', 'BLANKET', 'CURTAINS', 'SAREE', 'DRESS'];
 const STANDARD_SERVICES = ['WASH_AND_FOLD', 'DRY_CLEAN', 'WASH_AND_IRON', 'STEAM_PRESS', 'PREMIUM_DRY_CLEAN', 'STAIN_REMOVAL'];
@@ -192,7 +193,7 @@ export default function PartnerPricing() {
                   rateCard.map((rate, idx) => (
                     <div key={idx} style={styles.rateRowEditable}>
                       <div style={styles.rateRowMain}>
-                        <select
+                        <CustomSelect
                           className="form-control"
                           value={rate.itemCategory}
                           onChange={(e) => handleFieldChange(idx, 'itemCategory', e.target.value)}
@@ -202,9 +203,9 @@ export default function PartnerPricing() {
                           {CATEGORY_OPTIONS.map(opt => (
                             <option key={opt.value} value={opt.value}>{opt.label}</option>
                           ))}
-                        </select>
+                        </CustomSelect>
 
-                        <select
+                        <CustomSelect
                           className="form-control"
                           value={rate.serviceType}
                           onChange={(e) => handleFieldChange(idx, 'serviceType', e.target.value)}
@@ -214,7 +215,7 @@ export default function PartnerPricing() {
                           {SERVICE_OPTIONS.map(opt => (
                             <option key={opt.value} value={opt.value}>{opt.label}</option>
                           ))}
-                        </select>
+                        </CustomSelect>
                         
                         <div style={styles.priceInputGroup}>
                           <span style={styles.currency}>₹</span>

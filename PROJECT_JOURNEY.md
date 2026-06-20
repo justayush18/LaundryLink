@@ -715,3 +715,157 @@ This file is an append-only development diary for Velora. New work must be added
 - Problems encountered: Fallback totals mismatched when custom category strings did not align with DB lookup rules.
 - How the issue was resolved: Enabled case-insensitive checkups (`.toUpperCase()`) and synced the default frontend price with the backend's ultimate `50.0` fallback.
 - Verification and build testing: Tested compilation successfully. Backend verification test suite builds cleanly.
+
+### 2026-06-19 - Phase 21 Checkout Timeout, Cancellation & Active Trackings
+- Date and phase: 2026-06-19, Phase 21.
+- Goal of the task: Implement checkout session payment timeouts, options to cancel payment, and active laundry trackings panel directly on the customer's dashboard.
+- What was implemented:
+  - **Countdown Timer Reset**: Corrected the React state countdown timer so that returning to step 1 (retry) resets the timer back to 60s instead of remaining at 0.
+  - **Backend Payment Timeout**: Integrated background database sync that transitions timed-out payments to `FAILED` status on the backend.
+  - **Payment Cancellation**: Added a prominent button allowing customers to cancel payment, syncing the cancel state to the backend database as `FAILED`. Swapped native browser `window.confirm` alerts with an integrated, stateful custom confirmation popup featuring the thinking Velora mascot.
+  - **Active Laundry Trackings Stepper**: Rendered a split-column layout on the customer dashboard upon selecting an active order, showing a live tracking timeline stepper, slots, and status transition logs.
+- Files modified:
+  - [api.js](frontend/src/services/api.js)
+  - [PlaceOrderWizard.jsx](frontend/src/components/Customer/PlaceOrderWizard.jsx)
+  - [CheckoutModal.jsx](frontend/src/components/Customer/CheckoutModal.jsx)
+  - [CustomerDashboard.jsx](frontend/src/components/Customer/CustomerDashboard.jsx)
+- Problems encountered: Stale state references in countdown timers, and native `window.confirm` dialogs freezing or failing in webview/client environments.
+- How the issue was resolved: Added `activePayment` dependency to the `useEffect` hooks of the timers to assure the correct payment record is cancelled or processed on expiry. Replaced `window.confirm` with custom modal overlays in both `CheckoutModal.jsx` and `PlaceOrderWizard.jsx` that render a mascot warning message and action buttons.
+- Verification and build testing: Tested manually and verified by running integration tests.
+
+### 2026-06-19 - Phase 22 Custom UI Dropdown Select Components
+- Date and phase: 2026-06-19, Phase 22.
+- Goal of the task: Replace all browser-native HTML `<select>` elements in the application with premium, customized React dropdown select components matching the Velora theme.
+- What was implemented:
+  - **CustomSelect Component**: Created a reusable `CustomSelect` UI component supporting options from props or parsing native `<option>` child elements to enable seamless, drop-in replacement.
+  - **Layout Style Segregation**: Configured style parser helper inside the component to apply layout properties (like `flex`, `width`, `margin`) to the outer container and visual parameters to the inner select trigger.
+  - **Visual Enhancements**: Styled with Outfit typography, custom checkmarks for selected options, a rotating chevron icon, and standard focus state glow rings.
+  - **Global Application**: Replaced all native dropdowns in Admin Orders, Admin Partners, Admin Users, Place Order Wizard, Partner Documents, Partner Orders, and Partner Pricing views.
+- Files created:
+  - [CustomSelect.jsx](frontend/src/components/Common/CustomSelect.jsx)
+- Files modified:
+  - [AdminOrders.jsx](frontend/src/components/Admin/AdminOrders.jsx)
+  - [AdminPartners.jsx](frontend/src/components/Admin/AdminPartners.jsx)
+  - [AdminUsers.jsx](frontend/src/components/Admin/AdminUsers.jsx)
+  - [PlaceOrderWizard.jsx](frontend/src/components/Customer/PlaceOrderWizard.jsx)
+  - [PartnerDocuments.jsx](frontend/src/components/Partner/PartnerDocuments.jsx)
+  - [PartnerOrders.jsx](frontend/src/components/Partner/PartnerOrders.jsx)
+  - [PartnerPricing.jsx](frontend/src/components/Partner/PartnerPricing.jsx)
+- Problems encountered: Double-border issues when applying style objects to the custom select.
+- How the issue was resolved: Created a layout splitting helper separating outer styles from internal button styles.
+- Verification and build testing: React production build completed with zero errors. All 50 backend tests passed successfully.
+
+### 2026-06-20 - Phase 23 Payment Auto-Cancellation & Tracking Security
+- Date and phase: 2026-06-20, Phase 23.
+- Goal of the task: Implement automatic order cancellation when checkout payments fail, cancel, or time out. Ensure unpaid online orders do not display in the dashboard tracking list or payments ledger.
+- What was implemented:
+  - **Overloaded DTO Mapping**: Enhanced `OrderView` record with `paymentMethod` and `paymentStatus` properties, and defined a 19-parameter constructor to prevent test compilation failures.
+  - **Dependency Mapping**: Injected `PaymentRepository` into `OrderService` to retrieve and embed associated payment methods/statuses.
+  - **Auto-Cancellation Handlers**: Integrated order cancellation updates to `CANCELLED` status inside CheckoutModal and PlaceOrderWizard on timer timeout, customer cancellation, and modal header close clicks.
+  - **Dashboard and Ledger Security**: Updated dashboard filters to hide online orders with unconfirmed payments, and updated ledger columns to evaluate transaction success based on paymentStatus rather than paymentId.
+- Files modified:
+  - [OrderView.java](src/main/java/com/laundrylink/laundrylink/api/OrderView.java)
+  - [OrderService.java](src/main/java/com/laundrylink/laundrylink/service/OrderService.java)
+  - [PlaceOrderWizard.jsx](frontend/src/components/Customer/PlaceOrderWizard.jsx)
+  - [CheckoutModal.jsx](frontend/src/components/Customer/CheckoutModal.jsx)
+  - [CustomerDashboard.jsx](frontend/src/components/Customer/CustomerDashboard.jsx)
+  - [CustomerPayments.jsx](frontend/src/components/Customer/CustomerPayments.jsx)
+- Problems encountered: None. The overloaded constructor approach successfully protected all existing backend integration tests.
+- Verification and build testing: Verified via frontend `npm run build` and backend `./mvnw.cmd test` (all 50/50 test suites passed).
+
+### 2026-06-20 - Phase 24 Unified Reviews, Analytics & Profile Intelligence Center
+- Date and phase: 2026-06-20, Phase 24.
+- Goal of the task: Redesign the Reviews section inside the Admin panel into a Unified Reviews, Analytics & Profile Intelligence Center and merge it directly inside the Reports module under a tabbed panel layout.
+- What was implemented:
+  - **Reports & Intelligence Consolidation**: Combined financial reporting (KPI cards, performance chart, merchant leaderboard) and stakeholder profile analytics (directories, timeline activities, risk flags) under a single `/admin/reports` route.
+  - **Premium Tabbed Panel**: Implemented a responsive tab selector at the top of the reports view to toggle between "Revenue & Analytics" and "Stakeholder Intelligence".
+  - **Modular Embedded Component**: Refactored `AdminReviews.jsx` to support a `hideTitle` prop, which hides the redundant main heading section when embedded, while keeping header controls aligned to the right.
+  - **Stacking & Overlapping Fixes**: Applied dynamic z-index layering to the `CustomSelect.jsx` container (`zIndex: isOpen ? 1000 : 1`) and added `position: 'relative', zIndex: 10` to the Filtering / Sorting Header card in `AdminReviews.jsx` to prevent absolute dropdown options panels from being hidden behind subsequent DOM card nodes.
+  - **Navigation Menu Cleanup**: Renamed the navigation link to "Reports & Intel" in both `Sidebar.jsx` and `FloatingNav.jsx`, and completely removed the standalone "Reviews & Intel" direct link.
+- Files created:
+  - [AdminReviews.jsx](frontend/src/components/Admin/AdminReviews.jsx)
+- Files modified:
+  - [AdminReports.jsx](frontend/src/components/Admin/AdminReports.jsx)
+  - [App.jsx](frontend/src/App.jsx)
+  - [Sidebar.jsx](frontend/src/components/Common/Sidebar.jsx)
+  - [FloatingNav.jsx](frontend/src/components/Common/FloatingNav.jsx)
+  - [CustomSelect.jsx](frontend/src/components/Common/CustomSelect.jsx)
+- Problems encountered: Standard CSS stacking context and nested container boundaries caused absolute dropdown elements to get cut off or hidden behind sibling stakeholder cards.
+- How the issue was resolved: Applied relative positioning and positive z-index variables to the parent filters card, lifting the dropdown container stacking level above subsequent DOM elements.
+- Verification and build testing: Verified frontend code compiles cleanly and backend maven test suite compiles and runs successfully with 50/50 tests passing.
+
+### 2026-06-20 - Phase 25 Role-Based Terms, Policies & Onboarding Agreement System
+- Date and phase: 2026-06-20, Phase 25.
+- Goal of the task: Introduce a mandatory first-login terms onboarding flow and permanent policy reference registry for Customers, Laundry Partners, and Delivery Partners, excluding Admin accounts.
+- What was implemented:
+  - **Database schema modifications**: Extended `UserEntity.java` with properties for `termsAccepted`, `termsAcceptanceTimestamp` (seconds since epoch), and `termsAcceptedVersion`.
+  - **API Controllers & Services**: Created a `POST /api/v1/users/accept-terms` endpoint using `AcceptTermsRequest` and `AuthenticatedUserView` records. Implemented agreement persistence logic inside `UserManagementService`. Updated `AuthService` token generation to supply these properties in auth payloads.
+  - **Frontend Onboarding Screen**: Built `OnboardingTerms.jsx` which displays role-specific parameters (e.g. cancellations rules, SLA thresholds, dispatch guidelines) and locks account dashboard access behind checkbox validation.
+  - **Static Policy Registry**: Designed `TermsAndPolicies.jsx` featuring detailed tabs for Terms of Service, Cancellation Policy, Refund Policy, Privacy Policy, Operational Guidelines, and Platform Rules.
+  - **Reports Tab Icons Refinement**: Replaced standard text emojis (`📊` and `⭐`) on the Reports & Intelligence dashboard tabs with custom vector Lucide React icons (`BarChart2` and `Users`) matching the premium look of the sidebar.
+  - **Global Navigation & Gatekeeping**: Configured `ProtectedRoute.jsx` to redirect non-admin users with unaccepted terms to `/onboarding`. Added permanent "Terms & Policies" nav links in `Sidebar.jsx` and `FloatingNav.jsx`.
+- Files created:
+  - [src/main/java/com/laundrylink/laundrylink/api/AcceptTermsRequest.java](src/main/java/com/laundrylink/laundrylink/api/AcceptTermsRequest.java)
+  - [frontend/src/components/Auth/OnboardingTerms.jsx](frontend/src/components/Auth/OnboardingTerms.jsx)
+  - [frontend/src/components/Common/TermsAndPolicies.jsx](frontend/src/components/Common/TermsAndPolicies.jsx)
+- Files modified:
+  - [src/main/java/com/laundrylink/laundrylink/persistence/UserEntity.java](src/main/java/com/laundrylink/laundrylink/persistence/UserEntity.java)
+  - [src/main/java/com/laundrylink/laundrylink/api/AuthenticatedUserView.java](src/main/java/com/laundrylink/laundrylink/api/AuthenticatedUserView.java)
+  - [src/main/java/com/laundrylink/laundrylink/service/UserManagementService.java](src/main/java/com/laundrylink/laundrylink/service/UserManagementService.java)
+  - [src/main/java/com/laundrylink/laundrylink/api/UserManagementController.java](src/main/java/com/laundrylink/laundrylink/api/UserManagementController.java)
+  - [src/main/java/com/laundrylink/laundrylink/service/AuthService.java](src/main/java/com/laundrylink/laundrylink/service/AuthService.java)
+  - [frontend/src/services/api.js](frontend/src/services/api.js)
+  - [frontend/src/components/Common/ProtectedRoute.jsx](frontend/src/components/Common/ProtectedRoute.jsx)
+  - [frontend/src/App.jsx](frontend/src/App.jsx)
+  - [frontend/src/components/Common/Sidebar.jsx](frontend/src/components/Common/Sidebar.jsx)
+  - [frontend/src/components/Common/FloatingNav.jsx](frontend/src/components/Common/FloatingNav.jsx)
+  - [frontend/src/context/AuthContext.jsx](frontend/src/context/AuthContext.jsx)
+  - [frontend/src/components/Admin/AdminReports.jsx](frontend/src/components/Admin/AdminReports.jsx)
+- Problems encountered: Standard route transition hooks triggered lifecycle react-router warnings when executed within component render contexts. Also, a `setUser is not a function` error occurred on the onboarding terms submit action due to `setUser` not being exposed by `AuthContext`.
+- How the issue was resolved: Implemented declarative react-router redirects (`<Navigate to="..." replace />`) rather than dynamic imperator invocations (`navigate(...)`) for authentication redirection checks. Added `setUser` to the value provider object in `AuthContext.jsx` to make it accessible to child components updating active user properties.
+- Verification and build testing: Both Vite compilation and JUnit integration test suites completed successfully. All 50/50 tests passed.
+
+### 2026-06-20 - Phase 26 Email Verification (OTP) on Sign-Up & Customer Notifications Mailing System
+- Date and phase: 2026-06-20, Phase 26.
+- Goal of the task: Implement a secure 6-digit OTP verification system upon new user registration (Customer, Laundry Partner, Delivery Rider), restricting dashboard access for unverified accounts. Additionally, configure all Customer notifications to be sent directly to their registered Gmail address while keeping database persistence intact.
+- What was implemented:
+  - **Spring Mail starter**: Included `spring-boot-starter-mail` dependency in `pom.xml` to allow SMTP e-mailing.
+  - **OTP Database schema**: Added columns `emailVerified` (defaulting to `true` for seeds and tests), `otpCode`, `otpExpiryTime` (5 mins duration), `otpResendCount`, and `otpInvalidAttempts` to `UserEntity.java`.
+  - **API Controller & Services**: Created DTO records `VerifyOtpRequest` and `ResendOtpRequest`. Added endpoints `/verify-otp` and `/resend-otp` in `AuthController.java`. Implemented verify/resend rate limit rules (max 5 invalid attempts, max 3 resends) in `AuthService.java`.
+  - **OTP Verification UI**: Built `VerifyOtp.jsx` featuring countdown timers, validation feedback, and resend limits. Configured `Register.jsx`, `Login.jsx`, and `ProtectedRoute.jsx` to intercept unverified logins and route them to `/verify-email`.
+  - **Customer Notifications Copying**: Modified `NotificationService.java` to check for the `CUSTOMER` role when dispatching notifications and send a copy of the notification via `JavaMailSender` to the customer's Gmail.
+- Files created:
+  - [src/main/java/com/laundrylink/laundrylink/api/VerifyOtpRequest.java](src/main/java/com/laundrylink/laundrylink/api/VerifyOtpRequest.java)
+  - [src/main/java/com/laundrylink/laundrylink/api/ResendOtpRequest.java](src/main/java/com/laundrylink/laundrylink/api/ResendOtpRequest.java)
+  - [frontend/src/components/Auth/VerifyOtp.jsx](frontend/src/components/Auth/VerifyOtp.jsx)
+- Files modified:
+  - [pom.xml](pom.xml)
+  - [src/main/java/com/laundrylink/laundrylink/persistence/UserEntity.java](src/main/java/com/laundrylink/laundrylink/persistence/UserEntity.java)
+  - [src/main/java/com/laundrylink/laundrylink/api/AuthenticatedUserView.java](src/main/java/com/laundrylink/laundrylink/api/AuthenticatedUserView.java)
+  - [src/main/java/com/laundrylink/laundrylink/service/AuthService.java](src/main/java/com/laundrylink/laundrylink/service/AuthService.java)
+  - [src/main/java/com/laundrylink/laundrylink/api/AuthController.java](src/main/java/com/laundrylink/laundrylink/api/AuthController.java)
+  - [src/main/java/com/laundrylink/laundrylink/service/NotificationService.java](src/main/java/com/laundrylink/laundrylink/service/NotificationService.java)
+  - [src/main/java/com/laundrylink/laundrylink/service/UserManagementService.java](src/main/java/com/laundrylink/laundrylink/service/UserManagementService.java)
+  - [src/test/java/com/laundrylink/laundrylink/integration/AuthenticationFlowTest.java](src/test/java/com/laundrylink/laundrylink/integration/AuthenticationFlowTest.java)
+  - [frontend/src/services/api.js](frontend/src/services/api.js)
+  - [frontend/src/components/Common/ProtectedRoute.jsx](frontend/src/components/Common/ProtectedRoute.jsx)
+  - [frontend/src/components/Auth/Login.jsx](frontend/src/components/Auth/Login.jsx)
+  - [frontend/src/components/Auth/Register.jsx](frontend/src/components/Auth/Register.jsx)
+  - [frontend/src/App.jsx](frontend/src/App.jsx)
+- Problems encountered: Multiple constructors for beans caused Spring Boot's context configuration to fail during test runs. Defaulting `emailVerified` to false caused pre-existing unit test register/login flow assertions to fail.
+- How the issue was resolved: Added `@Autowired` to the primary constructor in both `AuthService.java` and `NotificationService.java` and retained backwards-compatible constructors. Changed `emailVerified`'s default field value in `UserEntity.java` to `true`, and updated the `AuthenticationFlowTest` to verify the generated OTP.
+- Verification and build testing: Both Vite production bundle build and Spring Boot's Maven test suite (all 50/50 test cases) compiled and executed successfully with zero failures.
+
+## Follow-up Update - Phase 26: Login OTP Bypass, Login Bug Fixes & Video BG Enhancements
+- Goal of the task:
+  - Bypass the OTP email verification block during login. Email verification (OTP) should only be forced upon new account creation (registration).
+  - Remove the dark overlay/shade effect on the background video in `Register.jsx` and `Login.jsx` to let the video play raw and clear.
+  - Fix login page bugs in `Login.jsx` (incorrect auto-redirection to `/register` and generic "Unauthorized" message on password typos).
+- What was implemented:
+  - **AuthService.java**: Replaced the unverified logins blocking block in `login()` with auto-verification logic. Users logging in successfully are automatically marked as verified and redirected straight to their dashboards.
+  - **Login.jsx**:
+    - Removed `setTimeout` that redirects to `/register` after failed login.
+    - Replaced the generic unauthorized warning with actual backend error messages (`err.message || 'Invalid email or password'`).
+    - Removed background shade overlay for a clean background video look.
+  - **Register.jsx**: Removed background shade overlay for a clean background video look.
+- Verification: All 50/50 JUnit/integration tests executed successfully, and Vite production bundle compiles cleanly.

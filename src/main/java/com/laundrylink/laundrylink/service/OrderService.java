@@ -28,6 +28,8 @@ import com.laundrylink.laundrylink.persistence.OrderRepository;
 import com.laundrylink.laundrylink.persistence.StatusTransitionEntity;
 import com.laundrylink.laundrylink.persistence.UserRepository;
 import com.laundrylink.laundrylink.persistence.UserEntity;
+import com.laundrylink.laundrylink.persistence.PaymentRepository;
+import com.laundrylink.laundrylink.persistence.PaymentEntity;
 
 @Service
 public class OrderService {
@@ -37,13 +39,15 @@ public class OrderService {
     private final PaymentService paymentService;
     private final NotificationService notificationService;
     private final UserRepository userRepository;
+    private final PaymentRepository paymentRepository;
 
-    public OrderService(OrderRepository orderRepository, LaundryPartnerService laundryPartnerService, @Lazy PaymentService paymentService, @Lazy NotificationService notificationService, UserRepository userRepository) {
+    public OrderService(OrderRepository orderRepository, LaundryPartnerService laundryPartnerService, @Lazy PaymentService paymentService, @Lazy NotificationService notificationService, UserRepository userRepository, PaymentRepository paymentRepository) {
         this.orderRepository = orderRepository;
         this.laundryPartnerService = laundryPartnerService;
         this.paymentService = paymentService;
         this.notificationService = notificationService;
         this.userRepository = userRepository;
+        this.paymentRepository = paymentRepository;
     }
 
     public OrderView placeOrder(String customerEmail, PlaceOrderRequest request) {
@@ -588,6 +592,18 @@ public class OrderService {
         List<StatusTransition> historyDto = order.getHistory().stream()
                 .map(h -> new StatusTransition(h.getStatus(), h.getTimestamp(), h.getNotes()))
                 .collect(Collectors.toList());
+
+        String paymentMethod = null;
+        String paymentStatus = null;
+        if (order.getPaymentId() != null) {
+            java.util.Optional<PaymentEntity> paymentOpt = paymentRepository.findById(order.getPaymentId());
+            if (paymentOpt.isPresent()) {
+                PaymentEntity p = paymentOpt.get();
+                paymentMethod = p.getPaymentMethod().name();
+                paymentStatus = p.getStatus().name();
+            }
+        }
+
         return new OrderView(
                 order.getOrderId(),
                 order.getCustomerEmail(),
@@ -607,7 +623,9 @@ public class OrderService {
                 historyDto,
                 order.isAcceptedByRider(),
                 order.getCancellationFee(),
-                order.getRefundAmount()
+                order.getRefundAmount(),
+                paymentMethod,
+                paymentStatus
         );
     }
 
