@@ -242,7 +242,8 @@ public class AdminService {
         if (deliveryPartnerEmail != null && !deliveryPartnerEmail.trim().isEmpty()) {
             String email = deliveryPartnerEmail.trim().toLowerCase();
             orders = orders.stream()
-                    .filter(o -> o.getDeliveryPartnerEmail() != null && o.getDeliveryPartnerEmail().toLowerCase().contains(email))
+                    .filter(o -> (o.getDeliveryPartnerEmail() != null && o.getDeliveryPartnerEmail().toLowerCase().contains(email))
+                            || (o.getPickupRiderEmail() != null && o.getPickupRiderEmail().toLowerCase().contains(email)))
                     .collect(Collectors.toList());
         }
         return orders.stream()
@@ -252,6 +253,7 @@ public class AdminService {
 
     public OrderView getOrderDetails(String orderId) {
         OrderEntity order = orderRepository.findById(orderId)
+                .or(() -> orderRepository.findByDisplayOrderId(orderId))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
         return toOrderView(order);
     }
@@ -264,10 +266,12 @@ public class AdminService {
                 .map(h -> new StatusTransition(h.getStatus(), h.getTimestamp(), h.getNotes()))
                 .collect(Collectors.toList());
         return new OrderView(
-                order.getOrderId(),
+                order.getDisplayOrderId() != null ? order.getDisplayOrderId() : order.getOrderId(),
                 order.getCustomerEmail(),
                 order.getPartnerEmail(),
-                order.getDeliveryPartnerEmail(),
+                (order.getStatus() == OrderStatus.PICKUP_ASSIGNED || order.getStatus() == OrderStatus.PICKUP_COMPLETED)
+                        ? order.getPickupRiderEmail()
+                        : order.getDeliveryPartnerEmail(),
                 order.getPaymentId(),
                 order.getStatus(),
                 itemsDto,
@@ -309,9 +313,12 @@ public class AdminService {
     }
 
     private PaymentView toPaymentView(PaymentEntity p) {
+        String displayOrderId = orderRepository.findById(p.getOrderId())
+                .map(OrderEntity::getDisplayOrderId)
+                .orElse(p.getOrderId());
         return new PaymentView(
                 p.getPaymentId(),
-                p.getOrderId(),
+                displayOrderId,
                 p.getAmount(),
                 p.getPaymentMethod(),
                 p.getStatus(),
@@ -325,9 +332,12 @@ public class AdminService {
         List<OrderItemDto> itemsDto = invoice.getItems().stream()
                 .map(i -> new OrderItemDto(i.getItemCategory(), i.getServiceType(), i.getQuantity()))
                 .collect(Collectors.toList());
+        String displayOrderId = orderRepository.findById(invoice.getOrderId())
+                .map(OrderEntity::getDisplayOrderId)
+                .orElse(invoice.getOrderId());
         return new InvoiceView(
                 String.valueOf(invoice.getId()),
-                invoice.getOrderId(),
+                displayOrderId,
                 invoice.getPaymentId(),
                 invoice.getCustomerEmail(),
                 invoice.getPartnerEmail(),
@@ -355,9 +365,12 @@ public class AdminService {
     }
 
     private ReviewView toReviewView(ReviewEntity r) {
+        String displayOrderId = orderRepository.findById(r.getOrderId())
+                .map(OrderEntity::getDisplayOrderId)
+                .orElse(r.getOrderId());
         return new ReviewView(
                 String.valueOf(r.getId()),
-                r.getOrderId(),
+                displayOrderId,
                 r.getCustomerEmail(),
                 r.getPartnerEmail(),
                 r.getRating(),

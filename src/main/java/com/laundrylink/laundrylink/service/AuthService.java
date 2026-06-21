@@ -215,11 +215,6 @@ public class AuthService {
 
     private void seedDefaultAccounts() {
         if (userRepository.findByEmail(normalizeEmail("admin@velora.example")).isEmpty()) {
-            registerSeed("Aarav Mehta", "aarav@example.com", "Password@123", "+91-90000-10001", UserRoleType.CUSTOMER);
-            registerSeed("FreshFold Laundry", "partner@freshfold.example", "Password@123", "+91-90000-20002",
-                    UserRoleType.LAUNDRY_PARTNER);
-            registerSeed("Ravi Singh", "ravi.delivery@example.com", "Password@123", "+91-90000-30003",
-                    UserRoleType.DELIVERY_PARTNER);
             registerSeed("Velora Admin", "admin@velora.example", "Password@123", "+91-90000-40004",
                     UserRoleType.ADMIN);
         }

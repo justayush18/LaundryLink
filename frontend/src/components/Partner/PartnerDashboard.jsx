@@ -263,20 +263,10 @@ export default function PartnerDashboard() {
                       Current Status: <span className="badge badge-info">{getStatusLabel(order.status)}</span>
                     </p>
                     
-                    {order.status === 'PLACED' && (
-                      <button
-                        onClick={() => handleUpdateStatus(order.orderId, 'ACCEPTED', 'Accepted by Laundry Partner.')}
-                        className="velora-btn velora-btn-primary animate-pulse"
-                        style={styles.actionBtn}
-                      >
-                        Accept Order
-                      </button>
-                    )}
-
-                    {order.status === 'PICKED_UP' && (
+                    {order.status === 'PICKUP_COMPLETED' && (
                       <button
                         onClick={() => handleUpdateStatus(order.orderId, 'PROCESSING', 'Laundry is now processing.')}
-                        className="velora-btn velora-btn-secondary"
+                        className="velora-btn velora-btn-primary animate-pulse"
                         style={styles.actionBtn}
                       >
                         Start Processing
@@ -289,11 +279,11 @@ export default function PartnerDashboard() {
                         className="velora-btn velora-btn-primary animate-pulse"
                         style={styles.actionBtn}
                       >
-                        Mark Ready for Pickup
+                        Mark Ready for Delivery
                       </button>
                     )}
 
-                    {['ACCEPTED', 'PROCESSING', 'READY_FOR_DELIVERY'].includes(order.status) && (
+                    {['PROCESSING', 'READY_FOR_DELIVERY'].includes(order.status) && (
                       <button
                         onClick={() => {
                           const reason = prompt("Please enter the reason for cancellation:");
@@ -310,9 +300,9 @@ export default function PartnerDashboard() {
                       </button>
                     )}
 
-                    {!['PLACED', 'PICKED_UP', 'PROCESSING'].includes(order.status) && (
+                    {!['PICKUP_COMPLETED', 'PROCESSING'].includes(order.status) && (
                       <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontStyle: 'italic', textAlign: 'center', fontWeight: 600 }}>
-                        Waiting for Delivery Agent
+                        {order.status === 'PLACED' || order.status === 'PICKUP_ASSIGNED' ? 'Waiting for Pickup Rider' : 'Waiting for Delivery Agent'}
                       </span>
                     )}
                   </div>

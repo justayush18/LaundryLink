@@ -131,10 +131,11 @@ export default function PartnerOrders() {
               >
                 <option value="ALL">All Statuses</option>
                 <option value="PLACED">Placed</option>
-                <option value="ACCEPTED">Accepted</option>
-                <option value="PICKED_UP">Picked Up</option>
+                <option value="PICKUP_ASSIGNED">Pickup Assigned</option>
+                <option value="PICKUP_COMPLETED">Pickup Completed</option>
                 <option value="PROCESSING">Processing</option>
                 <option value="READY_FOR_DELIVERY">Ready for Delivery</option>
+                <option value="DELIVERY_ASSIGNED">Delivery Assigned</option>
                 <option value="DELIVERED">Delivered</option>
                 <option value="CANCELLED">Cancelled</option>
               </CustomSelect>
@@ -213,26 +214,16 @@ export default function PartnerOrders() {
               <div style={styles.divider}></div>
 
               {/* Status Update Actions */}
-              {['PLACED', 'PICKED_UP', 'PROCESSING'].includes(selectedOrder.status) && (
+              {['PICKUP_COMPLETED', 'PROCESSING'].includes(selectedOrder.status) && (
                 <div style={{ marginBottom: '16px' }}>
                   <p style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-secondary)', marginBottom: '10px', textTransform: 'uppercase' }}>
                     Fulfillment Actions
                   </p>
                   
-                  {selectedOrder.status === 'PLACED' && (
-                    <button
-                      onClick={() => handleUpdateStatus(selectedOrder.orderId, 'ACCEPTED', 'Accepted by Laundry Partner.')}
-                      className="velora-btn velora-btn-primary animate-pulse"
-                      style={{ width: '100%', padding: '10px', fontSize: '13px', borderRadius: '12px' }}
-                    >
-                      Accept Order
-                    </button>
-                  )}
-
-                  {selectedOrder.status === 'PICKED_UP' && (
+                  {selectedOrder.status === 'PICKUP_COMPLETED' && (
                     <button
                       onClick={() => handleUpdateStatus(selectedOrder.orderId, 'PROCESSING', 'Laundry is now processing.')}
-                      className="velora-btn velora-btn-secondary"
+                      className="velora-btn velora-btn-primary animate-pulse"
                       style={{ width: '100%', padding: '10px', fontSize: '13px', borderRadius: '12px' }}
                     >
                       Start Processing
@@ -245,11 +236,11 @@ export default function PartnerOrders() {
                       className="velora-btn velora-btn-primary animate-pulse"
                       style={{ width: '100%', padding: '10px', fontSize: '13px', borderRadius: '12px' }}
                     >
-                      Mark Ready for Pickup
+                      Mark Ready for Delivery
                     </button>
                   )}
 
-                  {['ACCEPTED', 'PROCESSING', 'READY_FOR_DELIVERY'].includes(selectedOrder.status) && (
+                  {['PROCESSING', 'READY_FOR_DELIVERY'].includes(selectedOrder.status) && (
                     <button
                       onClick={() => {
                         const reason = prompt("Please enter the reason for cancellation:");

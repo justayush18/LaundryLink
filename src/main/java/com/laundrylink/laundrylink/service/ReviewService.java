@@ -15,6 +15,7 @@ import com.laundrylink.laundrylink.api.ReviewView;
 import com.laundrylink.laundrylink.api.UserRoleType;
 import com.laundrylink.laundrylink.persistence.ReviewEntity;
 import com.laundrylink.laundrylink.persistence.ReviewRepository;
+import com.laundrylink.laundrylink.persistence.OrderEntity;
 
 @Service
 public class ReviewService {
@@ -30,8 +31,11 @@ public class ReviewService {
     }
 
     public ReviewView submitReview(String customerEmail, ReviewRequest request) {
+        OrderEntity orderEntity = orderService.findOrderByIdentifier(request.orderId());
+        String actualOrderId = orderEntity.getOrderId();
+
         // Fetch order details. This ensures the customer owns the order.
-        OrderView order = orderService.getOrder(request.orderId(), customerEmail, UserRoleType.CUSTOMER);
+        OrderView order = orderService.getOrder(actualOrderId, customerEmail, UserRoleType.CUSTOMER);
 
         // Validation 2: Must be DELIVERED
         if (order.status() != OrderStatus.DELIVERED) {
@@ -39,7 +43,7 @@ public class ReviewService {
         }
 
         // Validation 3: One review per order
-        if (reviewRepository.findByOrderId(request.orderId()).isPresent()) {
+        if (reviewRepository.findByOrderId(actualOrderId).isPresent()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Order has already been reviewed");
         }
 
@@ -49,7 +53,7 @@ public class ReviewService {
         }
 
         ReviewEntity review = new ReviewEntity(
-                request.orderId(),
+                actualOrderId,
                 customerEmail,
                 order.partnerEmail(),
                 request.rating(),
@@ -146,9 +150,10 @@ public class ReviewService {
     }
 
     private ReviewView toView(ReviewEntity r) {
+        String displayOrderId = orderService.getDisplayOrderIdByOrderId(r.getOrderId());
         return new ReviewView(
                 String.valueOf(r.getId()),
-                r.getOrderId(),
+                displayOrderId,
                 r.getCustomerEmail(),
                 r.getPartnerEmail(),
                 r.getRating(),

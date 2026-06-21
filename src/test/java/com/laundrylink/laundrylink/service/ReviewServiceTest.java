@@ -34,6 +34,10 @@ public class ReviewServiceTest {
     public void testSubmitReview_Success() {
         ReviewRequest req = new ReviewRequest("order-123", 5, "Great service!");
 
+        OrderEntity orderEntity = new OrderEntity();
+        orderEntity.setOrderId("order-123");
+        orderEntity.setDisplayOrderId("order-123");
+
         OrderView orderView = new OrderView(
                 "order-123", "customer@example.com", "partner@example.com", null, null,
                 OrderStatus.DELIVERED, List.of(),
@@ -42,7 +46,9 @@ public class ReviewServiceTest {
 
         ReviewEntity review = new ReviewEntity("order-123", "customer@example.com", "partner@example.com", 5, "Great service!");
 
+        when(orderService.findOrderByIdentifier("order-123")).thenReturn(orderEntity);
         when(orderService.getOrder("order-123", "customer@example.com", UserRoleType.CUSTOMER)).thenReturn(orderView);
+        when(orderService.getDisplayOrderIdByOrderId("order-123")).thenReturn("order-123");
         when(reviewRepository.findByOrderId("order-123")).thenReturn(Optional.empty());
         when(reviewRepository.findByPartnerEmail("partner@example.com")).thenReturn(List.of(review));
 
@@ -63,12 +69,16 @@ public class ReviewServiceTest {
     public void testSubmitReview_NotDelivered() {
         ReviewRequest req = new ReviewRequest("order-123", 5, "Great service!");
 
+        OrderEntity orderEntity = new OrderEntity();
+        orderEntity.setOrderId("order-123");
+
         OrderView orderView = new OrderView(
                 "order-123", "customer@example.com", "partner@example.com", null, null,
                 OrderStatus.PROCESSING, List.of(),
                 100.0, "Pickup", "Slot1", "Delivery", "Slot2", "Notes", 0L, 0L, List.of(), false, null, null
         );
 
+        when(orderService.findOrderByIdentifier("order-123")).thenReturn(orderEntity);
         when(orderService.getOrder("order-123", "customer@example.com", UserRoleType.CUSTOMER)).thenReturn(orderView);
 
         assertThrows(ResponseStatusException.class, () -> {
@@ -80,12 +90,16 @@ public class ReviewServiceTest {
     public void testSubmitReview_AlreadyReviewed() {
         ReviewRequest req = new ReviewRequest("order-123", 5, "Great service!");
 
+        OrderEntity orderEntity = new OrderEntity();
+        orderEntity.setOrderId("order-123");
+
         OrderView orderView = new OrderView(
                 "order-123", "customer@example.com", "partner@example.com", null, null,
                 OrderStatus.DELIVERED, List.of(),
                 100.0, "Pickup", "Slot1", "Delivery", "Slot2", "Notes", 0L, 0L, List.of(), false, null, null
         );
 
+        when(orderService.findOrderByIdentifier("order-123")).thenReturn(orderEntity);
         when(orderService.getOrder("order-123", "customer@example.com", UserRoleType.CUSTOMER)).thenReturn(orderView);
         when(reviewRepository.findByOrderId("order-123")).thenReturn(Optional.of(new ReviewEntity()));
 
@@ -98,12 +112,16 @@ public class ReviewServiceTest {
     public void testSubmitReview_InvalidRating() {
         ReviewRequest req = new ReviewRequest("order-123", 6, "Great service!");
 
+        OrderEntity orderEntity = new OrderEntity();
+        orderEntity.setOrderId("order-123");
+
         OrderView orderView = new OrderView(
                 "order-123", "customer@example.com", "partner@example.com", null, null,
                 OrderStatus.DELIVERED, List.of(),
                 100.0, "Pickup", "Slot1", "Delivery", "Slot2", "Notes", 0L, 0L, List.of(), false, null, null
         );
 
+        when(orderService.findOrderByIdentifier("order-123")).thenReturn(orderEntity);
         when(orderService.getOrder("order-123", "customer@example.com", UserRoleType.CUSTOMER)).thenReturn(orderView);
         when(reviewRepository.findByOrderId("order-123")).thenReturn(Optional.empty());
 
@@ -116,6 +134,7 @@ public class ReviewServiceTest {
     public void testGetCustomerReviewHistory() {
         ReviewEntity review = new ReviewEntity("order-123", "customer@example.com", "partner@example.com", 5, "Good");
         when(reviewRepository.findByCustomerEmail("customer@example.com")).thenReturn(List.of(review));
+        when(orderService.getDisplayOrderIdByOrderId("order-123")).thenReturn("order-123");
 
         List<ReviewView> history = reviewService.getCustomerReviewHistory("customer@example.com");
 
@@ -129,6 +148,8 @@ public class ReviewServiceTest {
         ReviewEntity r1 = new ReviewEntity("order-1", "c1@example.com", "partner@example.com", 5, "Good");
         ReviewEntity r2 = new ReviewEntity("order-2", "c2@example.com", "partner@example.com", 3, "Okay");
         when(reviewRepository.findByPartnerEmail("partner@example.com")).thenReturn(List.of(r1, r2));
+        when(orderService.getDisplayOrderIdByOrderId("order-1")).thenReturn("order-1");
+        when(orderService.getDisplayOrderIdByOrderId("order-2")).thenReturn("order-2");
 
         PartnerRatingSummary summary = reviewService.getPartnerReviews("partner@example.com");
 

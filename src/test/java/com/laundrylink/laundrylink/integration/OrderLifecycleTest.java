@@ -95,7 +95,7 @@ public class OrderLifecycleTest {
 
     @Test
     public void testFullOrderLifecycle() throws Exception {
-        // 1. Customer places order
+        // 1. Customer places order -> automatically transitions to PICKUP_ASSIGNED because ravi.delivery@example.com is online
         PlaceOrderRequest orderReq = new PlaceOrderRequest(
                 "partner@freshfold.example",
                 List.of(new OrderItemDto("SHIRT", "WASH_AND_FOLD", 2)),
@@ -112,21 +112,49 @@ public class OrderLifecycleTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.orderId").isNotEmpty())
                 .andExpect(jsonPath("$.totalCost").value(80.0)) // Seed price is 40.0, so 40 * 2 = 80
-                .andExpect(jsonPath("$.status").value("PLACED"))
+                .andExpect(jsonPath("$.status").value("PICKUP_ASSIGNED"))
+                .andExpect(jsonPath("$.deliveryPartnerEmail").value("ravi.delivery@example.com"))
                 .andReturn();
 
         String responseContent = result.getResponse().getContentAsString();
         OrderView order = objectMapper.readValue(responseContent, OrderView.class);
         String orderId = order.orderId();
 
-        // 2. Partner accepts order -> triggers auto-assignment to ravi.delivery@example.com
-        OrderStatusUpdateRequest acceptRequest = new OrderStatusUpdateRequest(OrderStatus.ACCEPTED, "Accepted by partner");
+        // 2. Rider completes pickup -> transitions to PICKUP_COMPLETED
+        OrderStatusUpdateRequest pickupCompleteReq = new OrderStatusUpdateRequest(OrderStatus.PICKUP_COMPLETED, "Pickup completed by rider");
+        mockMvc.perform(put("/api/v1/orders/" + orderId + "/status")
+                .header(HttpHeaders.AUTHORIZATION, deliveryToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(pickupCompleteReq)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("PICKUP_COMPLETED"));
+
+        // 3. Vendor starts processing -> transitions to PROCESSING
+        OrderStatusUpdateRequest startProcessingReq = new OrderStatusUpdateRequest(OrderStatus.PROCESSING, "Vendor started processing laundry");
         mockMvc.perform(put("/api/v1/orders/" + orderId + "/status")
                 .header(HttpHeaders.AUTHORIZATION, partnerToken)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(acceptRequest)))
+                .content(objectMapper.writeValueAsString(startProcessingReq)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("PICKUP_ASSIGNED"))
+                .andExpect(jsonPath("$.status").value("PROCESSING"));
+
+        // 4. Vendor marks ready for delivery -> automatically transitions to DELIVERY_ASSIGNED (ravi.delivery@example.com auto-assigned as fallback)
+        OrderStatusUpdateRequest readyReq = new OrderStatusUpdateRequest(OrderStatus.READY_FOR_DELIVERY, "Vendor completed processing; laundry ready");
+        mockMvc.perform(put("/api/v1/orders/" + orderId + "/status")
+                .header(HttpHeaders.AUTHORIZATION, partnerToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(readyReq)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("DELIVERY_ASSIGNED"))
                 .andExpect(jsonPath("$.deliveryPartnerEmail").value("ravi.delivery@example.com"));
+
+        // 5. Rider completes delivery -> transitions to DELIVERED
+        OrderStatusUpdateRequest deliveredReq = new OrderStatusUpdateRequest(OrderStatus.DELIVERED, "Laundry delivered to customer");
+        mockMvc.perform(put("/api/v1/orders/" + orderId + "/status")
+                .header(HttpHeaders.AUTHORIZATION, deliveryToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(deliveredReq)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("DELIVERED"));
     }
 }

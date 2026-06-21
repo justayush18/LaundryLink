@@ -105,7 +105,7 @@ public class AdminServiceTest {
         u.setActive(true);
 
         OrderEntity activeOrder = new OrderEntity();
-        activeOrder.setStatus(OrderStatus.ACCEPTED);
+        activeOrder.setStatus(OrderStatus.PICKUP_ASSIGNED);
 
         when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(u));
         when(orderRepository.findByCustomerEmail("test@example.com")).thenReturn(List.of(activeOrder));

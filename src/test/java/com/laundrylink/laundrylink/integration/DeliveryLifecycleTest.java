@@ -69,7 +69,7 @@ public class DeliveryLifecycleTest {
                 "Slot B"
         );
         order.setStatus(OrderStatus.PICKUP_ASSIGNED);
-        order.setDeliveryPartnerEmail("ravi.delivery@example.com");
+        order.setPickupRiderEmail("ravi.delivery@example.com");
         savedOrder = orderRepository.save(order);
     }
 
@@ -88,22 +88,13 @@ public class DeliveryLifecycleTest {
                 .andExpect(jsonPath("$.orderId").value("order-del-123"))
                 .andExpect(jsonPath("$.status").value("PICKUP_ASSIGNED"));
 
-        // 3. Update status to ARRIVED_AT_PICKUP
-        OrderStatusUpdateRequest arrivedReq = new OrderStatusUpdateRequest(OrderStatus.ARRIVED_AT_PICKUP, "Rider arrived at customer location");
+        // 3. Update status to PICKUP_COMPLETED
+        OrderStatusUpdateRequest completeReq = new OrderStatusUpdateRequest(OrderStatus.PICKUP_COMPLETED, "Picked up from customer and delivered to vendor");
         mockMvc.perform(put("/api/v1/orders/order-del-123/status")
                 .header(HttpHeaders.AUTHORIZATION, deliveryToken)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(arrivedReq)))
+                .content(objectMapper.writeValueAsString(completeReq)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("ARRIVED_AT_PICKUP"));
-
-        // 4. Update status to PICKED_UP
-        OrderStatusUpdateRequest updateReq = new OrderStatusUpdateRequest(OrderStatus.PICKED_UP, "Picked up from customer");
-        mockMvc.perform(put("/api/v1/orders/order-del-123/status")
-                .header(HttpHeaders.AUTHORIZATION, deliveryToken)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(updateReq)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("PICKED_UP"));
+                .andExpect(jsonPath("$.status").value("PICKUP_COMPLETED"));
     }
 }

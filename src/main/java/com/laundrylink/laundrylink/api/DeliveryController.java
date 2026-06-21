@@ -49,24 +49,6 @@ public class DeliveryController {
         orderService.updateRiderOnlineStatus(principal.email(), online);
     }
 
-    @PutMapping("/{orderId}/accept")
-    public OrderView acceptTask(@PathVariable String orderId) {
-        AuthenticatedPrincipal principal = currentPrincipal();
-        if (principal.role() != UserRoleType.DELIVERY_PARTNER && principal.role() != UserRoleType.ADMIN) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only Delivery Partners or Admins can accept tasks");
-        }
-        return orderService.acceptDeliveryTask(orderId, principal.email());
-    }
-
-    @PutMapping("/{orderId}/cancel")
-    public OrderView cancelTask(@PathVariable String orderId) {
-        AuthenticatedPrincipal principal = currentPrincipal();
-        if (principal.role() != UserRoleType.DELIVERY_PARTNER && principal.role() != UserRoleType.ADMIN) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only Delivery Partners or Admins can cancel tasks");
-        }
-        return orderService.cancelDeliveryTask(orderId, principal.email());
-    }
-
     private AuthenticatedPrincipal currentPrincipal() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !(authentication.getPrincipal() instanceof AuthenticatedPrincipal principal)) {

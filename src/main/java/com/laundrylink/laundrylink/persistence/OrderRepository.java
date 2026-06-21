@@ -10,4 +10,6 @@ public interface OrderRepository extends JpaRepository<OrderEntity, String> {
     List<OrderEntity> findByPartnerEmail(String email);
     List<OrderEntity> findByDeliveryPartnerEmail(String email);
     List<OrderEntity> findByUpdatedAtGreaterThanEqual(long timestamp);
+    List<OrderEntity> findByPickupRiderEmailOrDeliveryPartnerEmail(String pickupRiderEmail, String deliveryPartnerEmail);
+    java.util.Optional<OrderEntity> findByDisplayOrderId(String displayOrderId);
 }

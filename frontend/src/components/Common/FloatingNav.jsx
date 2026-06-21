@@ -88,7 +88,7 @@ export default function FloatingNav() {
       case 'DELIVERY_PARTNER':
         return [
           { to: '/delivery/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-          { to: '/delivery/tasks', label: 'Tasks', icon: ClipboardList },
+          //{ to: '/delivery/tasks', label: 'Tasks', icon: ClipboardList },
           { to: '/terms', label: 'Policies', icon: FileText },
         ];
       case 'ADMIN':

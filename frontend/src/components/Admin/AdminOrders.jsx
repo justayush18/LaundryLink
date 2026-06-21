@@ -47,12 +47,11 @@ export default function AdminOrders() {
   const getStatusBadge = (status) => {
     switch (status) {
       case 'PLACED': return <span className="velora-badge velora-badge-info">Placed</span>;
-      case 'ACCEPTED': return <span className="velora-badge velora-badge-info">Accepted</span>;
       case 'PICKUP_ASSIGNED': return <span className="velora-badge velora-badge-warning">Pickup Assigned</span>;
-      case 'PICKED_UP': return <span className="velora-badge velora-badge-warning">Picked Up</span>;
+      case 'PICKUP_COMPLETED': return <span className="velora-badge velora-badge-warning">Pickup Completed</span>;
       case 'PROCESSING': return <span className="velora-badge velora-badge-warning">Processing</span>;
-      case 'READY_FOR_DELIVERY': return <span className="velora-badge velora-badge-warning">Ready</span>;
-      case 'DELIVERY_ASSIGNED': return <span className="velora-badge velora-badge-warning">Out for Delivery</span>;
+      case 'READY_FOR_DELIVERY': return <span className="velora-badge velora-badge-warning">Ready for Delivery</span>;
+      case 'DELIVERY_ASSIGNED': return <span className="velora-badge velora-badge-warning">Delivery Assigned</span>;
       case 'DELIVERED': return <span className="velora-badge velora-badge-success">Delivered</span>;
       case 'CANCELLED': return <span className="velora-badge velora-badge-error">Cancelled</span>;
       default: return <span className="velora-badge">{status}</span>;
@@ -98,10 +97,11 @@ export default function AdminOrders() {
               >
                 <option value="">All Statuses</option>
                 <option value="PLACED">Placed</option>
-                <option value="ACCEPTED">Accepted</option>
-                <option value="PICKED_UP">Picked Up</option>
+                <option value="PICKUP_ASSIGNED">Pickup Assigned</option>
+                <option value="PICKUP_COMPLETED">Pickup Completed</option>
                 <option value="PROCESSING">Processing</option>
                 <option value="READY_FOR_DELIVERY">Ready for Delivery</option>
+                <option value="DELIVERY_ASSIGNED">Delivery Assigned</option>
                 <option value="DELIVERED">Delivered</option>
                 <option value="CANCELLED">Cancelled</option>
               </CustomSelect>

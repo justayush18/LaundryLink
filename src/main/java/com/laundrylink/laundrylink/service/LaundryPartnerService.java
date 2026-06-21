@@ -467,7 +467,7 @@ public class LaundryPartnerService {
         for (OrderEntity o : orders) {
             if (o.getPartnerEmail().equalsIgnoreCase(email) && o.getHistory() != null) {
                 for (StatusTransitionEntity transition : o.getHistory()) {
-                    if (transition.getStatus() == OrderStatus.ACCEPTED 
+                    if (transition.getStatus() == OrderStatus.PLACED 
                             && transition.getTimestamp() >= startOfMonthEpoch) {
                         totalAccepted++;
                         break;

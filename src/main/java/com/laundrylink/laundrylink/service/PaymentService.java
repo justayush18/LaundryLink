@@ -24,6 +24,7 @@ import com.laundrylink.laundrylink.persistence.PaymentRepository;
 import com.laundrylink.laundrylink.persistence.InvoiceEntity;
 import com.laundrylink.laundrylink.persistence.InvoiceItemEntity;
 import com.laundrylink.laundrylink.persistence.InvoiceRepository;
+import com.laundrylink.laundrylink.persistence.OrderEntity;
 
 @Service
 public class PaymentService {
@@ -43,34 +44,38 @@ public class PaymentService {
     }
 
     public PaymentView initiatePayment(String customerEmail, InitiatePaymentRequest request) {
+        OrderEntity orderEntity = orderService.findOrderByIdentifier(request.orderId());
+        
         // Fetch order to verify ownership and existence
-        OrderView order = orderService.getOrder(request.orderId(), customerEmail, UserRoleType.CUSTOMER);
+        OrderView order = orderService.getOrder(orderEntity.getOrderId(), customerEmail, UserRoleType.CUSTOMER);
 
         // Check if there is already a successful payment for this order
         boolean hasSuccessPayment = paymentRepository.findAll().stream()
-                .anyMatch(p -> p.getOrderId().equals(request.orderId()) && p.getStatus() == PaymentStatus.SUCCESS);
+                .anyMatch(p -> p.getOrderId().equals(orderEntity.getOrderId()) && p.getStatus() == PaymentStatus.SUCCESS);
         if (hasSuccessPayment) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Order is already paid");
         }
 
         String paymentId = UUID.randomUUID().toString();
-        String transactionId = paymentProcessor.createTransaction(request.orderId(), order.totalCost(), request.paymentMethod());
+        String transactionId = paymentProcessor.createTransaction(orderEntity.getOrderId(), order.totalCost(), request.paymentMethod());
 
         PaymentEntity payment = new PaymentEntity(
                 paymentId,
-                request.orderId(),
+                orderEntity.getOrderId(),
                 order.totalCost(),
                 request.paymentMethod(),
                 transactionId
         );
 
         paymentRepository.save(payment);
-        orderService.linkPaymentToOrder(request.orderId(), paymentId);
+        orderService.linkPaymentToOrder(orderEntity.getOrderId(), paymentId);
+
+        String displayId = orderEntity.getDisplayOrderId() != null ? orderEntity.getDisplayOrderId() : orderEntity.getOrderId();
 
         notificationService.sendNotification(customerEmail, NotificationType.PAYMENT,
-                "Payment of " + payment.getAmount() + " initiated for order " + payment.getOrderId() + ". Payment ID: " + payment.getPaymentId());
+                "Payment of " + payment.getAmount() + " initiated for order " + displayId + ". Payment ID: " + payment.getPaymentId());
         notificationService.sendNotification("admin@velora.example", NotificationType.PAYMENT,
-                "Payment of " + payment.getAmount() + " initiated for order " + payment.getOrderId() + ". Payment ID: " + payment.getPaymentId());
+                "Payment of " + payment.getAmount() + " initiated for order " + displayId + ". Payment ID: " + payment.getPaymentId());
 
         return toPaymentView(payment);
     }
@@ -81,6 +86,8 @@ public class PaymentService {
 
         // Verify customer owns the corresponding order
         OrderView order = orderService.getOrder(payment.getOrderId(), customerEmail, UserRoleType.CUSTOMER);
+        OrderEntity orderEntity = orderService.findOrderByIdentifier(payment.getOrderId());
+        String displayId = orderEntity.getDisplayOrderId() != null ? orderEntity.getDisplayOrderId() : orderEntity.getOrderId();
 
         if (payment.getStatus() != PaymentStatus.PENDING) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Payment is not in PENDING status");
@@ -92,26 +99,30 @@ public class PaymentService {
             paymentRepository.save(payment);
             
             notificationService.sendNotification(customerEmail, NotificationType.PAYMENT,
-                    "Payment of " + payment.getAmount() + " succeeded for order " + payment.getOrderId() + ".");
+                    "Payment of " + payment.getAmount() + " succeeded for order " + displayId + ".");
             notificationService.sendNotification("admin@velora.example", NotificationType.PAYMENT,
-                    "Payment of " + payment.getAmount() + " succeeded for order " + payment.getOrderId() + ".");
+                    "Payment of " + payment.getAmount() + " succeeded for order " + displayId + ".");
         } else {
             payment.setStatus(PaymentStatus.FAILED);
             paymentRepository.save(payment);
             
             notificationService.sendNotification(customerEmail, NotificationType.PAYMENT,
-                    "Payment of " + payment.getAmount() + " failed for order " + payment.getOrderId() + ".");
+                    "Payment of " + payment.getAmount() + " failed for order " + displayId + ".");
             notificationService.sendNotification("admin@velora.example", NotificationType.PAYMENT,
-                    "Payment of " + payment.getAmount() + " failed for order " + payment.getOrderId() + ".");
+                    "Payment of " + payment.getAmount() + " failed for order " + displayId + ".");
         }
 
         return toPaymentView(payment);
     }
 
     public void completeCodPayment(String orderId) {
+        OrderEntity orderEntity = orderService.findOrderByIdentifier(orderId);
+        String actualOrderId = orderEntity.getOrderId();
+        String displayId = orderEntity.getDisplayOrderId() != null ? orderEntity.getDisplayOrderId() : actualOrderId;
+
         // Find the PENDING COD payment linked to this order
         PaymentEntity codPayment = paymentRepository.findAll().stream()
-                .filter(p -> p.getOrderId().equals(orderId) 
+                .filter(p -> p.getOrderId().equals(actualOrderId) 
                         && p.getPaymentMethod() == PaymentMethod.COD 
                         && p.getStatus() == PaymentStatus.PENDING)
                 .findFirst()
@@ -121,8 +132,8 @@ public class PaymentService {
             codPayment.setStatus(PaymentStatus.SUCCESS);
             
             // Retrieve order directly using admin scope (internal completion)
-            OrderView order = orderService.getOrderHistory(codPayment.getOrderId(), UserRoleType.ADMIN).stream()
-                    .filter(o -> o.orderId().equals(orderId))
+            OrderView order = orderService.getOrderHistory(actualOrderId, UserRoleType.ADMIN).stream()
+                    .filter(o -> o.orderId().equals(displayId) || o.orderId().equals(actualOrderId))
                     .findFirst()
                     .orElse(null);
             
@@ -131,9 +142,9 @@ public class PaymentService {
                 paymentRepository.save(codPayment);
                 
                 notificationService.sendNotification(order.customerEmail(), NotificationType.PAYMENT,
-                        "COD Payment of " + codPayment.getAmount() + " was successful for order " + orderId + ".");
+                        "COD Payment of " + codPayment.getAmount() + " was successful for order " + displayId + ".");
                 notificationService.sendNotification("admin@velora.example", NotificationType.PAYMENT,
-                        "COD Payment of " + codPayment.getAmount() + " was successful for order " + orderId + ".");
+                        "COD Payment of " + codPayment.getAmount() + " was successful for order " + displayId + ".");
             }
         }
     }
@@ -155,22 +166,20 @@ public class PaymentService {
             invoiceRepository.save(i);
         });
 
-        OrderView order = orderService.getOrderHistory(payment.getOrderId(), UserRoleType.ADMIN).stream()
-                .filter(o -> o.orderId().equals(payment.getOrderId()))
-                .findFirst()
-                .orElse(null);
-        if (order != null) {
-            notificationService.sendNotification(order.customerEmail(), NotificationType.PAYMENT,
-                    "Payment of " + payment.getAmount() + " has been refunded for order " + payment.getOrderId() + ".");
-            notificationService.sendNotification(adminEmail, NotificationType.PAYMENT,
-                    "Payment of " + payment.getAmount() + " has been refunded for order " + payment.getOrderId() + ".");
-        }
+        OrderEntity orderEntity = orderService.findOrderByIdentifier(payment.getOrderId());
+        String displayId = orderEntity.getDisplayOrderId() != null ? orderEntity.getDisplayOrderId() : orderEntity.getOrderId();
+
+        notificationService.sendNotification(orderEntity.getCustomerEmail(), NotificationType.PAYMENT,
+                "Payment of " + payment.getAmount() + " has been refunded for order " + displayId + ".");
+        notificationService.sendNotification(adminEmail, NotificationType.PAYMENT,
+                "Payment of " + payment.getAmount() + " has been refunded for order " + displayId + ".");
 
         return toPaymentView(payment);
     }
 
     public InvoiceView getInvoiceByOrderId(String email, UserRoleType role, String orderId) {
-        InvoiceEntity invoice = invoiceRepository.findByOrderId(orderId)
+        OrderEntity order = orderService.findOrderByIdentifier(orderId);
+        InvoiceEntity invoice = invoiceRepository.findByOrderId(order.getOrderId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Invoice not found for this order"));
 
         // Enforce role-based security:
@@ -205,7 +214,7 @@ public class PaymentService {
 
     private void generateInvoice(PaymentEntity payment, OrderView order) {
         InvoiceEntity invoice = new InvoiceEntity(
-                order.orderId(),
+                orderService.findOrderByIdentifier(order.orderId()).getOrderId(),
                 payment.getPaymentId(),
                 order.customerEmail(),
                 order.partnerEmail(),
@@ -219,9 +228,10 @@ public class PaymentService {
     }
 
     private PaymentView toPaymentView(PaymentEntity payment) {
+        String displayOrderId = orderService.getDisplayOrderIdByOrderId(payment.getOrderId());
         return new PaymentView(
                 payment.getPaymentId(),
-                payment.getOrderId(),
+                displayOrderId,
                 payment.getAmount(),
                 payment.getPaymentMethod(),
                 payment.getStatus(),
@@ -235,9 +245,10 @@ public class PaymentService {
         List<OrderItemDto> itemsDto = invoice.getItems().stream()
                 .map(i -> new OrderItemDto(i.getItemCategory(), i.getServiceType(), i.getQuantity()))
                 .collect(Collectors.toList());
+        String displayOrderId = orderService.getDisplayOrderIdByOrderId(invoice.getOrderId());
         return new InvoiceView(
                 String.valueOf(invoice.getId()),
-                invoice.getOrderId(),
+                displayOrderId,
                 invoice.getPaymentId(),
                 invoice.getCustomerEmail(),
                 invoice.getPartnerEmail(),

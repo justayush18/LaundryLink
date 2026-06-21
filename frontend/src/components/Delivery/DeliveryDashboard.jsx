@@ -313,18 +313,12 @@ export default function DeliveryDashboard() {
       {error && <div className="alert alert-error animate-fadeInUp">{error}</div>}
 
       {/* KPI Row */}
-      <div className="grid-cols-4" style={{ marginBottom: '2.5rem', gap: '1.25rem' }}>
+      <div className="grid-cols-3" style={{ marginBottom: '2.5rem', gap: '1.25rem' }}>
         <StatCard
           title="Upcoming Pickups"
           value={dashboard.upcomingPickups?.length || 0}
           icon={Navigation}
-          description="Awaiting acceptance"
-        />
-        <StatCard
-          title="Assigned Tasks"
-          value={dashboard.assignedTasks?.length || 0}
-          icon={Clock}
-          description="Accepted pickup tasks"
+          description="Awaiting collection"
         />
         <StatCard
           title="Active Deliveries"
@@ -444,21 +438,6 @@ export default function DeliveryDashboard() {
             Upcoming Pickups ({dashboard.upcomingPickups?.length || 0})
           </button>
           <button 
-            onClick={() => setActiveTab('assigned')}
-            style={{
-              padding: '8px 16px',
-              borderRadius: '12px',
-              border: 'none',
-              background: activeTab === 'assigned' ? 'var(--primary-teal)' : 'transparent',
-              color: activeTab === 'assigned' ? '#FFFFFF' : 'var(--text-secondary)',
-              fontWeight: 700,
-              cursor: 'pointer',
-              transition: 'all 0.2s ease-in-out'
-            }}
-          >
-            Assigned Tasks ({dashboard.assignedTasks?.length || 0})
-          </button>
-          <button 
             onClick={() => setActiveTab('active')}
             style={{
               padding: '8px 16px',
@@ -520,125 +499,38 @@ export default function DeliveryDashboard() {
                   <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-start' }}>
                     <MapPin size={16} color="var(--primary-teal)" style={{ marginTop: '2px' }} />
                     <div style={{ fontSize: '12px', color: 'var(--primary-navy)', fontWeight: 600 }}>
-                      <strong>{['PICKUP_ASSIGNED', 'PLACED', 'ACCEPTED'].includes(task.status) ? 'Pickup Address' : 'Delivery Address'}:</strong>
+                      <strong>{task.status === 'PICKUP_ASSIGNED' ? 'Pickup Address' : 'Delivery Address'}:</strong>
                       <p style={{ margin: '4px 0 0 0', fontWeight: 500, color: 'var(--text-secondary)' }}>
-                        {['PICKUP_ASSIGNED', 'PLACED', 'ACCEPTED'].includes(task.status) ? task.pickupAddress : task.deliveryAddress}
+                        {task.status === 'PICKUP_ASSIGNED' ? task.pickupAddress : task.deliveryAddress}
                       </p>
                     </div>
                   </div>
                   <p style={{ fontSize: '11px', color: 'var(--primary-teal)', marginTop: '8px', marginBottom: 0, paddingLeft: '22px', fontWeight: 700 }}>
-                    ⏱ Slot: {['PICKUP_ASSIGNED', 'PLACED', 'ACCEPTED'].includes(task.status) ? task.pickupSlot : task.deliverySlot}
+                    ⏱ Slot: {task.status === 'PICKUP_ASSIGNED' ? task.pickupSlot : task.deliverySlot}
                   </p>
                 </div>
 
                 <div style={styles.actions}>
                   {activeTab === 'pickups' && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
-                      <button
-                        onClick={() => handleAcceptTask(task.orderId)}
-                        className="velora-btn velora-btn-primary animate-pulse"
-                        style={{ width: '100%', padding: '10px', fontSize: '12px' }}
-                        disabled={submittingOrderId !== null}
-                      >
-                        {submittingOrderId === task.orderId ? 'Accepting...' : 'Accept Task'}
-                      </button>
-                      {dailyCancellations >= 2 ? (
-                        <div style={{ 
-                          textAlign: 'center', 
-                          padding: '10px', 
-                          background: '#FDE8E8', 
-                          color: '#EF4444', 
-                          fontSize: '12px', 
-                          fontWeight: 700, 
-                          borderRadius: '12px',
-                          border: '1px solid #F8B4B4'
-                        }}>
-                          Daily cancellation limit reached (2/2).
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => handleCancelTask(task.orderId)}
-                          className="velora-btn velora-btn-secondary"
-                          style={{ width: '100%', padding: '10px', fontSize: '12px', borderColor: '#EF4444', color: '#EF4444' }}
-                          disabled={submittingOrderId !== null}
-                        >
-                          {submittingOrderId === task.orderId ? 'Cancelling...' : 'Cancel Task'}
-                        </button>
-                      )}
-                    </div>
-                  )}
-
-                  {activeTab === 'assigned' && (
-                    <div style={{ width: '100%' }}>
-                      {task.status === 'PICKUP_ASSIGNED' ? (
-                        <button
-                          onClick={() => handleUpdateStatus(task.orderId, 'ARRIVED_AT_PICKUP', 'Rider arrived at customer location.')}
-                          className="velora-btn velora-btn-primary animate-pulse"
-                          style={{ width: '100%', padding: '10px', fontSize: '12px' }}
-                          disabled={submittingOrderId !== null}
-                        >
-                          {submittingOrderId === task.orderId ? 'Updating...' : 'Arrived at Pickup'}
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => handleUpdateStatus(task.orderId, 'PICKED_UP', 'Laundry picked up by delivery rider.')}
-                          className="velora-btn velora-btn-primary animate-pulse"
-                          style={{ width: '100%', padding: '10px', fontSize: '12px' }}
-                          disabled={submittingOrderId !== null}
-                        >
-                          {submittingOrderId === task.orderId ? 'Updating...' : 'Confirm Picked Up'}
-                        </button>
-                      )}
-                    </div>
+                    <button
+                      onClick={() => handleUpdateStatus(task.orderId, 'PICKUP_COMPLETED', 'Clothes picked up from customer and delivered to vendor.')}
+                      className="velora-btn velora-btn-primary animate-pulse"
+                      style={{ width: '100%', padding: '10px', fontSize: '12px' }}
+                      disabled={submittingOrderId !== null}
+                    >
+                      {submittingOrderId === task.orderId ? 'Updating...' : 'Complete Pickup'}
+                    </button>
                   )}
 
                   {activeTab === 'active' && (
-                    <div style={{ width: '100%' }}>
-                      {!task.isAcceptedByRider ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
-                          <button
-                            onClick={() => handleAcceptTask(task.orderId)}
-                            className="velora-btn velora-btn-primary animate-pulse"
-                            style={{ width: '100%', padding: '10px', fontSize: '12px' }}
-                            disabled={submittingOrderId !== null}
-                          >
-                            {submittingOrderId === task.orderId ? 'Accepting...' : 'Accept Task'}
-                          </button>
-                          {dailyCancellations >= 2 ? (
-                            <div style={{ 
-                              textAlign: 'center', 
-                              padding: '10px', 
-                              background: '#FDE8E8', 
-                              color: '#EF4444', 
-                              fontSize: '12px', 
-                              fontWeight: 700, 
-                              borderRadius: '12px',
-                              border: '1px solid #F8B4B4'
-                            }}>
-                              Daily cancellation limit reached (2/2).
-                            </div>
-                          ) : (
-                            <button
-                              onClick={() => handleCancelTask(task.orderId)}
-                              className="velora-btn velora-btn-secondary"
-                              style={{ width: '100%', padding: '10px', fontSize: '12px', borderColor: '#EF4444', color: '#EF4444' }}
-                              disabled={submittingOrderId !== null}
-                            >
-                              {submittingOrderId === task.orderId ? 'Cancelling...' : 'Cancel Task'}
-                            </button>
-                          )}
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => handleUpdateStatus(task.orderId, 'DELIVERED', 'Laundry delivered successfully.')}
-                          className="velora-btn velora-btn-primary animate-pulse"
-                          style={{ width: '100%', padding: '10px', fontSize: '12px' }}
-                          disabled={submittingOrderId !== null}
-                        >
-                          {submittingOrderId === task.orderId ? 'Updating...' : 'Mark Delivered'}
-                        </button>
-                      )}
-                    </div>
+                    <button
+                      onClick={() => handleUpdateStatus(task.orderId, 'DELIVERED', 'Laundry delivered successfully.')}
+                      className="velora-btn velora-btn-primary animate-pulse"
+                      style={{ width: '100%', padding: '10px', fontSize: '12px' }}
+                      disabled={submittingOrderId !== null}
+                    >
+                      {submittingOrderId === task.orderId ? 'Updating...' : 'Complete Delivery'}
+                    </button>
                   )}
 
                   {activeTab === 'completed' && (

@@ -73,16 +73,15 @@ export default function CustomerOrders() {
   };
 
   const getStatusStep = (status) => {
-    const steps = ['PLACED', 'ACCEPTED', 'PICKUP_ASSIGNED', 'PICKED_UP', 'PROCESSING', 'READY_FOR_DELIVERY', 'DELIVERY_ASSIGNED', 'DELIVERED'];
+    const steps = ['PLACED', 'PICKUP_ASSIGNED', 'PICKUP_COMPLETED', 'PROCESSING', 'READY_FOR_DELIVERY', 'DELIVERY_ASSIGNED', 'DELIVERED'];
     return steps.indexOf(status);
   };
 
   const getStatusLabel = (status) => {
     switch (status) {
       case 'PLACED': return 'Placed';
-      case 'ACCEPTED': return 'Accepted';
       case 'PICKUP_ASSIGNED': return 'Pickup Assigned';
-      case 'PICKED_UP': return 'Picked Up';
+      case 'PICKUP_COMPLETED': return 'Pickup Completed';
       case 'PROCESSING': return 'Processing';
       case 'READY_FOR_DELIVERY': return 'Ready';
       case 'DELIVERY_ASSIGNED': return 'Out for Delivery';

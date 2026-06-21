@@ -39,14 +39,21 @@ public class PaymentServiceTest {
     @Test
     public void testInitiatePayment_Success() {
         InitiatePaymentRequest req = new InitiatePaymentRequest("order-123", PaymentMethod.RAZORPAY);
-        
+
+        OrderEntity orderEntity = new OrderEntity();
+        orderEntity.setOrderId("order-123");
+        orderEntity.setDisplayOrderId("order-123");
+        orderEntity.setCustomerEmail("customer@example.com");
+
         OrderView orderView = new OrderView(
                 "order-123", "customer@example.com", "partner@example.com", null, null,
                 OrderStatus.PLACED, List.of(new OrderItemDto("SHIRT", "WASH_AND_FOLD", 2)),
                 100.0, "Pickup", "Slot1", "Delivery", "Slot2", "Notes", 0L, 0L, List.of(), false, null, null
         );
 
+        when(orderService.findOrderByIdentifier("order-123")).thenReturn(orderEntity);
         when(orderService.getOrder("order-123", "customer@example.com", UserRoleType.CUSTOMER)).thenReturn(orderView);
+        when(orderService.getDisplayOrderIdByOrderId("order-123")).thenReturn("order-123");
         when(paymentRepository.findAll()).thenReturn(List.of());
         when(paymentProcessor.createTransaction("order-123", 100.0, PaymentMethod.RAZORPAY)).thenReturn("tx-123");
 
@@ -68,6 +75,9 @@ public class PaymentServiceTest {
     @Test
     public void testInitiatePayment_AlreadyPaid() {
         InitiatePaymentRequest req = new InitiatePaymentRequest("order-123", PaymentMethod.RAZORPAY);
+
+        OrderEntity orderEntity = new OrderEntity();
+        orderEntity.setOrderId("order-123");
         
         OrderView orderView = new OrderView(
                 "order-123", "customer@example.com", "partner@example.com", null, null,
@@ -75,6 +85,7 @@ public class PaymentServiceTest {
                 100.0, "Pickup", "Slot1", "Delivery", "Slot2", "Notes", 0L, 0L, List.of(), false, null, null
         );
 
+        when(orderService.findOrderByIdentifier("order-123")).thenReturn(orderEntity);
         when(orderService.getOrder("order-123", "customer@example.com", UserRoleType.CUSTOMER)).thenReturn(orderView);
         
         PaymentEntity existingSuccess = new PaymentEntity("pay-123", "order-123", 100.0, PaymentMethod.RAZORPAY, "tx-123");
@@ -91,6 +102,10 @@ public class PaymentServiceTest {
         PaymentEntity payment = new PaymentEntity("pay-123", "order-123", 100.0, PaymentMethod.RAZORPAY, "tx-123");
         payment.setStatus(PaymentStatus.PENDING);
 
+        OrderEntity orderEntity = new OrderEntity();
+        orderEntity.setOrderId("order-123");
+        orderEntity.setDisplayOrderId("order-123");
+
         OrderView orderView = new OrderView(
                 "order-123", "customer@example.com", "partner@example.com", null, null,
                 OrderStatus.PLACED, List.of(new OrderItemDto("SHIRT", "WASH_AND_FOLD", 2)),
@@ -99,6 +114,8 @@ public class PaymentServiceTest {
 
         when(paymentRepository.findById("pay-123")).thenReturn(Optional.of(payment));
         when(orderService.getOrder("order-123", "customer@example.com", UserRoleType.CUSTOMER)).thenReturn(orderView);
+        when(orderService.findOrderByIdentifier("order-123")).thenReturn(orderEntity);
+        when(orderService.getDisplayOrderIdByOrderId("order-123")).thenReturn("order-123");
 
         PaymentView view = paymentService.processPayment("customer@example.com", "pay-123", true);
 
@@ -114,6 +131,10 @@ public class PaymentServiceTest {
         PaymentEntity payment = new PaymentEntity("pay-123", "order-123", 100.0, PaymentMethod.RAZORPAY, "tx-123");
         payment.setStatus(PaymentStatus.PENDING);
 
+        OrderEntity orderEntity = new OrderEntity();
+        orderEntity.setOrderId("order-123");
+        orderEntity.setDisplayOrderId("order-123");
+
         OrderView orderView = new OrderView(
                 "order-123", "customer@example.com", "partner@example.com", null, null,
                 OrderStatus.PLACED, List.of(),
@@ -122,6 +143,8 @@ public class PaymentServiceTest {
 
         when(paymentRepository.findById("pay-123")).thenReturn(Optional.of(payment));
         when(orderService.getOrder("order-123", "customer@example.com", UserRoleType.CUSTOMER)).thenReturn(orderView);
+        when(orderService.findOrderByIdentifier("order-123")).thenReturn(orderEntity);
+        when(orderService.getDisplayOrderIdByOrderId("order-123")).thenReturn("order-123");
 
         PaymentView view = paymentService.processPayment("customer@example.com", "pay-123", false);
 
@@ -136,7 +159,12 @@ public class PaymentServiceTest {
         PaymentEntity payment = new PaymentEntity("pay-123", "order-123", 100.0, PaymentMethod.COD, "tx-123");
         payment.setStatus(PaymentStatus.PENDING);
 
+        OrderEntity orderEntity = new OrderEntity();
+        orderEntity.setOrderId("order-123");
+        orderEntity.setDisplayOrderId("order-123");
+
         when(paymentRepository.findAll()).thenReturn(List.of(payment));
+        when(orderService.findOrderByIdentifier("order-123")).thenReturn(orderEntity);
 
         OrderView orderView = new OrderView(
                 "order-123", "customer@example.com", "partner@example.com", null, null,
@@ -158,17 +186,17 @@ public class PaymentServiceTest {
         PaymentEntity payment = new PaymentEntity("pay-123", "order-123", 100.0, PaymentMethod.RAZORPAY, "tx-123");
         payment.setStatus(PaymentStatus.SUCCESS);
 
+        OrderEntity orderEntity = new OrderEntity();
+        orderEntity.setOrderId("order-123");
+        orderEntity.setDisplayOrderId("order-123");
+        orderEntity.setCustomerEmail("customer@example.com");
+
         InvoiceEntity invoice = new InvoiceEntity("order-123", "pay-123", "customer@example.com", "partner@example.com", 100.0);
 
         when(paymentRepository.findById("pay-123")).thenReturn(Optional.of(payment));
         when(invoiceRepository.findByOrderId("order-123")).thenReturn(Optional.of(invoice));
-
-        OrderView orderView = new OrderView(
-                "order-123", "customer@example.com", "partner@example.com", null, null,
-                OrderStatus.DELIVERED, List.of(),
-                100.0, "Pickup", "Slot1", "Delivery", "Slot2", "Notes", 0L, 0L, List.of(), false, null, null
-        );
-        when(orderService.getOrderHistory("order-123", UserRoleType.ADMIN)).thenReturn(List.of(orderView));
+        when(orderService.findOrderByIdentifier("order-123")).thenReturn(orderEntity);
+        when(orderService.getDisplayOrderIdByOrderId("order-123")).thenReturn("order-123");
 
         PaymentView view = paymentService.refundPayment("admin@example.com", "pay-123");
 

@@ -108,7 +108,7 @@ public class OrderServiceTest {
         OrderEntity order = new OrderEntity();
         order.setOrderId("order-123");
         order.setCustomerEmail("customer@example.com");
-        order.setStatus(OrderStatus.ACCEPTED);
+        order.setStatus(OrderStatus.PICKUP_ASSIGNED);
         order.setTotalCost(100.0);
         order.setItems(new ArrayList<>());
         order.setHistory(new ArrayList<>());
@@ -131,7 +131,7 @@ public class OrderServiceTest {
         OrderEntity order = new OrderEntity();
         order.setOrderId("order-123");
         order.setCustomerEmail("customer@example.com");
-        order.setStatus(OrderStatus.ACCEPTED);
+        order.setStatus(OrderStatus.PICKUP_ASSIGNED);
         order.setTotalCost(100.0);
         order.setItems(new ArrayList<>());
         order.setHistory(new ArrayList<>());
@@ -157,8 +157,8 @@ public class OrderServiceTest {
 
         assertNotNull(view);
         assertEquals(OrderStatus.CANCELLED, view.status());
-        assertEquals(15.0, view.cancellationFee()); // 15% of 100.0 for ACCEPTED
-        assertEquals(85.0, view.refundAmount());
+        assertEquals(25.0, view.cancellationFee()); // 25% of 100.0 for PICKUP_ASSIGNED
+        assertEquals(75.0, view.refundAmount());
     }
 
     @Test
@@ -167,7 +167,7 @@ public class OrderServiceTest {
         order.setOrderId("order-123");
         order.setCustomerEmail("customer@example.com");
         order.setPartnerEmail("partner@example.com");
-        order.setStatus(OrderStatus.ACCEPTED);
+        order.setStatus(OrderStatus.PLACED);
         order.setItems(new ArrayList<>());
         order.setHistory(new ArrayList<>());
 
@@ -186,7 +186,7 @@ public class OrderServiceTest {
     public void testAssignDeliveryPartner_ForbiddenForOtherRider() {
         OrderEntity order = new OrderEntity();
         order.setOrderId("order-123");
-        order.setStatus(OrderStatus.ACCEPTED);
+        order.setStatus(OrderStatus.PLACED);
 
         when(orderRepository.findById("order-123")).thenReturn(Optional.of(order));
 
@@ -243,7 +243,7 @@ public class OrderServiceTest {
         order.setOrderId("order-123");
         order.setCustomerEmail("customer@example.com");
         order.setPartnerEmail("partner@example.com");
-        order.setStatus(OrderStatus.ACCEPTED);
+        order.setStatus(OrderStatus.PROCESSING);
         order.setItems(new ArrayList<>());
         order.setHistory(new ArrayList<>());
 

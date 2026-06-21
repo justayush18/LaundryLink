@@ -19,6 +19,8 @@ public class OrderEntity extends AuditedEntity {
     private String partnerEmail;
 
     private String deliveryPartnerEmail;
+    private String pickupRiderEmail;
+    private String displayOrderId;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -198,5 +200,20 @@ public class OrderEntity extends AuditedEntity {
 
     public void setRefundAmount(Double refundAmount) {
         this.refundAmount = refundAmount;
+    }
+    public String getPickupRiderEmail() {
+        return pickupRiderEmail;
+    }
+
+    public void setPickupRiderEmail(String pickupRiderEmail) {
+        this.pickupRiderEmail = pickupRiderEmail;
+    }
+
+    public String getDisplayOrderId() {
+        return displayOrderId;
+    }
+
+    public void setDisplayOrderId(String displayOrderId) {
+        this.displayOrderId = displayOrderId;
     }
 }

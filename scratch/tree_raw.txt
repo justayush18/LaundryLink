@@ -1,0 +1,244 @@
+├── 📄 .gitattributes
+├── 📄 .gitignore
+├── 📂 .mvn/
+│   ├── 📂 wrapper/
+│   │   ├── 📄 maven-wrapper.properties
+├── 📄 ARCHITECTURE.md
+├── 📄 ARCHITECTURE_SNAPSHOT.md
+├── 📄 HELP.md
+├── 📄 PROJECT_JOURNEY.md
+├── 📄 README.md
+├── 📂 docs/
+│   ├── 📂 images/
+│   │   ├── 📄 architecture.png
+│   │   ├── 📄 erd.png
+│   │   ├── 📄 features.png
+│   │   ├── 📄 order-flow.png
+├── 📂 frontend/
+│   ├── 📄 .gitignore
+│   ├── 📄 README.md
+│   ├── 📄 eslint.config.js
+│   ├── 📄 index.html
+│   ├── 📄 package-lock.json
+│   ├── 📄 package.json
+│   ├── 📂 public/
+│   │   ├── 📄 favicon.svg
+│   │   ├── 📄 icons.svg
+│   │   ├── 📂 videos/
+│   │   │   ├── 📄 auth-bg.mp4
+│   ├── 📂 src/
+│   │   ├── 📄 App.css
+│   │   ├── 📄 App.jsx
+│   │   ├── 📂 assets/
+│   │   │   ├── 📄 hero.png
+│   │   │   ├── 📄 react.svg
+│   │   │   ├── 📄 vite.svg
+│   │   ├── 📂 components/
+│   │   │   ├── 📂 Admin/
+│   │   │   │   ├── 📄 AdminDashboard.jsx
+│   │   │   │   ├── 📄 AdminOrders.jsx
+│   │   │   │   ├── 📄 AdminPartners.jsx
+│   │   │   │   ├── 📄 AdminPayments.jsx
+│   │   │   │   ├── 📄 AdminReports.jsx
+│   │   │   │   ├── 📄 AdminReviews.jsx
+│   │   │   │   ├── 📄 AdminUsers.jsx
+│   │   │   ├── 📂 Auth/
+│   │   │   │   ├── 📄 Login.jsx
+│   │   │   │   ├── 📄 OnboardingTerms.jsx
+│   │   │   │   ├── 📄 Register.jsx
+│   │   │   │   ├── 📄 VerifyOtp.jsx
+│   │   │   ├── 📂 Common/
+│   │   │   │   ├── 📄 CustomSelect.jsx
+│   │   │   │   ├── 📄 EmptyState.jsx
+│   │   │   │   ├── 📄 FloatingBubbles.jsx
+│   │   │   │   ├── 📄 FloatingNav.jsx
+│   │   │   │   ├── 📄 Navbar.jsx
+│   │   │   │   ├── 📄 ProtectedRoute.jsx
+│   │   │   │   ├── 📄 Sidebar.jsx
+│   │   │   │   ├── 📄 StatCard.jsx
+│   │   │   │   ├── 📄 TermsAndPolicies.jsx
+│   │   │   │   ├── 📄 VeloraMascot.jsx
+│   │   │   │   ├── 📄 WaveBackground.jsx
+│   │   │   ├── 📂 Customer/
+│   │   │   │   ├── 📄 CheckoutModal.jsx
+│   │   │   │   ├── 📄 CustomerDashboard.jsx
+│   │   │   │   ├── 📄 CustomerOrderHistory.jsx
+│   │   │   │   ├── 📄 CustomerOrders.jsx
+│   │   │   │   ├── 📄 CustomerPayments.jsx
+│   │   │   │   ├── 📄 CustomerReviews.jsx
+│   │   │   │   ├── 📄 PlaceOrderWizard.jsx
+│   │   │   │   ├── 📄 ReviewModal.jsx
+│   │   │   ├── 📂 Delivery/
+│   │   │   │   ├── 📄 DeliveryDashboard.jsx
+│   │   │   │   ├── 📄 DeliveryTasks.jsx
+│   │   │   ├── 📂 Home/
+│   │   │   │   ├── 📄 Homepage.jsx
+│   │   │   ├── 📂 Notifications/
+│   │   │   │   ├── 📄 NotificationCenter.jsx
+│   │   │   ├── 📂 Partner/
+│   │   │   │   ├── 📄 PartnerDashboard.jsx
+│   │   │   │   ├── 📄 PartnerDocuments.jsx
+│   │   │   │   ├── 📄 PartnerOrders.jsx
+│   │   │   │   ├── 📄 PartnerPricing.jsx
+│   │   ├── 📂 context/
+│   │   │   ├── 📄 AuthContext.jsx
+│   │   ├── 📄 index.css
+│   │   ├── 📄 main.jsx
+│   │   ├── 📂 services/
+│   │   │   ├── 📄 api.js
+│   │   ├── 📄 velora-animations.css
+│   ├── 📄 vite.config.js
+├── 📄 mvnw
+├── 📄 mvnw.cmd
+├── 📄 openapi_spec.json
+├── 📄 pom.xml
+├── 📂 scratch/
+│   ├── 📄 old_readme.md
+│   ├── 📄 old_readme_utf8.md
+│   ├── 📄 reset_database.ps1
+│   ├── 📄 tree_raw.txt
+├── 📂 src/
+│   ├── 📂 main/
+│   │   ├── 📂 java/
+│   │   │   ├── 📂 com/
+│   │   │   │   ├── 📂 laundrylink/
+│   │   │   │   │   ├── 📂 laundrylink/
+│   │   │   │   │   │   ├── 📄 LaundrylinkApplication.java
+│   │   │   │   │   │   ├── 📂 api/
+│   │   │   │   │   │   │   ├── 📄 AcceptTermsRequest.java
+│   │   │   │   │   │   │   ├── 📄 AddressView.java
+│   │   │   │   │   │   │   ├── 📄 AdminAnalyticsSummary.java
+│   │   │   │   │   │   │   ├── 📄 AdminController.java
+│   │   │   │   │   │   │   ├── 📄 AdminDashboardView.java
+│   │   │   │   │   │   │   ├── 📄 AdminNotificationSummary.java
+│   │   │   │   │   │   │   ├── 📄 AdminPartnerView.java
+│   │   │   │   │   │   │   ├── 📄 AdminRevenueReport.java
+│   │   │   │   │   │   │   ├── 📄 AdminUserView.java
+│   │   │   │   │   │   │   ├── 📄 AssignDeliveryRequest.java
+│   │   │   │   │   │   │   ├── 📄 AuthController.java
+│   │   │   │   │   │   │   ├── 📄 AuthLoginRequest.java
+│   │   │   │   │   │   │   ├── 📄 AuthRegisterRequest.java
+│   │   │   │   │   │   │   ├── 📄 AuthResponse.java
+│   │   │   │   │   │   │   ├── 📄 AuthenticatedUserView.java
+│   │   │   │   │   │   │   ├── 📄 AvailabilityRequest.java
+│   │   │   │   │   │   │   ├── 📄 AvailabilitySlot.java
+│   │   │   │   │   │   │   ├── 📄 AvailabilityView.java
+│   │   │   │   │   │   │   ├── 📄 BlueprintController.java
+│   │   │   │   │   │   │   ├── 📄 CancellationEstimate.java
+│   │   │   │   │   │   │   ├── 📄 CancellationEvent.java
+│   │   │   │   │   │   │   ├── 📄 DeliveryController.java
+│   │   │   │   │   │   │   ├── 📄 DeliveryDashboardView.java
+│   │   │   │   │   │   │   ├── 📄 DeliveryTrackingView.java
+│   │   │   │   │   │   │   ├── 📄 DocumentVerifyRequest.java
+│   │   │   │   │   │   │   ├── 📄 HealthController.java
+│   │   │   │   │   │   │   ├── 📄 InitiatePaymentRequest.java
+│   │   │   │   │   │   │   ├── 📄 InvoiceStatus.java
+│   │   │   │   │   │   │   ├── 📄 InvoiceView.java
+│   │   │   │   │   │   │   ├── 📄 LaundryPartnerController.java
+│   │   │   │   │   │   │   ├── 📄 NotificationController.java
+│   │   │   │   │   │   │   ├── 📄 NotificationHistoryResponse.java
+│   │   │   │   │   │   │   ├── 📄 NotificationPreferencesDto.java
+│   │   │   │   │   │   │   ├── 📄 NotificationType.java
+│   │   │   │   │   │   │   ├── 📄 NotificationView.java
+│   │   │   │   │   │   │   ├── 📄 OrderController.java
+│   │   │   │   │   │   │   ├── 📄 OrderItemDto.java
+│   │   │   │   │   │   │   ├── 📄 OrderStatus.java
+│   │   │   │   │   │   │   ├── 📄 OrderStatusUpdateRequest.java
+│   │   │   │   │   │   │   ├── 📄 OrderView.java
+│   │   │   │   │   │   │   ├── 📄 PartnerDocumentRequest.java
+│   │   │   │   │   │   │   ├── 📄 PartnerDocumentView.java
+│   │   │   │   │   │   │   ├── 📄 PartnerPerformanceAnalytics.java
+│   │   │   │   │   │   │   ├── 📄 PartnerProfileRequest.java
+│   │   │   │   │   │   │   ├── 📄 PartnerProfileView.java
+│   │   │   │   │   │   │   ├── 📄 PartnerRatingSummary.java
+│   │   │   │   │   │   │   ├── 📄 PaymentController.java
+│   │   │   │   │   │   │   ├── 📄 PaymentMethod.java
+│   │   │   │   │   │   │   ├── 📄 PaymentStatus.java
+│   │   │   │   │   │   │   ├── 📄 PaymentView.java
+│   │   │   │   │   │   │   ├── 📄 PlaceOrderRequest.java
+│   │   │   │   │   │   │   ├── 📄 PricingRequest.java
+│   │   │   │   │   │   │   ├── 📄 PricingView.java
+│   │   │   │   │   │   │   ├── 📄 RateCardItem.java
+│   │   │   │   │   │   │   ├── 📄 ResendOtpRequest.java
+│   │   │   │   │   │   │   ├── 📄 ReviewController.java
+│   │   │   │   │   │   │   ├── 📄 ReviewRequest.java
+│   │   │   │   │   │   │   ├── 📄 ReviewView.java
+│   │   │   │   │   │   │   ├── 📄 ServiceAreaRequest.java
+│   │   │   │   │   │   │   ├── 📄 ServiceAreaView.java
+│   │   │   │   │   │   │   ├── 📄 ServiceCatalogItem.java
+│   │   │   │   │   │   │   ├── 📄 StakeholderController.java
+│   │   │   │   │   │   │   ├── 📄 StakeholderProfile.java
+│   │   │   │   │   │   │   ├── 📄 StatusTransition.java
+│   │   │   │   │   │   │   ├── 📄 UserManagementController.java
+│   │   │   │   │   │   │   ├── 📄 UserProfileView.java
+│   │   │   │   │   │   │   ├── 📄 UserRoleSummary.java
+│   │   │   │   │   │   │   ├── 📄 UserRoleType.java
+│   │   │   │   │   │   │   ├── 📄 VerifyOtpRequest.java
+│   │   │   │   │   │   ├── 📂 persistence/
+│   │   │   │   │   │   │   ├── 📄 AuditedEntity.java
+│   │   │   │   │   │   │   ├── 📄 AvailabilitySlotEntity.java
+│   │   │   │   │   │   │   ├── 📄 InvoiceEntity.java
+│   │   │   │   │   │   │   ├── 📄 InvoiceItemEntity.java
+│   │   │   │   │   │   │   ├── 📄 InvoiceRepository.java
+│   │   │   │   │   │   │   ├── 📄 NotificationEntity.java
+│   │   │   │   │   │   │   ├── 📄 NotificationPreferencesEntity.java
+│   │   │   │   │   │   │   ├── 📄 NotificationPreferencesRepository.java
+│   │   │   │   │   │   │   ├── 📄 NotificationRepository.java
+│   │   │   │   │   │   │   ├── 📄 OrderEntity.java
+│   │   │   │   │   │   │   ├── 📄 OrderItemEntity.java
+│   │   │   │   │   │   │   ├── 📄 OrderRepository.java
+│   │   │   │   │   │   │   ├── 📄 PartnerDocumentEntity.java
+│   │   │   │   │   │   │   ├── 📄 PartnerEntity.java
+│   │   │   │   │   │   │   ├── 📄 PartnerRepository.java
+│   │   │   │   │   │   │   ├── 📄 PaymentEntity.java
+│   │   │   │   │   │   │   ├── 📄 PaymentRepository.java
+│   │   │   │   │   │   │   ├── 📄 RateCardItemEntity.java
+│   │   │   │   │   │   │   ├── 📄 ReviewEntity.java
+│   │   │   │   │   │   │   ├── 📄 ReviewRepository.java
+│   │   │   │   │   │   │   ├── 📄 StatusTransitionEntity.java
+│   │   │   │   │   │   │   ├── 📄 UserEntity.java
+│   │   │   │   │   │   │   ├── 📄 UserRepository.java
+│   │   │   │   │   │   ├── 📂 security/
+│   │   │   │   │   │   │   ├── 📄 AuthenticatedPrincipal.java
+│   │   │   │   │   │   │   ├── 📄 JwtAuthenticationFilter.java
+│   │   │   │   │   │   │   ├── 📄 JwtService.java
+│   │   │   │   │   │   │   ├── 📄 SecurityConfig.java
+│   │   │   │   │   │   ├── 📂 service/
+│   │   │   │   │   │   │   ├── 📄 AdminService.java
+│   │   │   │   │   │   │   ├── 📄 AuthService.java
+│   │   │   │   │   │   │   ├── 📄 BlueprintCatalogService.java
+│   │   │   │   │   │   │   ├── 📄 DemoDataSeeder.java
+│   │   │   │   │   │   │   ├── 📄 LaundryPartnerService.java
+│   │   │   │   │   │   │   ├── 📄 NotificationService.java
+│   │   │   │   │   │   │   ├── 📄 OrderService.java
+│   │   │   │   │   │   │   ├── 📄 PaymentProcessor.java
+│   │   │   │   │   │   │   ├── 📄 PaymentService.java
+│   │   │   │   │   │   │   ├── 📄 ReviewService.java
+│   │   │   │   │   │   │   ├── 📄 SimulatedPaymentProcessor.java
+│   │   │   │   │   │   │   ├── 📄 StakeholderCatalogService.java
+│   │   │   │   │   │   │   ├── 📄 UserManagementService.java
+│   │   ├── 📂 resources/
+│   │   │   ├── 📄 application.properties
+│   │   │   ├── 📂 static/
+│   │   │   ├── 📂 templates/
+│   ├── 📂 test/
+│   │   ├── 📂 java/
+│   │   │   ├── 📂 com/
+│   │   │   │   ├── 📂 laundrylink/
+│   │   │   │   │   ├── 📂 laundrylink/
+│   │   │   │   │   │   ├── 📂 integration/
+│   │   │   │   │   │   │   ├── 📄 AdminDashboardTest.java
+│   │   │   │   │   │   │   ├── 📄 AuthenticationFlowTest.java
+│   │   │   │   │   │   │   ├── 📄 DeliveryLifecycleTest.java
+│   │   │   │   │   │   │   ├── 📄 NotificationTest.java
+│   │   │   │   │   │   │   ├── 📄 OrderLifecycleTest.java
+│   │   │   │   │   │   │   ├── 📄 PaymentLifecycleTest.java
+│   │   │   │   │   │   │   ├── 📄 ReviewRatingTest.java
+│   │   │   │   │   │   ├── 📂 service/
+│   │   │   │   │   │   │   ├── 📄 AdminServiceTest.java
+│   │   │   │   │   │   │   ├── 📄 AuthServiceTest.java
+│   │   │   │   │   │   │   ├── 📄 NotificationServiceTest.java
+│   │   │   │   │   │   │   ├── 📄 OrderServiceTest.java
+│   │   │   │   │   │   │   ├── 📄 PaymentServiceTest.java
+│   │   │   │   │   │   │   ├── 📄 ReviewServiceTest.java
+├── 📄 task.md

@@ -38,24 +38,25 @@
   - [x] Add `cancellationPenaltyPerOrder` to `PartnerEntity.java`
 - [x] Backend API & DTO Layer
   - [x] Create `CancellationEvent.java` record
-  - [x] Update `PartnerProfileView.java` with new fields
-  - [x] Update `AdminPartnerView.java` with new fields
-- [x] Backend Service Layer
-  - [x] Prepend `"Cancelled by laundry partner: "` to notes in `OrderService.java` when partner cancels accepted order
-  - [x] Implement `getMonthlyCancellationsCount`, `getCancellationPercentage`, `getCancellationHistory` in `LaundryPartnerService.java`
-  - [x] Update `mapToView` in `LaundryPartnerService.java`
-  - [x] Integrate cancellation stats mapping into `AdminService.java`
-  - [x] Implement `updateCancellationPenalty` in `AdminService.java`
-- [x] Backend Controller Layer
-  - [x] Add `PUT /partners/{email}/cancellation-penalty` endpoint to `AdminController.java`
-- [x] Frontend Implementation
-  - [x] Register new endpoint in `api.js`
-  - [x] Integrate cancellation counter, warnings, and history in `PartnerDashboard.jsx`
-  - [x] Add "Cancel Order" action to `PartnerDashboard.jsx` and `PartnerOrders.jsx`
-  - [x] Add cancellation stats display and penalty configuration to `AdminPartners.jsx`
-- [x] Verification & Tests
-  - [x] Run backend tests (`./mvnw.cmd test`)
-  - [x] Run frontend build (`npm run build`)
+  - [x] Update `OrderStatus.java` enum to the new 8 simplified states
+- [x] Update `OrderEntity.java` (add `pickupRiderEmail` and `displayOrderId`, update fields and constructor mapping)
+- [x] Update `OrderRepository.java` (add `findByPickupRiderEmailOrDeliveryPartnerEmail` and `findByDisplayOrderId`)
+- [x] Update `OrderService.java`:
+  - [x] Add `generateNextDisplayOrderId()` sequential ID generation logic
+  - [x] Expose `getDisplayOrderIdByOrderId()` helper
+  - [x] Implement `findOrderByIdentifier()` dynamic resolution
+  - [x] Update DTO views mapping (`toView` to use `displayOrderId` for DTO `orderId`)
+  - [x] Update `autoAssignRider()` (auto-assign pickup on `PLACED` and delivery on `READY_FOR_DELIVERY` with separate riders constraint)
+  - [x] Update `triggerPendingAssignments()` and `updateOrderStatus()` transition logic and role validation
+  - [x] Remove manual acceptance/claiming endpoints (`acceptDeliveryTask`, `cancelDeliveryTask`)
+- [x] Update `DeliveryController.java` (remove accept/cancel endpoints)
+- [x] Update `PaymentService.java`, `ReviewService.java`, and `AdminService.java` to resolve display IDs dynamically when building views
+- [x] Update `DemoDataSeeder.java` to seed 33 completed historical orders with correct sequential display IDs and transition history
+- [x] Update frontend Rider Dashboard (`DeliveryDashboard.jsx`):
+  - [x] Hide the *Assigned Tasks* tab
+  - [x] Remove the manual Accept/Cancel buttons
+  - [x] Align actions under Pickups/Deliveries with single complete buttons
+- [x] Run full JUnit test suite (`.\mvnw.cmd test`) and ensure all tests pass and run frontend build (`npm run build`)
 
 ## Phase 8: Delivery Portal
 - [x] Redesign `DeliveryDashboard.jsx`
@@ -75,3 +76,9 @@
 ## Phase 11: Config & Polish
 - [x] Update `index.html` — Meta tags, title
 - [x] Final verification & testing
+
+## Phase 12: Documentation Overhaul
+- [x] Restore premium design structure and diagrams to root README
+- [x] Update project folder and file structure representation in README to match actual files on disk
+- [x] Sync API routes and pre-seeded credentials with current codebase
+

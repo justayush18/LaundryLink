@@ -17,9 +17,11 @@ import com.laundrylink.laundrylink.service.AdminService;
 public class AdminController {
 
     private final AdminService adminService;
+    private final com.laundrylink.laundrylink.service.DemoDataSeeder demoDataSeeder;
 
-    public AdminController(AdminService adminService) {
+    public AdminController(AdminService adminService, com.laundrylink.laundrylink.service.DemoDataSeeder demoDataSeeder) {
         this.adminService = adminService;
+        this.demoDataSeeder = demoDataSeeder;
     }
 
     // ==========================================
@@ -196,6 +198,25 @@ public class AdminController {
     public List<PartnerPerformanceAnalytics> getPartnerPerformanceAnalytics() {
         requireAdmin();
         return adminService.getPartnerPerformanceAnalytics();
+    }
+
+    // ==========================================
+    // 9. Database Management & Seeding Endpoints
+    // ==========================================
+
+    @PostMapping("/reset-database")
+    @ResponseStatus(HttpStatus.OK)
+    public void resetDatabase() {
+        requireAdmin();
+        try {
+            System.out.println("[ADMIN CONTROLLER] Starting database reset request...");
+            demoDataSeeder.manualResetAndSeed();
+            System.out.println("[ADMIN CONTROLLER] Database reset request completed successfully.");
+        } catch (Exception e) {
+            System.err.println("[ADMIN CONTROLLER ERROR] Failed to reset database: " + e.getMessage());
+            e.printStackTrace();
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Database reset failed: " + e.getMessage(), e);
+        }
     }
 
     // ==========================================
