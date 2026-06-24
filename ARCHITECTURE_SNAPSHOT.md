@@ -874,4 +874,131 @@ frontend/
 - Static spec file downloaded: `openapi_spec.json`.
 
 
+## Phase 14 Snapshot - Smart Laundry Partner Selection & Dynamic Operational Metrics
+
+### Current Entity Fields
+- `PartnerEntity`: Added `openingTime`, `closingTime`, `serviceSlaHours`, and `dailyCapacityLimit` columns.
+
+### Timings & SLA Rollover Logic
+- India Standard Time (`Asia/Kolkata`) context validation.
+- Automatically calculates OPEN/CLOSED status and capacity indicators.
+- Rollover calculation: If `remainingWorkingHours < serviceSlaHours`, the SLA commitment target is rolled over to `openingTime` tomorrow + `remainingSlaHours`.
+
+### Checkout Warnings UI
+- Enforced a warning notice modal in [PlaceOrderWizard.jsx](frontend/src/components/Customer/PlaceOrderWizard.jsx) preventing checkout advancement on closed or tomorrow-delivery partners until explicitly confirmed by the customer.
+
+
+## Phase 15 Snapshot - Legacy Slot Selection UI Removal
+
+### Outdated Manual Slot Removal
+- Removed the old dropdown selection components for Pickup and Delivery slots from the customer order placement wizard.
+- Swapped hardcoded scheduling slots in Step 3 for dynamic, read-only estimated pickup and delivery slots calculated directly using the selected partner's timings and service SLA.
+- Standardized the API transaction payloads to send these estimated descriptions to the backend database.
+
+
+## Phase 16 Snapshot - Smart Automatic Delivery Assignment
+
+### Workload-Balanced Auto-Assignment
+- Implemented `autoAssignRider(OrderEntity order)` inside `OrderService.java`.
+- Auto-assigns orders in `ACCEPTED` or `READY_FOR_DELIVERY` status to online delivery riders with the lowest active workload, excluding riders who previously rejected the task.
+
+### Daily Rider Rejections policy
+- Enforced a hard limit of maximum 2 rejections per day for delivery partners.
+- Cancellations and rejections revert the order status and trigger immediate automated re-queuing to other online riders.
+
+
+## Phase 17 Snapshot - Laundry Partner Cancellation Policy
+
+### Configurable Penalty & Allowance
+- Added `cancellationPenaltyPerOrder` (defaults to ₹200.0) field in `PartnerEntity` to let admins configure financial deductions.
+- Enforced a monthly allowance of 10 free accepted cancellations for laundry partners.
+- History calculations analyze status transition entries chronologically to count cancellations and compute penalties.
+
+### Dashboard Integrations
+- Renders warning states (Healthy, Approaching Limit, Allowance Exceeded) and cancellation ledger history inside the Laundry Partner portal.
+- Exposes a cancellation penalty configuration input under the Admin compliance directory.
+
+
+## Phase 18 Snapshot - In-Wizard Checkout & Integrated Payments
+
+### Embedded Payment Checkout
+- Extended customer Place Order Wizard from 3 to 5 steps, integrating payment selection directly into the ordering flow.
+- Added support for UPI payment, Credit/Debit card with simulated gateway payment card forms, and Cash on Delivery (COD).
+- Included simulated 6-digit OTP verification ("123456") and mock payment outcomes animations (success checkmark, failure cross) inside the wizard view.
+- Added auto-redirection on checkout success/failure and dashboard refresh triggers.
+
+
+## Phase 19 Snapshot - Custom React Confirmation Modals
+
+### Modal UI Overlays
+- Replaced standard native browser `window.confirm()` dialogs across Customer Orders portals with high-fidelity React modal overlays.
+- Standardized cancellation confirm modal to show Velora's thinking mascot, progressive cancellation policy, penalty rates, penalty fee calculations, and refundable totals.
+
+
+## Phase 20 Snapshot - Custom Order Wizard Categories
+
+### Write-In Selection fallback
+- Expanded select item lists with options for Jacket, Blanket, Curtains, Saree, Dress, and Wash & Iron, Steam Press, Premium Dry Clean, Stain Removal services.
+- Added custom "Other" selection option triggering a text field input enabling customers to type write-in categories or services.
+- Standardized write-in totals calculations resolving custom selections to a baseline ₹50.0 pricing fallback.
+
+
+## Phase 21 Snapshot - Checkout Timeouts & Active Timelines
+
+### State-linked Timers & Stepper
+- Integrated a 60-second checkout session countdown timer. Expiry transitions the order to FAILED status.
+- Added payment cancellation button syncing failure state back to the database.
+- Implemented an active trackings split-column panel on the customer dashboard displaying a live order status timeline stepper and chronological log records.
+
+
+## Phase 22 Snapshot - Reusable Dropdown Select Component
+
+### Custom Select UI
+- Created a custom styled dropdown select component `CustomSelect.jsx` using Outfit typography and active checkmarks, replacing native browser select inputs.
+- Applied layout properties wrapping to drop-in select inputs across Admin Orders, Admin Partners, Admin Users, Place Order Wizard, Partner Documents, Partner Orders, and Partner Pricing.
+
+
+## Phase 23 Snapshot - Payment Auto-Cancellation & Tracking Security
+
+### Checkout Failure Gating
+- Automated order status update to `CANCELLED` when checkout payments fail, cancel, or timeout.
+- Protected customer dashboard lists and payments ledger by hiding unconfirmed/failed online orders from lists.
+- Overloaded `OrderView` record with `paymentMethod` and `paymentStatus` columns.
+
+
+## Phase 24 Snapshot - Unified Reports & Profile Intelligence Center
+
+### Combined Compliance Center
+- Integrated Admin Reviews moderation logs directly inside the reports module, removing the redundant navigation links.
+- Rendered reports with tabbed navigations separating "Revenue & Analytics" and "Stakeholder Intelligence".
+- Solved layout stacking context issues by applying relative z-index overlays to CustomSelect trigger panels.
+
+
+## Phase 25 Snapshot - Onboarding Policy Agreements
+
+### First-login gating checks
+- Added `termsAccepted`, `termsAcceptanceTimestamp`, and `termsAcceptedVersion` status columns to `UserEntity`.
+- Mandatory onboarding screen gating un-onboarded customer, partner, and rider accounts on first login.
+- Built permanent policy reference registry `/policies` displaying Terms of Service, Cancellation Policies, Refund Policies, Privacy Policies, Operational Guidelines, and Platform Rules.
+
+
+## Phase 26 Snapshot - OTP verification & SMTP alerts mailing
+
+### Verification & Dispatch
+- Implemented a 6-digit OTP email verification code required on new customer, partner, or rider registration.
+- Added verify/resend OTP endpoints, rate limiters (max 5 invalid verification attempts, max 3 resends), and validation UI screen.
+- Integrated `spring-boot-starter-mail` dynamically copying customer in-app alerts directly to their registered Gmail.
+- Enabled auto-verification on successful logins to prevent verification bypasses.
+
+
+## Phase 27 Snapshot - Simplified Lifecycle, Sequential Display IDs, & Manual Resets
+
+### Simplified Lifecycle, Order ID Generator & Manual Seeder
+- Restructured order lifecycle status progression to an elegant 8-state flow (`ORDER_PLACED`, `PICKUP_RIDER_ASSIGNED`, `PICKUP_COMPLETED`, `PROCESSING`, `READY_FOR_DELIVERY`, `DELIVERY_RIDER_ASSIGNED`, `DELIVERED`), removing background simulation auto-transitions.
+- Implemented sequential display IDs (e.g. `VL10001`, `VL10002`) by scanning database max values and incrementing by 1.
+- Auto-assigns online delivery riders upon placement (pickups) and readiness (deliveries) with different riders mapped if available.
+- Secured database reset process as a manual trigger called via `/api/v1/admin/reset-database` (or PowerShell script `reset_database.ps1`), truncating operational state records while preserving default Admin credentials.
+
+
+
 

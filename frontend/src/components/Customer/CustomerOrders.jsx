@@ -228,7 +228,15 @@ export default function CustomerOrders() {
                     Status Timeline
                   </h4>
                   <div style={styles.timeline}>
-                    {['Placed', 'Accepted', 'Pickup', 'Picked Up', 'Processing', 'Ready', 'Delivery', 'Delivered'].map((label, idx) => {
+                    {[
+  'Placed',
+  'Pickup Assigned',
+  'Pickup Completed',
+  'Processing',
+  'Ready',
+  'Delivery Assigned',
+  'Delivered'
+].map((label, idx) => {
                       const activeStep = getStatusStep(selectedOrder.status);
                       const isDone = idx <= activeStep;
                       return (

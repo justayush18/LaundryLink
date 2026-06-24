@@ -888,3 +888,27 @@ This file is an append-only development diary for Velora. New work must be added
       - `PROCESSING` -> `READY_FOR_DELIVERY` (laundry washing complete, auto-assign delivery) after 20 seconds.
   - **OrderServiceTest.java**: Added mocks for `UserRepository` and `PaymentRepository` so that `OrderService` mock tests compile and pass.
 - Verification: Spring Boot JUnit test suite (all 50/50 tests) and Vite production bundle build run and compile successfully with zero errors.
+
+## Follow-up Update - Phase 27: Simplified Lifecycle, Sequential Order ID, & Manual Database Reset
+- Goal of the task: Finalize and simplify the order lifecycle workflow, implement sequential human-readable Display Order IDs (`VL10001` format) that resolve duplicates safely, enforce manual rider/vendor handoffs (disabling background simulation auto-transitions), and secure the database reset process to run manually via a PowerShell script.
+- What was implemented:
+  - **Simplified Workflow Enforcements**: Reduced the lifecycle to 8 deterministic states (`ORDER_PLACED`, `PICKUP_RIDER_ASSIGNED`, `PICKUP_COMPLETED`, `PROCESSING`, `READY_FOR_DELIVERY`, `DELIVERY_RIDER_ASSIGNED`, `DELIVERED`). Background simulation transitions are removed, requiring riders to manually complete pickups/deliveries and vendors to process and mark ready.
+  - **Sequential Order ID Generator**: Added sequential display IDs mapping the order's UUID internally but showing `VL10001`, `VL10002` across all dashboards. The generator queries the maximum numeric part of existing IDs and increments it by 1, guaranteeing uniqueness.
+  - **Separate Rider Rule**: The auto-assignment engine maps distinct online riders to the pickup and delivery phases if multiple riders are online.
+  - **Manual Database Reset & Seeder**: Shifted database seeds to a secure manual action. The seeder preserves the default Admin account (`admin@velora.example` / `Password@123`) while truncating transactional tables and seeding 33 completed historical records.
+  - **Test Suite Resolution**: Updated unit mock tests (`ReviewServiceTest.java`, `PaymentServiceTest.java`) to stub display ID lookups, resolving NPEs.
+- Files modified:
+  - [src/main/java/com/laundrylink/laundrylink/service/OrderService.java](src/main/java/com/laundrylink/laundrylink/service/OrderService.java)
+  - [src/main/java/com/laundrylink/laundrylink/persistence/OrderRepository.java](src/main/java/com/laundrylink/laundrylink/persistence/OrderRepository.java)
+  - [src/main/java/com/laundrylink/laundrylink/service/DemoDataSeeder.java](src/main/java/com/laundrylink/laundrylink/service/DemoDataSeeder.java)
+  - [src/main/java/com/laundrylink/laundrylink/api/AdminController.java](src/main/java/com/laundrylink/laundrylink/api/AdminController.java)
+  - [src/main/java/com/laundrylink/laundrylink/service/PaymentService.java](src/main/java/com/laundrylink/laundrylink/service/PaymentService.java)
+  - [src/main/java/com/laundrylink/laundrylink/service/ReviewService.java](src/main/java/com/laundrylink/laundrylink/service/ReviewService.java)
+  - [src/main/java/com/laundrylink/laundrylink/service/AdminService.java](src/main/java/com/laundrylink/laundrylink/service/AdminService.java)
+  - [src/test/java/com/laundrylink/laundrylink/service/ReviewServiceTest.java](src/test/java/com/laundrylink/laundrylink/service/ReviewServiceTest.java)
+  - [src/test/java/com/laundrylink/laundrylink/service/PaymentServiceTest.java](src/test/java/com/laundrylink/laundrylink/service/PaymentServiceTest.java)
+  - [frontend/src/components/Admin/AdminOrders.jsx](frontend/src/components/Admin/AdminOrders.jsx)
+- Problems encountered: Database resets via start-up automated runners caused deserialization failures due to stale transactional state records. Automated scheduler ran simulations too aggressively in the background, completing orders automatically without rider actions.
+- How the issue was resolved: Stripped background simulator transitions from `runDemoSimulation()` and limited scheduler duties to assigning pending tasks. Transitioned the seeder to a manual trigger endpoint, and resolved mock unit test null pointers with proper stub stubbing.
+- Important design decisions: Sequential display IDs dynamically scan the database for the max value rather than using table row count. Auto-assignment automatically triggers matching on placement and readiness.
+- Verification: Spring Boot JUnit test suite (all 50/50 tests) and Vite production bundle build run and compile successfully with zero errors.
